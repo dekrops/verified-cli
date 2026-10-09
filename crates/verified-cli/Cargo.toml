@@ -1,0 +1,28 @@
+[package]
+name = "verified-cli"
+description = "Git-like tools for verifiable work."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+anstream.workspace = true
+anstyle.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+verified-canonical.workspace = true
+verified-protocol.workspace = true
+verified-verifier.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[[bin]]
+name = "verified"
+path = "src/main.rs"
+
+[lints]
+workspace = true

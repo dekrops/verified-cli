@@ -1,0 +1,45 @@
+# cargo-deny configuration. Run: cargo deny check
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+# Permissive licenses compatible with the Apache-2.0 target. Additions are a
+# reviewed decision, not a convenience.
+allow = ["Apache-2.0", "MIT", "Unicode-3.0"]
+confidence-threshold = 0.93
+
+[licenses.private]
+# The workspace's own crates carry no license until IP approval (see LICENSE).
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# The tool is synchronous and local-first. A network or async runtime, a TLS
+# stack or an embedded database entering the graph is an architecture change
+# and needs a decision record first (docs/decisions/0002).
+deny = [
+    { crate = "tokio" },
+    { crate = "async-std" },
+    { crate = "smol" },
+    { crate = "hyper" },
+    { crate = "reqwest" },
+    { crate = "ureq" },
+    { crate = "curl" },
+    { crate = "rustls" },
+    { crate = "openssl" },
+    { crate = "native-tls" },
+    { crate = "rusqlite" },
+    { crate = "sqlx" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

@@ -1,0 +1,23 @@
+//! `verified`: Git-like tools for verifiable work.
+//!
+//! This binary parses arguments, reads files and prints. Every protocol rule
+//! lives in the library crates.
+
+mod cli;
+mod exit;
+mod input;
+mod render;
+mod verify;
+
+use std::process::ExitCode;
+
+use clap::Parser as _;
+
+fn main() -> ExitCode {
+    let args = cli::Args::parse();
+    let mut out = render::Output::new(&args.global);
+    let code = match &args.command {
+        cli::Command::Verify(command) => verify::run(command, &mut out),
+    };
+    code.into()
+}
