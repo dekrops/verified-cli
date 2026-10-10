@@ -340,3 +340,52 @@ fn log_checks_a_run_and_an_entry_held_against_it() {
         "{text}"
     );
 }
+
+#[test]
+fn audit_reports_each_claim_s_state_from_the_log_and_its_documents() {
+    let scratch = Scratch::new("audit");
+    let [agreement, claim, receipt] = registration();
+    scratch.file("keys.json", &trust(&[&registry_key()]));
+    scratch.file("log.jsonl", &format!("{receipt}\n"));
+    // Documents in any order, one per line, with one the log does not name.
+    scratch.file(
+        "documents.jsonl",
+        &format!("{claim}\n{agreement}\n{receipt}\n"),
+    );
+    scratch.file("agreement.json", &agreement);
+    let run = |args: &[&str]| {
+        let mut all = vec!["registration", "audit", "--json", "--trust", "keys.json"];
+        all.extend_from_slice(args);
+        scratch.run(&all)
+    };
+
+    let audited = run(&["log.jsonl", "documents.jsonl"]);
+    assert_eq!(exit(&audited), 0, "{audited:?}");
+    let result = json(&audited);
+    assert_eq!(result["outcome"], "audited");
+    assert_eq!(result["claims"].as_array().map(Vec::len), Some(1));
+    let first = &result["claims"][0];
+    assert_eq!(first["claim"], support::uuid(0x501));
+    assert_eq!(first["state"], "OPEN");
+    assert_eq!(first["position"], 0);
+    assert!(first["dispute"].is_null());
+
+    let without_claim = run(&["log.jsonl", "agreement.json"]);
+    assert_eq!(exit(&without_claim), 1);
+    assert_eq!(json(&without_claim)["refusal"]["code"], "MISSING_CLAIM");
+
+    let human = scratch.run(&[
+        "registration",
+        "audit",
+        "--trust",
+        "keys.json",
+        "log.jsonl",
+        "documents.jsonl",
+    ]);
+    assert_eq!(exit(&human), 0);
+    let text = String::from_utf8_lossy(&human.stdout);
+    assert!(
+        text.contains("OPEN") && text.contains("not a verification result"),
+        "{text}"
+    );
+}

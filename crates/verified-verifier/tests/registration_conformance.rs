@@ -11,16 +11,16 @@
 //! Each case's whole expectation is compared: the refusal code, or every
 //! fact of the registration.
 //!
-//! `vectors.json` (registrations) and `log.json` (log segments and held
-//! entries) are run. The corpus's other files (audits, notices, disputes
-//! and unit checks) are for parts of the protocol this project does not
-//! implement yet.
+//! `vectors.json` (registrations), `log.json` (log segments and held
+//! entries) and the three files of audits (`audit.json`, `notice.json`,
+//! `dispute.json`) are run here. `unit.json` is run by `verified-work-unit`.
 
 #![allow(clippy::print_stderr)] // progress notes for whoever runs the corpus
 
 use std::path::PathBuf;
 
 use verified_canonical::{Limits, Object, Sha256Digest, Value, parse};
+use verified_verifier::registration::audit::{AuditedClaim, audit};
 use verified_verifier::registration::log::{Inclusion, LogCheck, check_log};
 use verified_verifier::registration::{Registration, RegistrationTrust, verify_registration};
 
@@ -220,4 +220,111 @@ fn every_log_case_is_reproduced() {
         assert_eq!(&actual, member(case, "expected", &at), "{at}: {outcome:?}");
     }
     eprintln!("claim-registration-1: {} log cases reproduced", cases.len());
+}
+
+fn audited(claims: &[AuditedClaim]) -> Value {
+    let claims = claims
+        .iter()
+        .map(|claim| {
+            let mut members = vec![
+                ("claim", digest(&claim.claim)),
+                ("id", wrapped(&claim.id)),
+                ("position", Value::Integer(claim.position.into())),
+                ("respondBy", wrapped(&claim.respond_by)),
+                ("state", string(claim.state.as_str())),
+            ];
+            if let Some(dispute) = claim.dispute {
+                members.push(("dispute", string(dispute.as_str())));
+            }
+            Value::Object(
+                members
+                    .into_iter()
+                    .map(|(k, v)| (k.to_owned(), v))
+                    .collect::<Object>(),
+            )
+        })
+        .collect();
+    object([
+        ("accept", Value::Bool(true)),
+        ("claims", Value::Array(claims)),
+    ])
+}
+
+#[test]
+fn every_audit_case_is_reproduced() {
+    let Some(corpus) = corpus() else { return };
+    let read = |name: &str| {
+        let path = corpus.join(name);
+        let at = path.display().to_string();
+        let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{at}: {e}"));
+        (
+            parse(&bytes, &Limits::DEFAULT).unwrap_or_else(|e| panic!("{at}: {e}")),
+            at,
+        )
+    };
+    let (vectors, vectors_at) = read("vectors.json");
+    let lists = [
+        "agreementsJson",
+        "claimsJson",
+        "responsesJson",
+        "noticesJson",
+        "documentsJson",
+    ];
+    for name in ["audit.json", "notice.json", "dispute.json"] {
+        let (file, at) = read(name);
+        // A file states its own trust configuration, or uses the
+        // registration vectors'.
+        let own = file.as_object().and_then(|o| o.get("trust"));
+        let trust = RegistrationTrust::from_value(
+            own.unwrap_or_else(|| member(&vectors, "trust", &vectors_at)),
+        )
+        .unwrap_or_else(|e| panic!("{at}: {e}"));
+        let texts = |from: &Value, list: &str| -> Vec<Vec<u8>> {
+            from.as_object()
+                .and_then(|o| o.get(list))
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .map(|text| {
+                    text.as_str()
+                        .unwrap_or_else(|| panic!("{at}: {list} holds a non-text"))
+                        .as_bytes()
+                        .to_vec()
+                })
+                .collect()
+        };
+        let cases = member(&file, "cases", &at)
+            .as_array()
+            .unwrap_or_else(|| panic!("{at}: cases is not a list"));
+        assert!(!cases.is_empty(), "{at}: no cases");
+        for case in cases {
+            let case_at = format!("{at}: {}", text(case, "name", &at));
+            let entries = texts(case, "entriesJson");
+            let entries: Vec<&[u8]> = entries.iter().map(Vec::as_slice).collect();
+            // Documents of a case, then those the file states for all cases.
+            let documents: Vec<Vec<u8>> = lists
+                .iter()
+                .flat_map(|list| texts(case, list).into_iter().chain(texts(&file, list)))
+                .collect();
+            let documents: Vec<&[u8]> = documents.iter().map(Vec::as_slice).collect();
+            let outcome = audit(&entries, &documents, &trust);
+            let actual = match &outcome {
+                Ok(claims) => audited(claims),
+                Err(refusal) => object([
+                    ("accept", Value::Bool(false)),
+                    ("error", string(refusal.code.as_str())),
+                ]),
+            };
+            assert_eq!(
+                &actual,
+                member(case, "expected", &case_at),
+                "{case_at}: {:?}",
+                outcome.as_ref().err()
+            );
+        }
+        eprintln!(
+            "claim-registration-1: {} audit cases of {name} reproduced",
+            cases.len()
+        );
+    }
 }

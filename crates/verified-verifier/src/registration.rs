@@ -30,8 +30,11 @@
 //!
 //! [`log`] checks a run of a registry's log, and a held entry against it.
 //!
-//! Responses, notices, disputes, the audit of a whole log and the unit
-//! check are parts of the protocol this module does not implement.
+//! [`audit`] reads a whole log with the documents it names and finds every
+//! claim's state.
+//!
+//! The protocol's unit check verifies no signature and is not here: see
+//! `verified_work_unit::registered`.
 
 use ed25519_dalek::VerifyingKey;
 use verified_canonical::{Limits, Sha256Digest, SigningDomain, Value, parse_canonical};
@@ -44,6 +47,7 @@ use verified_protocol::{Instant, IssuerSignature, WireDigest};
 
 use crate::trust::{ED25519, TrustError, decode, verifies};
 
+pub mod audit;
 pub mod log;
 
 /// Why a registration was refused.
@@ -75,7 +79,7 @@ pub(crate) type Decoded = (RegistrationKey, Option<VerifyingKey>);
 /// unusable key material is found when the configuration is loaded.
 #[derive(Clone, Debug)]
 pub struct RegistrationTrust {
-    parties: Vec<Decoded>,
+    pub(crate) parties: Vec<Decoded>,
     pub(crate) registries: Vec<Decoded>,
 }
 

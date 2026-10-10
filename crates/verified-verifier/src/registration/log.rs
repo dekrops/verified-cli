@@ -23,8 +23,7 @@
 //!
 //! Whether the registry applied its own rules (one open claim per unit, the
 //! agreement's limit) is not checked here. That needs the log from its
-//! start, with the agreements and claims: the protocol's audit, which this
-//! project does not implement.
+//! start, with the agreements and claims: [`super::audit`].
 
 use std::collections::{BTreeMap, BTreeSet};
 

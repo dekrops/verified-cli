@@ -83,6 +83,13 @@ relying party's own trust registry.
   that verifies on its own; it is contradicted only by someone holding a
   signed entry from before the change (`--held`). The anchor of a segment
   is the relying party's own, like its keys.
+- **An audit is of what it was shown.** It establishes that a log, up to its
+  last entry, is a consistent history that kept the registry's rules. It
+  cannot show that the log is complete, and it compares units as claims
+  state them: that a unit belongs to a claim's inputs is checked only by
+  holders of the unit key. A claim's state is the log's, never a
+  verification result, and a claim with an open dispute is not ready to be
+  acted on, whatever its state.
 - **A chain anchor is trust configuration**, like the registry. One taken
   from the party whose statements are being checked proves nothing.
 - **A local attacker on the workspace directory.** The workspace refuses

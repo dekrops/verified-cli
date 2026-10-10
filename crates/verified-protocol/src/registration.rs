@@ -22,10 +22,18 @@ use crate::shape::{self, At, Shape};
 use crate::statement::signature;
 use crate::time::Instant;
 
+mod documents;
+
+pub use documents::{
+    Answer, DISPUTE_DOMAIN, DISPUTE_TERMS_DOMAIN, NOTICE_DOMAIN, RESOLUTION_DOMAIN,
+    RESPONSE_DOMAIN, ResolutionSignatures, SignedDispute, SignedNotice, SignedResolution,
+    SignedResponse, SignedTerms,
+};
+
 /// The protocol identifier every object of a registration must carry.
 pub const REGISTRATION_PROTOCOL: &str = "verified-claim-registration-v1";
 
-const fn domain(prefix: &'static str) -> SigningDomain {
+pub(crate) const fn domain(prefix: &'static str) -> SigningDomain {
     match SigningDomain::new(prefix) {
         Ok(domain) => domain,
         Err(_) => panic!("a registration signing domain is one line"),
@@ -105,6 +113,70 @@ pub enum RegistrationCode {
     TimeReversed,
     /// A claim registered at two positions of a log.
     DuplicateClaim,
+    /// A supersession is not followed by the registration of the claim it
+    /// names.
+    SupersessionIncomplete,
+    /// A replacing claim is under another agreement than the one replaced.
+    SupersessionInvalid,
+    /// A claim the log registers was not supplied.
+    MissingClaim,
+    /// The agreement a claim names was not supplied.
+    MissingAgreement,
+    /// An earlier claim holds the unit.
+    UnitHeld,
+    /// The agreement's limit on open claims is reached.
+    LimitExceeded,
+    /// A closure of a claim the log did not register before it.
+    ClosureWithoutRegistration,
+    /// A closure of a claim that is already closed.
+    AlreadyClosed,
+    /// A withdrawal or supersession while a dispute of the claim is open.
+    DisputeOpen,
+    /// An expiry recorded before the deadline passed.
+    ExpiredEarly,
+    /// The response a closure names was not supplied.
+    MissingResponse,
+    /// A refusal for another reason, with no reason stated.
+    ResponseInvalid,
+    /// A response dated after the registry recorded it.
+    RespondedAfterRecord,
+    /// A response recorded after the deadline.
+    LateResponse,
+    /// The notice a closure names was not supplied.
+    MissingNotice,
+    /// A notice whose action is not the closure's.
+    NoticeMismatch,
+    /// A notice dated after the registry recorded it.
+    NoticeAfterRecord,
+    /// A dispute record for a claim the log did not register before it.
+    DisputeWithoutClaim,
+    /// A dispute of a claim that is neither refused nor answered.
+    NotDisputable,
+    /// A second dispute of a claim.
+    AlreadyDisputed,
+    /// The dispute a record names was not supplied.
+    MissingDispute,
+    /// A dispute on another ground, with no ground stated.
+    DisputeInvalid,
+    /// The terms a dispute names were not supplied.
+    MissingTerms,
+    /// Dispute terms without a positive window, or whose resolver is a
+    /// party.
+    TermsInvalid,
+    /// A dispute dated after the registry recorded it.
+    DisputedAfterRecord,
+    /// A dispute recorded after the agreed window.
+    LateDispute,
+    /// A resolution of a claim that has no open dispute.
+    NoOpenDispute,
+    /// The resolution a record names was not supplied.
+    MissingResolution,
+    /// A resolution of another dispute than the open one.
+    DisputeMismatch,
+    /// A resolver's resolution under terms that name no resolver.
+    NoResolver,
+    /// A resolution dated after the registry recorded it.
+    ResolvedAfterRecord,
 }
 
 impl RegistrationCode {
@@ -136,6 +208,37 @@ impl RegistrationCode {
             Self::PreviousMismatch => "PREVIOUS_MISMATCH",
             Self::TimeReversed => "TIME_REVERSED",
             Self::DuplicateClaim => "DUPLICATE_CLAIM",
+            Self::SupersessionIncomplete => "SUPERSESSION_INCOMPLETE",
+            Self::SupersessionInvalid => "SUPERSESSION_INVALID",
+            Self::MissingClaim => "MISSING_CLAIM",
+            Self::MissingAgreement => "MISSING_AGREEMENT",
+            Self::UnitHeld => "UNIT_HELD",
+            Self::LimitExceeded => "LIMIT_EXCEEDED",
+            Self::ClosureWithoutRegistration => "CLOSURE_WITHOUT_REGISTRATION",
+            Self::AlreadyClosed => "ALREADY_CLOSED",
+            Self::DisputeOpen => "DISPUTE_OPEN",
+            Self::ExpiredEarly => "EXPIRED_EARLY",
+            Self::MissingResponse => "MISSING_RESPONSE",
+            Self::ResponseInvalid => "RESPONSE_INVALID",
+            Self::RespondedAfterRecord => "RESPONDED_AFTER_RECORD",
+            Self::LateResponse => "LATE_RESPONSE",
+            Self::MissingNotice => "MISSING_NOTICE",
+            Self::NoticeMismatch => "NOTICE_MISMATCH",
+            Self::NoticeAfterRecord => "NOTICE_AFTER_RECORD",
+            Self::DisputeWithoutClaim => "DISPUTE_WITHOUT_CLAIM",
+            Self::NotDisputable => "NOT_DISPUTABLE",
+            Self::AlreadyDisputed => "ALREADY_DISPUTED",
+            Self::MissingDispute => "MISSING_DISPUTE",
+            Self::DisputeInvalid => "DISPUTE_INVALID",
+            Self::MissingTerms => "MISSING_TERMS",
+            Self::TermsInvalid => "TERMS_INVALID",
+            Self::DisputedAfterRecord => "DISPUTED_AFTER_RECORD",
+            Self::LateDispute => "LATE_DISPUTE",
+            Self::NoOpenDispute => "NO_OPEN_DISPUTE",
+            Self::MissingResolution => "MISSING_RESOLUTION",
+            Self::DisputeMismatch => "DISPUTE_MISMATCH",
+            Self::NoResolver => "NO_RESOLVER",
+            Self::ResolvedAfterRecord => "RESOLVED_AFTER_RECORD",
         }
     }
 }
@@ -155,7 +258,7 @@ pub struct StatedTime<'a> {
     pub at: Instant,
 }
 
-fn time<'a>(value: &'a Value, at: &At<'_>) -> Shape<StatedTime<'a>> {
+pub(crate) fn time<'a>(value: &'a Value, at: &At<'_>) -> Shape<StatedTime<'a>> {
     Ok(StatedTime {
         at: shape::instant(value, at)?,
         text: shape::wrapped(value, at)?,
