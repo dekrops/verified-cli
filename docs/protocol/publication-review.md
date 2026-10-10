@@ -45,7 +45,7 @@ Licensing status for all: all rights reserved (upstream `LICENSE`).
 | `protocols/work-contract/v1/SPEC.md` | wvp-0.2 contract evaluation |
 | `docs/spec/evidence-statement-v1.md` | statement signatures, registry, admission |
 | `test-vectors/README.md` (canonical-encoding section) | `verified-json-v1` definition |
-| `protocols/work-unit/v1/SPEC.md` | not needed yet; listed for completeness |
+| `protocols/work-unit/v1/SPEC.md` | work-unit identity and nullifiers (`verified-work-unit`) |
 
 The specifications link to ADRs 0019 to 0024, 0029 and 0032 to 0037. Those are
 design history, not normative; publishing them is optional. Published copies
@@ -82,6 +82,7 @@ No Scala, JavaScript, Lean or Rust source. No schemas. Nothing from `apps/`,
 | --- | --- |
 | `verified-canonical` | Implements the encoding rules. Independent parser and encoder; shares no code with upstream's Rust checker, which wraps `serde_json` and `bigdecimal`. |
 | `verified-protocol`, `verified-verifier` | Structures of both protocol versions, evidence statements and trust registries, and all thirteen checks with their refusal codes, written from the specifications. Subject to decision E. |
+| `verified-work-unit` | Work-unit identity v1 (identity form, nullifier and key-commitment constructions, their domains), written from its specification. Subject to decision E. |
 | `verified-contract` | Work Contract Language 1 (forms, static rules, evaluation, refusal codes), written from its specification. Subject to decision E. |
 | Tests | Build synthetic packages in process, signed with throwaway keys derived from fixed seeds. The corpus is read from a path outside the repository when one is supplied. |
 | Documentation | Describes the protocol in this project's own words and quotes identifiers (member names, refusal codes, signing domains). |

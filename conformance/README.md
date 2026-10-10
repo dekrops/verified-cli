@@ -23,17 +23,18 @@ VERIFIED_CONFORMANCE_REQUIRED=1 \
 ```
 
 - `VERIFIED_CONFORMANCE_DIR` is the directory containing
-  `canonical-hash-v1.json`, `wvp/` and `work-contract/`.
+  `canonical-hash-v1.json`, `wvp/`, `work-contract/` and `work-unit/`.
 - Without it the corpus tests print `skipped` and pass. With
   `VERIFIED_CONFORMANCE_REQUIRED=1` a missing corpus is a failure, so a run
   that claims conformance cannot skip silently.
 
-Three test files use it:
+Four test files use it:
 
 | Test | Corpus | What it checks |
 | --- | --- | --- |
 | `verified-canonical/tests/shared_vectors.rs` | `canonical-hash-v1.json` | Canonical bytes and SHA-256 of every valid case; refusal of every invalid case. |
 | `verified-contract/tests/conformance.rs` | `work-contract/v1` | The whole expected result of every case: decision, requirement values, ignored records, conflicts, or the refusal. |
+| `verified-work-unit/tests/work_unit.rs` | `work-unit/v1/vectors.json` | Every key commitment, canonical identity and nullifier. |
 | `verified-verifier/tests/conformance.rs` | `wvp/v0.1`, `wvp/v0.2`, `expectations.json`, the worked examples | The whole expected report or refusal of every vector, under the registry the vector supplies. |
 
 ## Synthetic examples are something else
