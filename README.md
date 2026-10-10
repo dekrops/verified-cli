@@ -323,7 +323,8 @@ Every command of the original plan exists. What is not built:
   (`verified_verifier::evidence`); no command does, and verifying a package
   does not.
 - The rest of claim registration v1: the audit of a whole log (with
-  responses, notices and disputes) and the unit check.
+  responses, notices and disputes). The unit check is a library only
+  (`verified_work_unit::registered`), without a command.
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - Coverage-guided fuzzing, and Windows in CI.

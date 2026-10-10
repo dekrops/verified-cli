@@ -284,3 +284,253 @@ fn every_vector_in_the_corpus_is_reproduced() {
     );
     assert_ne!(cases.len(), 0, "the corpus holds no cases");
 }
+
+mod registered {
+    use verified_canonical::{Limits, Value, parse};
+    use verified_work_unit::registered::{UnitCheckCode, check_registered_unit};
+    use verified_work_unit::{Identity, Scope, SecretKey};
+
+    const KEY: &str = "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a";
+    const INPUTS: &str = r#"{"amount":"1250","order":"SO-1001"}"#;
+
+    fn json(text: &str) -> Value {
+        parse(text.as_bytes(), &Limits::DEFAULT).expect("test JSON")
+    }
+
+    fn digest(value: &Value) -> String {
+        format!(
+            r#"{{"algorithm":"sha-256","hex":"{}"}}"#,
+            value.digest().to_hex()
+        )
+    }
+
+    /// The canonical text of a JSON document written loosely.
+    fn canonical(text: &str) -> String {
+        json(text).to_canonical_string()
+    }
+
+    fn signature() -> &'static str {
+        // The unit check verifies no signature; the structure needs one.
+        r#"{"encoded":"AA==","keyId":"k","scheme":"Ed25519"}"#
+    }
+
+    /// A signed agreement whose scope identifies a unit by `identity`.
+    fn agreement(identity: &str, key: &SecretKey) -> String {
+        canonical(&format!(
+            r#"{{"agreement":{{
+                "claimant":{{"value":"00000000-0000-4000-8000-000000000601"}},
+                "contract":{{"digest":{{"algorithm":"sha-256","hex":"{zero}"}},"id":"orders","version":"1"}},
+                "id":{{"value":"00000000-0000-4000-8000-000000000701"}},
+                "openClaimLimit":5,
+                "protocol":"verified-claim-registration-v1",
+                "registry":"registry.test",
+                "respondWithinSeconds":3600,
+                "respondent":{{"value":"00000000-0000-4000-8000-000000000602"}},
+                "scope":{{"identity":{identity},"operation":"fulfil","scope":"orders"}},
+                "tenant":{{"value":"tenant-test"}},
+                "unitKey":{{"algorithm":"sha-256","hex":"{commitment}"}},
+                "validFrom":{{"value":"2026-02-01T00:00:00Z"}},
+                "validUntil":null}},
+              "signatures":{{"claimant":{signature},"respondent":{signature}}}}}"#,
+            zero = "0".repeat(64),
+            commitment = key.commitment().to_hex(),
+            signature = signature(),
+        ))
+    }
+
+    /// A signed claim under `agreement`, committing to `inputs`, with `unit`.
+    fn claim(agreement: &str, inputs: &str, unit: &str) -> String {
+        let unsigned = json(agreement);
+        let unsigned = unsigned
+            .as_object()
+            .and_then(|o| o.get("agreement"))
+            .expect("an agreement");
+        canonical(&format!(
+            r#"{{"claim":{{
+                "agreement":{agreement},
+                "claimedAt":{{"value":"2026-03-01T10:00:00Z"}},
+                "id":{{"value":"00000000-0000-4000-8000-000000000501"}},
+                "inputs":{inputs},
+                "protocol":"verified-claim-registration-v1",
+                "unit":{{"algorithm":"hmac-sha-256","hex":"{unit}"}}}},
+              "signature":{signature}}}"#,
+            agreement = digest(unsigned),
+            inputs = digest(&json(inputs)),
+            signature = signature(),
+        ))
+    }
+
+    fn key() -> SecretKey {
+        SecretKey::from_bytes([0x2a; 32])
+    }
+
+    /// The nullifier of order `order` under the test scope and key.
+    fn unit_of(order: &str) -> String {
+        let scope = Scope {
+            scope: "orders".to_owned(),
+            operation: "fulfil".to_owned(),
+            identity: vec!["order".to_owned()],
+        };
+        let identity = Identity::new("tenant-test", &scope, &[Value::String(order.to_owned())])
+            .expect("an identity");
+        key().nullifier(&identity).to_hex()
+    }
+
+    fn check(agreement: &str, claim: &str, inputs: &str, key: &str) -> Result<(), UnitCheckCode> {
+        check_registered_unit(
+            agreement.as_bytes(),
+            claim.as_bytes(),
+            inputs.as_bytes(),
+            key,
+        )
+        .map_err(|refusal| refusal.code)
+    }
+
+    #[test]
+    fn a_unit_is_the_nullifier_of_the_inputs_the_scope_names() {
+        let agreement = agreement(r#"["order"]"#, &key());
+        let claim = claim(&agreement, INPUTS, &unit_of("SO-1001"));
+        assert_eq!(check(&agreement, &claim, INPUTS, KEY), Ok(()));
+    }
+
+    #[test]
+    fn each_check_refuses_with_its_own_code_in_order() {
+        use UnitCheckCode as Code;
+        let agreement = agreement(r#"["order"]"#, &key());
+        let good = claim(&agreement, INPUTS, &unit_of("SO-1001"));
+
+        // Step 1: text, structure and the key's spelling.
+        for bad_key in [
+            &KEY[..62],
+            &KEY.to_uppercase(),
+            &format!("{KEY}2a"),
+            "",
+            &KEY.replace('2', "g"),
+        ] {
+            assert_eq!(
+                check(&agreement, &good, INPUTS, bad_key),
+                Err(Code::Malformed)
+            );
+        }
+        assert_eq!(
+            check(&format!("{agreement} "), &good, INPUTS, KEY),
+            Err(Code::Malformed)
+        );
+        assert_eq!(check(&agreement, "{}", INPUTS, KEY), Err(Code::Malformed));
+        for inputs in [
+            r#"{"order":7}"#,
+            r#"["SO-1001"]"#,
+            r#"{"order": "SO-1001"}"#,
+        ] {
+            assert_eq!(check(&agreement, &good, inputs, KEY), Err(Code::Malformed));
+        }
+
+        // Step 2.
+        let other_agreement = self::agreement(r#"["order","amount"]"#, &key());
+        assert_eq!(
+            check(&other_agreement, &good, INPUTS, KEY),
+            Err(Code::AgreementMismatch)
+        );
+        // Step 3.
+        let other_key = "2b".repeat(32);
+        assert_eq!(
+            check(&agreement, &good, INPUTS, &other_key),
+            Err(Code::UnitKeyMismatch)
+        );
+        // Step 4.
+        let other_inputs = r#"{"amount":"1250","order":"SO-1002"}"#;
+        assert_eq!(
+            check(&agreement, &good, other_inputs, KEY),
+            Err(Code::InputsMismatch)
+        );
+        // Step 5.
+        let no_order = r#"{"amount":"1250"}"#;
+        let claim_without = claim(&agreement, no_order, &unit_of("SO-1001"));
+        assert_eq!(
+            check(&agreement, &claim_without, no_order, KEY),
+            Err(Code::MissingInput)
+        );
+        // Step 6: the unit of another order, and a unit that is not keyed.
+        let another = claim(&agreement, INPUTS, &unit_of("SO-1002"));
+        assert_eq!(
+            check(&agreement, &another, INPUTS, KEY),
+            Err(Code::UnitMismatch)
+        );
+        let plain = good.replace("hmac-sha-256", "sha-256");
+        assert_eq!(
+            check(&agreement, &plain, INPUTS, KEY),
+            Err(Code::UnitMismatch)
+        );
+    }
+
+    #[test]
+    fn a_refusal_never_shows_the_key_or_an_input_value() {
+        let agreement = agreement(r#"["order"]"#, &key());
+        let another = claim(&agreement, INPUTS, &unit_of("SO-1002"));
+        let refusal = check_registered_unit(
+            agreement.as_bytes(),
+            another.as_bytes(),
+            INPUTS.as_bytes(),
+            KEY,
+        )
+        .expect_err("a refusal");
+        let shown = format!("{refusal} {refusal:?}");
+        assert!(!shown.contains(KEY) && !shown.contains("SO-100"), "{shown}");
+    }
+
+    #[test]
+    #[allow(clippy::print_stderr)] // progress notes for whoever runs the corpus
+    fn every_unit_case_in_the_corpus_is_reproduced() {
+        let Some(dir) = std::env::var_os("VERIFIED_CONFORMANCE_DIR") else {
+            assert!(
+                std::env::var_os("VERIFIED_CONFORMANCE_REQUIRED").is_none(),
+                "VERIFIED_CONFORMANCE_REQUIRED is set but VERIFIED_CONFORMANCE_DIR is not"
+            );
+            eprintln!("skipped: VERIFIED_CONFORMANCE_DIR is not set");
+            return;
+        };
+        let path = std::path::PathBuf::from(dir).join("claim-registration/v1/unit.json");
+        let at = path.display().to_string();
+        let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{at}: {e}"));
+        let corpus = parse(&bytes, &Limits::DEFAULT).unwrap_or_else(|e| panic!("{at}: {e}"));
+        let member = |value: &Value, name: &str| {
+            value
+                .as_object()
+                .and_then(|o| o.get(name))
+                .unwrap_or_else(|| panic!("{at}: no {name}"))
+                .clone()
+        };
+        let text = |value: &Value, name: &str| {
+            member(value, name)
+                .as_str()
+                .unwrap_or_else(|| panic!("{at}: {name} is not text"))
+                .to_owned()
+        };
+        let cases = member(&corpus, "cases");
+        let cases = cases.as_array().expect("a list of cases");
+        assert!(!cases.is_empty(), "{at}: no cases");
+        for case in cases {
+            let name = text(case, "name");
+            let outcome = check(
+                &text(case, "agreementJson"),
+                &text(case, "claimJson"),
+                &text(case, "inputsJson"),
+                &text(case, "unitKeyHex"),
+            );
+            let expected = member(case, "expected");
+            let expected = match member(&expected, "accept") {
+                Value::Bool(true) => Ok(()),
+                _ => Err(text(&expected, "error")),
+            };
+            assert_eq!(
+                outcome.map_err(|code| code.as_str().to_owned()),
+                expected,
+                "{at}: {name}"
+            );
+        }
+        eprintln!(
+            "claim-registration-1: {} unit cases reproduced",
+            cases.len()
+        );
+    }
+}
