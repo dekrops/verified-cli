@@ -626,4 +626,16 @@ fn a_trust_configuration_is_closed_and_names_each_key_once() {
     let not_a_key = replaced(&record(&claimant()), &["publicKey"], Some(string("AAAA")));
     assert!(RegistrationTrust::from_value(&config(list([not_a_key]))).is_err());
     assert!(RegistrationTrust::from_value(&object([("parties", list([]))])).is_err());
+
+    // One key under a second identifier and another spelling of its
+    // material (the last character before the padding carries unused bits)
+    // would be an alias. Such a spelling is not accepted at all.
+    let material = claimant().public_key();
+    let respelt = material.replacen("o=", "p=", 1);
+    assert_ne!(material, respelt, "the test key's material ends in o=");
+    let mut alias = replaced(&record(&claimant()), &["publicKey"], Some(string(respelt)));
+    alias = replaced(&alias, &["keyId"], Some(string("test-alias")));
+    assert!(RegistrationTrust::from_value(&config(list([alias.clone()]))).is_err());
+    let aliased = list([record(&claimant()), alias]);
+    assert!(RegistrationTrust::from_value(&config(aliased)).is_err());
 }

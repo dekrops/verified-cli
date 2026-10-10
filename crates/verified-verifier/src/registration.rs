@@ -86,14 +86,22 @@ impl RegistrationTrust {
     /// Key material that cannot be used.
     pub fn new(keys: RegistrationKeys) -> Result<Self, TrustError> {
         let decoded = |keys: Vec<RegistrationKey>| {
-            keys.into_iter()
-                .map(|key| {
-                    let material = (key.algorithm == ED25519)
-                        .then(|| decode(&key.key_id, &key.public_key))
-                        .transpose()?;
-                    Ok((key, material))
-                })
-                .collect::<Result<Vec<Decoded>, TrustError>>()
+            let mut list: Vec<Decoded> = Vec::with_capacity(keys.len());
+            for key in keys {
+                let material = (key.algorithm == ED25519)
+                    .then(|| decode(&key.key_id, &key.public_key))
+                    .transpose()?;
+                // The same key under another spelling of its material would
+                // be an alias: a second identifier for one signer.
+                if let Some(material) = &material
+                    && let Some((earlier, _)) =
+                        list.iter().find(|(_, m)| m.as_ref() == Some(material))
+                {
+                    return Err(TrustError::DuplicateKey(earlier.key_id.clone(), key.key_id));
+                }
+                list.push((key, material));
+            }
+            Ok(list)
         };
         Ok(Self {
             parties: decoded(keys.parties)?,
@@ -209,18 +217,16 @@ fn commitments(
     claim: &SignedClaim<'_>,
     receipt: &SignedReceipt<'_>,
 ) -> Checked<()> {
-    let commitments = [
-        Some(agreement.contract_digest),
-        Some(agreement.unit_key),
-        Some(claim.agreement),
-        Some(claim.inputs),
-        Some(receipt.claim),
-        receipt.previous,
-    ];
-    let are_commitments = commitments
-        .into_iter()
-        .flatten()
-        .all(|d| d.algorithm == Sha256Digest::ALGORITHM && is_hex_digest(d));
+    let are_commitments = [
+        agreement.contract_digest,
+        agreement.unit_key,
+        claim.agreement,
+        claim.inputs,
+        receipt.claim,
+    ]
+    .into_iter()
+    .chain(receipt.previous)
+    .all(|d| d.algorithm == Sha256Digest::ALGORITHM && is_hex_digest(d));
     if are_commitments && claim.unit.algorithm == NULLIFIER_ALGORITHM && is_hex_digest(claim.unit) {
         Ok(())
     } else {
