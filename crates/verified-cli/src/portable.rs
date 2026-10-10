@@ -177,9 +177,8 @@ fn diff_human(
     components: &[(&str, bool)],
     stated: &[(&'static str, String, String)],
     [only_a, only_b]: [&Vec<String>; 2],
+    (identical, same_package): (bool, bool),
 ) {
-    let identical = a.bytes == b.bytes;
-    let same_package = a.inspection.report.package_id == b.inspection.report.package_id;
     let id = |i: &Inspection| {
         format!(
             "wvp:sha-256:{}",
@@ -299,7 +298,15 @@ pub(crate) fn diff(command: &Diff, out: &mut Output) -> Exit {
             "statementsOnlyInB": only_b,
             "note": "integrity of both packages only; every difference is between what two packages state",
         })),
-        Mode::Human => diff_human(out, &a, &b, &components, &stated, [&only_a, &only_b]),
+        Mode::Human => diff_human(
+            out,
+            &a,
+            &b,
+            &components,
+            &stated,
+            [&only_a, &only_b],
+            (identical, same_package),
+        ),
     }
     // As `diff` does: 0 the same, 1 different, 2 trouble.
     if identical {
