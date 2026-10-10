@@ -160,6 +160,11 @@ complete: every protocol check ran; the decision SUPPORTED was reproduced
         verify_with(&trust, &["--quiet"], &package).status.code(),
         Some(0)
     );
+    let output = verify_with(&trust, &["--require-decision", "SUPPORTED"], &package);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout(&output).ends_with("required decision SUPPORTED met\n"));
+    let result = result_json(&verify_with(&trust, &["--json"], &package));
+    assert!(result.get("requiredDecision").is_none());
 
     // A file ends with a line end; the package inside it does not.
     for ending in ["\n", "\r\n"] {
@@ -224,6 +229,66 @@ fn a_reproduced_decision_that_is_not_supported_exits_0_and_says_so() {
         text.ends_with("the reproduced decision is UNDETERMINED, so the claim is not supported\n"),
         "{text}"
     );
+
+    // A script that must not proceed on anything but SUPPORTED says so.
+    let output = verify_with(&trust, &["--require-decision", "SUPPORTED"], &package);
+    let text = stdout(&output);
+    assert_eq!(output.status.code(), Some(4), "{text}");
+    assert!(
+        text.ends_with(
+            "required decision SUPPORTED not met: the reproduced decision is UNDETERMINED\n"
+        ),
+        "{text}"
+    );
+    assert_eq!(
+        verify_with(
+            &trust,
+            &["--quiet", "--require-decision", "SUPPORTED"],
+            &package
+        )
+        .status
+        .code(),
+        Some(4)
+    );
+    let output = verify_with(
+        &trust,
+        &["--json", "--require-decision", "SUPPORTED"],
+        &package,
+    );
+    assert_eq!(output.status.code(), Some(4));
+    let result = result_json(&output);
+    assert_eq!(result["outcome"], "complete");
+    assert_eq!(result["requiredDecision"]["decision"], "SUPPORTED");
+    assert_eq!(result["requiredDecision"]["met"], false);
+    // The decision that was reproduced can be required too.
+    let output = verify_with(&trust, &["--require-decision", "UNDETERMINED"], &package);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout(&output).ends_with("required decision UNDETERMINED met\n"));
+    // Without a registry nothing is reproduced: incomplete, never 0 or 4,
+    // whatever decision the package carries.
+    for required in ["SUPPORTED", "UNDETERMINED"] {
+        let output = run(&["verify", "--require-decision", required], Some(&package));
+        assert_eq!(output.status.code(), Some(3), "{required}");
+        assert!(
+            stdout(&output).ends_with(&format!(
+                "required decision {required} not met: no decision was reproduced\n"
+            )),
+            "{required}"
+        );
+    }
+    // A refusal stays a refusal, and an unknown decision is a usage error.
+    let empty = scratch.file(
+        "empty-registry.json",
+        registry(&[]).to_canonical_string().as_bytes(),
+    );
+    let output = verify_with(
+        &empty,
+        &["--quiet", "--require-decision", "SUPPORTED"],
+        &package,
+    );
+    assert_eq!(output.status.code(), Some(1));
+    let output = verify_with(&trust, &["--require-decision", "supported"], &package);
+    assert_eq!(output.status.code(), Some(2));
 
     let result = result_json(&verify_with(&trust, &["--json"], &package));
     assert_eq!(result["outcome"], "complete");
@@ -717,6 +782,7 @@ fn usage_errors_exit_2_and_help_and_version_exit_0() {
     for expected in [
         "--trust <REGISTRY>",
         "--expect-contract <SHA-256>",
+        "--require-decision <DECISION>",
         "a key inside a package is never trusted",
         "Exit code 0 means every check ran, not that the claim is supported",
     ] {

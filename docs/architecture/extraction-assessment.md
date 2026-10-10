@@ -87,12 +87,12 @@ verified-protocol    typed structures, refusal codes          (built)
 verified-contract    Work Contract Language 1                 (built)
 verified-verifier    pure verification                        (built: all thirteen checks)
 verified-cli         the `verified` binary                    (built: `verify`)
-verified-workspace   local content-addressed store            (later)
+verified-workspace   local content-addressed store            (built)
 verified-history     graph and provenance over imports        (later)
 ```
 
 Dependencies point one way: `cli → verifier → {contract, protocol} →
-canonical`. The two later crates are not created until they hold
+canonical`. `verified-history` is not created until it holds
 functionality.
 
 The contract-language evaluator has its own specification and corpus and

@@ -98,6 +98,7 @@ impl Output {
 
     /// Writes a heading line of a human report.
     pub(crate) fn heading(&mut self, text: &str) {
+        let text = printable(text);
         let bold = Style::new().bold();
         let _ = writeln!(self.stdout, "{bold}{text}{bold:#}");
     }
@@ -107,12 +108,14 @@ impl Output {
     pub(crate) fn rows(&mut self, rows: &[Row]) {
         for Row { label, tone, text } in rows {
             let style = tone.style();
+            let text = printable(text);
             let _ = writeln!(self.stdout, "{label:<LABEL_WIDTH$}{style}{text}{style:#}");
         }
     }
 
     /// Writes a plain line of a human report.
     pub(crate) fn line(&mut self, text: &str) {
+        let text = printable(text);
         let _ = writeln!(self.stdout, "{text}");
     }
 
@@ -124,6 +127,7 @@ impl Output {
     /// Writes a diagnostic to standard error.
     pub(crate) fn error(&mut self, message: &str) {
         let style = Tone::Negative.style();
+        let message = printable(message);
         let _ = writeln!(self.stderr, "{style}error:{style:#} {message}");
     }
 
@@ -138,6 +142,32 @@ impl Output {
     }
 }
 
+/// Text made safe to show a person.
+///
+/// Much of what is printed comes from a package, whose author chooses every
+/// character. Control characters could move the cursor, recolor or erase
+/// what the terminal shows, and bidirectional controls could reorder it, so
+/// that a report reads differently from what was written. They are shown as
+/// escapes instead. JSON output needs none of this: its encoder escapes.
+pub(crate) fn printable(text: &str) -> std::borrow::Cow<'_, str> {
+    let unsafe_to_show = |c: char| {
+        c.is_control()
+            || matches!(c, '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}' | '\u{2028}' | '\u{2029}')
+    };
+    if !text.contains(unsafe_to_show) {
+        return std::borrow::Cow::Borrowed(text);
+    }
+    let mut shown = String::with_capacity(text.len());
+    for c in text.chars() {
+        if unsafe_to_show(c) {
+            shown.extend(c.escape_unicode());
+        } else {
+            shown.push(c);
+        }
+    }
+    std::borrow::Cow::Owned(shown)
+}
+
 fn locale_is_utf8() -> bool {
     ["LC_ALL", "LC_CTYPE", "LANG"]
         .into_iter()
@@ -146,4 +176,19 @@ fn locale_is_utf8() -> bool {
             let value = value.to_ascii_lowercase();
             value.contains("utf-8") || value.contains("utf8")
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::printable;
+
+    #[test]
+    fn text_from_a_package_cannot_drive_the_terminal() {
+        assert_eq!(printable("tenant-a"), "tenant-a");
+        assert_eq!(printable("é ✓ 日本"), "é ✓ 日本");
+        assert_eq!(printable("a\u{1b}[2Jb"), "a\\u{1b}[2Jb");
+        assert_eq!(printable("line\nSUPPORTED\r"), "line\\u{a}SUPPORTED\\u{d}");
+        assert_eq!(printable("\u{202e}DETROPPUS"), "\\u{202e}DETROPPUS");
+        assert_eq!(printable("x\u{9b}y\u{7f}"), "x\\u{9b}y\\u{7f}");
+    }
 }

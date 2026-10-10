@@ -6,16 +6,19 @@ use std::path::PathBuf;
 
 use clap::{Args as ClapArgs, Parser, Subcommand};
 use verified_canonical::Sha256Digest;
-use verified_protocol::ProtocolVersion;
+use verified_protocol::{Decision, ProtocolVersion};
 
 const AFTER_HELP: &str = "\
 Exit codes:
   0  every protocol check ran and the package was not refused; the decision
-     it reproduced may still be CONTRADICTED or UNDETERMINED
+     it reproduced may still be CONTRADICTED or UNDETERMINED, unless
+     --require-decision was given
   1  the package was refused; the refusal code is printed
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
-  3  the package was not refused, but not every check ran
+  3  verify: the package was not refused, but not every check ran
+  4  verify --require-decision: every check ran, but the reproduced decision
+     is not the required one
 
 The Work Verification Protocol is a draft. No check establishes that a
 source told the truth.";
@@ -63,13 +66,61 @@ pub(crate) enum Command {
     /// trusted.
     ///
     /// Exit code 0 means every check ran, not that the claim is supported:
-    /// read the decision.
+    /// read the decision, or give --require-decision SUPPORTED so that any
+    /// other outcome is a non-zero exit code.
     Verify(Verify),
+    /// Create a local workspace for inspecting packages
+    ///
+    /// A workspace is a `.verified` directory holding the packages you
+    /// import. It is a cache for inspection and authoritative for nothing:
+    /// not a ledger, and not a record of what anyone accepted.
+    Init(Init),
+    /// Store a package in the workspace, without accepting it
+    ///
+    /// The package must have integrity (its contents are the ones it
+    /// commits to); otherwise nothing is stored. No signature is checked, no
+    /// key is trusted and no decision is reproduced. A stored package is
+    /// exactly as trustworthy as it was before.
+    Import(Import),
+    /// Show what a stored package says about itself
+    ///
+    /// Everything shown is stated by the package and, apart from its
+    /// integrity, checked by nobody. To check it, run `verified verify`.
+    Show(Show),
+    /// List what this workspace imported, newest first
+    ///
+    /// This is the workspace's own note, by this machine's clock. It is
+    /// local and unauthenticated: not a history of work, and not evidence
+    /// of anything.
+    Log(Log),
 }
 
 #[derive(Debug, ClapArgs)]
-pub(crate) struct Verify {
+pub(crate) struct Init {
+    /// Where to create the workspace (default: the current directory)
+    pub(crate) directory: Option<PathBuf>,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Import {
     /// The package file, or `-` for standard input
+    pub(crate) package: PathBuf,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Show {
+    /// A package identifier (`wvp:sha-256:…`), an object identifier
+    /// (`object:sha-256:…`), or at least 4 leading hexadecimal characters
+    pub(crate) package: String,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Log {}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Verify {
+    /// The package: a file, `-` for standard input, or the identifier of a
+    /// package stored in the workspace (`wvp:sha-256:…`, `object:sha-256:…`)
     pub(crate) package: PathBuf,
     /// Your trust registry: a JSON file of the keys you accept
     #[arg(long, value_name = "REGISTRY")]
@@ -77,6 +128,10 @@ pub(crate) struct Verify {
     /// Require this protocol version instead of detecting it
     #[arg(long, value_name = "VERSION", value_parser = protocol)]
     pub(crate) protocol: Option<ProtocolVersion>,
+    /// Exit 0 only if this decision was reproduced: SUPPORTED, CONTRADICTED
+    /// or UNDETERMINED. Another reproduced decision exits 4
+    #[arg(long, value_name = "DECISION", value_parser = decision)]
+    pub(crate) require_decision: Option<Decision>,
     /// Refuse a package evaluated for another tenant (wvp-0.2)
     #[arg(long, value_name = "TENANT")]
     pub(crate) expect_tenant: Option<String>,
@@ -95,6 +150,12 @@ fn digest(text: &str) -> Result<Sha256Digest, String> {
         .unwrap_or(text)
         .parse()
         .map_err(|e: verified_canonical::DigestParseError| e.to_string())
+}
+
+fn decision(name: &str) -> Result<Decision, String> {
+    name.parse().map_err(|()| {
+        format!("unknown decision {name:?}; one of SUPPORTED, CONTRADICTED, UNDETERMINED")
+    })
 }
 
 fn protocol(identifier: &str) -> Result<ProtocolVersion, String> {

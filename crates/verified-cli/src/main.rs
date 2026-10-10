@@ -10,6 +10,7 @@ mod exit;
 mod input;
 mod render;
 mod verify;
+mod workspace;
 
 use std::process::ExitCode;
 
@@ -20,6 +21,10 @@ fn main() -> ExitCode {
     let mut out = render::Output::new(&args.global);
     let code = match &args.command {
         cli::Command::Verify(command) => verify::run(command, &mut out),
+        cli::Command::Init(command) => workspace::init(command, &mut out),
+        cli::Command::Import(command) => workspace::import(command, &mut out),
+        cli::Command::Show(command) => workspace::show(command, &mut out),
+        cli::Command::Log(_) => workspace::log(&mut out),
     };
     code.into()
 }

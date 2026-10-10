@@ -4,7 +4,9 @@
 
 ```text
 verified-cli        binary `verified`: arguments, files, terminal, exit codes
-   │
+   │        │
+   │   verified-workspace  the local store: objects and import history
+   │        │
 verified-verifier   verify(bytes, options) -> Report | Rejection   (pure)
    │        │
    │   verified-contract   Work Contract Language 1: read, check, evaluate
@@ -15,9 +17,11 @@ verified-canonical  ┘      verified-json-v1: parse, encode, SHA-256,
                            signing input
 ```
 
-Dependencies point downward only. The four library crates perform no I/O,
-read no clock and no environment, and forbid `unsafe`. Everything that touches
-the outside world is in `verified-cli`.
+Dependencies point downward only. The four protocol crates (`canonical`,
+`protocol`, `contract`, `verifier`) perform no I/O, read no clock and no
+environment. `verified-workspace` reads and writes one directory and nothing
+else; the clock is read only by `verified-cli`, once per import. Every crate
+forbids `unsafe`.
 
 External consumers (Agent Billing Center first) depend on the library crates,
 never on the binary.
@@ -50,8 +54,17 @@ version, then expectations. It is the only crate that verifies signatures,
 and it does so only with keys from a `Trust` the caller built from their own
 registry.
 
+**`verified-workspace`** owns the `.verified` directory: where an imported
+package's bytes go, how they are named and re-checked, and the local import
+history. It uses the verifier for exactly one thing, package integrity, and
+never holds a registry: nothing it stores or reports is a verification
+result ([decisions 0003](../decisions/0003-workspace-is-not-a-ledger.md) and
+[0004](../decisions/0004-content-addressed-object-storage.md)).
+
 **`verified-cli`** owns presentation. It maps a `Report` or `Rejection` to
-text, JSON and an exit code and adds no conclusion of its own.
+text, JSON and an exit code and adds no conclusion of its own. Text that
+comes from a package is shown with control and bidirectional characters
+escaped, so that a package cannot redraw the report it appears in.
 
 ## The report
 
@@ -83,6 +96,7 @@ first is a statement about the package.
 | 1 | Refused by a protocol check. |
 | 2 | The command could not run: usage, unreadable input, unusable registry, resource limit. |
 | 3 | Not refused, but not every check ran. |
+| 4 | `verify --require-decision`: every check ran, but the reproduced decision is not the required one. |
 
 Code 3 is where upstream's CLI and this one differ on purpose: upstream exits
 0 for integrity-only verification without a registry. Here, "not everything
@@ -90,13 +104,15 @@ was checked" is never spelled the same as "everything passed".
 
 Code 0 follows the protocol: a reproduced `CONTRADICTED` or `UNDETERMINED` is
 a successful verification of a package whose claim is not supported. That
-makes exit 0 unsafe as a gate on its own; the decision is printed, is in the
-JSON, and the help text says so. Whether to add an option that requires a
-particular decision is an open question for the command-line interface.
+makes a bare exit 0 unsafe as a gate. `--require-decision <DECISION>` is the
+opt-in answer: with it, exit 0 also means that decision was reproduced, and
+any other reproduced decision is exit 4. The default is unchanged so that the
+tool keeps the protocol's meaning of success. Only a decision this run
+reproduced can meet the requirement; without a registry the exit code stays
+3.
 
 ## Not built yet
 
-`verified-workspace` (local content-addressed store) and `verified-history`
-(graph and provenance over imported artifacts) are designed in
-[the decision records](../decisions/) and do not exist as crates. No command
-that needs them is offered.
+`verified-history` (graph and provenance over imported artifacts) does not
+exist as a crate. No command that needs it is offered: there is no `trace`,
+and `log` shows import history only.

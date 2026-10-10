@@ -18,6 +18,9 @@ pub(crate) enum Exit {
     Failed = 2,
     /// The package was not refused, but not every check ran.
     Incomplete = 3,
+    /// Every check ran and the package was not refused, but the decision it
+    /// reproduced is not the one `--require-decision` asked for.
+    DecisionNotRequired = 4,
 }
 
 impl From<Exit> for ExitCode {

@@ -55,6 +55,28 @@ impl PackageId {
     }
 }
 
+/// The text is not `wvp:sha-256:` followed by 64 lowercase hexadecimal
+/// characters.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("a package identifier is wvp:sha-256: followed by 64 lowercase hexadecimal characters")]
+pub struct PackageIdParseError;
+
+impl std::str::FromStr for PackageId {
+    type Err = PackageIdParseError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        text.strip_prefix(Self::PREFIX)
+            .and_then(|hex| hex.parse().ok())
+            .map(Self)
+            .ok_or(PackageIdParseError)
+    }
+}
+
+impl PackageId {
+    /// What every package identifier starts with.
+    pub const PREFIX: &'static str = "wvp:sha-256:";
+}
+
 impl fmt::Display for PackageId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "wvp:sha-256:{}", self.0)

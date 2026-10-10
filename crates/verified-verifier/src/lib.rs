@@ -53,6 +53,7 @@
 //! chains of statements.
 
 mod container;
+mod inspect;
 mod json;
 mod order_transition;
 mod report;
@@ -62,6 +63,7 @@ mod verify;
 mod work_contract;
 
 pub use container::{Options, ProtocolSelection, Refusal, Rejection};
+pub use inspect::{Inspection, StatementSummary, inspect};
 pub use report::{
     ComponentCommitment, Condition, ContractSummary, DecisionFinding, Evaluation, Expectations,
     Finding, IssuerSignature, NotChecked, Report, Reproduced,

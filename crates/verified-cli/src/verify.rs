@@ -15,7 +15,7 @@ use crate::exit::Exit;
 use crate::input::{self, InputError};
 use crate::render::{Mode, Output, Row, Tone};
 
-const TITLE: &str = "Work Verification Protocol package";
+pub(crate) const TITLE: &str = "Work Verification Protocol package";
 const NO_TRUTH: &str = "no check can establish it";
 const NO_REGISTRY: &str = "no trust registry was supplied (--trust), so no signature was checked \
      and the decision was not reproduced; the decision the package carries is its issuer's claim";
@@ -47,13 +47,25 @@ pub(crate) fn run(command: &Verify, out: &mut Output) -> Exit {
             claim: command.expect_claim.clone(),
         },
     };
-    let bytes = match input::read(&command.package, options.limits.max_bytes) {
-        Ok(bytes) => bytes,
-        Err(InputError::Io(error)) => return failed(out, "IO_ERROR", &format!("{error:#}")),
-        Err(InputError::TooLarge(limit)) => return not_examined(out, limit),
+    // A stored package is named by an identifier, which no file name this
+    // tool would be given starts with.
+    let stored = command.package.to_str().filter(|name| {
+        name.starts_with(verified_protocol::PackageId::PREFIX)
+            || name.starts_with(verified_workspace::ObjectId::PREFIX)
+    });
+    let bytes = match stored {
+        Some(name) => match crate::workspace::load(name, &options.limits) {
+            Ok((_, bytes)) => bytes,
+            Err(message) => return failed(out, "WORKSPACE", &message),
+        },
+        None => match input::read(&command.package, options.limits.max_bytes) {
+            Ok(bytes) => bytes,
+            Err(InputError::Io(error)) => return failed(out, "IO_ERROR", &format!("{error:#}")),
+            Err(InputError::TooLarge(limit)) => return not_examined(out, limit),
+        },
     };
     match verified_verifier::verify(package_text(&bytes), &options) {
-        Ok(report) => reported(out, &report),
+        Ok(report) => reported(out, &report, command.require_decision),
         Err(Rejection::Refused(refusal)) => refused(out, &refusal),
         Err(Rejection::Limit(limit)) => not_examined(out, limit),
         Err(error @ Rejection::ExpectationsUndefined(_)) => {
@@ -68,7 +80,7 @@ pub(crate) fn run(command: &Verify, out: &mut Output) -> Exit {
 /// conventionally has one. Exactly one final line end (`\n` or `\r\n`) is
 /// therefore the file's, not the package's. Anything else, a second line end
 /// included, is left for the canonical-text check to refuse.
-fn package_text(bytes: &[u8]) -> &[u8] {
+pub(crate) fn package_text(bytes: &[u8]) -> &[u8] {
     let text = bytes.strip_suffix(b"\n").unwrap_or(bytes);
     if text.len() == bytes.len() {
         bytes
@@ -93,7 +105,7 @@ fn registry(path: &std::path::Path, limits: &Limits) -> Result<Trust, String> {
 }
 
 /// The command could not run. Nothing is said about the package.
-fn failed(out: &mut Output, code: &str, message: &str) -> Exit {
+pub(crate) fn failed(out: &mut Output, code: &str, message: &str) -> Exit {
     if out.mode == Mode::Json {
         out.json(&json!({ "outcome": "error", "error": { "code": code, "message": message } }));
     }
@@ -101,11 +113,11 @@ fn failed(out: &mut Output, code: &str, message: &str) -> Exit {
     Exit::Failed
 }
 
-fn not_examined(out: &mut Output, limit: LimitExceeded) -> Exit {
+pub(crate) fn not_examined(out: &mut Output, limit: LimitExceeded) -> Exit {
     failed(out, "RESOURCE_LIMIT", &Rejection::Limit(limit).to_string())
 }
 
-fn refused(out: &mut Output, refusal: &Refusal) -> Exit {
+pub(crate) fn refused(out: &mut Output, refusal: &Refusal) -> Exit {
     match out.mode {
         Mode::Quiet => {}
         Mode::Json => out.json(&json!({
@@ -131,7 +143,7 @@ fn reason_code(reason: NotChecked) -> &'static str {
     }
 }
 
-fn digest_json(digest: &Sha256Digest) -> serde_json::Value {
+pub(crate) fn digest_json(digest: &Sha256Digest) -> serde_json::Value {
     json!({ "algorithm": Sha256Digest::ALGORITHM, "hex": digest.to_hex() })
 }
 
@@ -350,17 +362,46 @@ fn issuer_row(issuer: IssuerSignature) -> Row {
 
 /// The package was not refused. Whether every check ran is the report's to
 /// say, and decides the exit code.
-fn reported(out: &mut Output, report: &Report) -> Exit {
+fn reported(out: &mut Output, report: &Report, required: Option<Decision>) -> Exit {
     let complete = report.is_complete();
+    // A requirement is met only by a decision this run reproduced. The
+    // decision a package carries never meets one.
+    let reproduced = match &report.decision {
+        DecisionFinding::Reproduced(reproduced) => Some(reproduced.decision),
+        _ => None,
+    };
+    let met = required.map(|required| reproduced == Some(required));
     match out.mode {
         Mode::Quiet => {}
-        Mode::Json => out.json(&report_json(report, complete)),
-        Mode::Human => human(out, report, complete),
+        Mode::Json => {
+            let mut result = report_json(report, complete);
+            if let (Some(required), Some(met)) = (required, met) {
+                result["requiredDecision"] = json!({ "decision": required.as_str(), "met": met });
+            }
+            out.json(&result);
+        }
+        Mode::Human => {
+            human(out, report, complete);
+            match (required, met, reproduced) {
+                (Some(required), Some(false), Some(reproduced)) => out.line(&format!(
+                    "required decision {required} not met: the reproduced decision is {reproduced}"
+                )),
+                (Some(required), Some(false), None) => out.line(&format!(
+                    "required decision {required} not met: no decision was reproduced"
+                )),
+                (Some(required), Some(true), _) => {
+                    out.line(&format!("required decision {required} met"));
+                }
+                _ => {}
+            }
+        }
     }
-    if complete {
-        Exit::Complete
-    } else {
-        Exit::Incomplete
+    match (complete, met) {
+        // Incomplete stays incomplete: without a reproduced decision there
+        // is nothing a requirement could be measured against.
+        (false, _) => Exit::Incomplete,
+        (true, Some(false)) => Exit::DecisionNotRequired,
+        (true, _) => Exit::Complete,
     }
 }
 

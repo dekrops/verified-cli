@@ -672,6 +672,7 @@ dependencies = [
  "verified-canonical",
  "verified-protocol",
  "verified-verifier",
+ "verified-workspace",
 ]
 
 [[package]]
@@ -700,6 +701,18 @@ dependencies = [
  "verified-canonical",
  "verified-contract",
  "verified-protocol",
+]
+
+[[package]]
+name = "verified-workspace"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "ed25519-dalek",
+ "thiserror",
+ "verified-canonical",
+ "verified-protocol",
+ "verified-verifier",
 ]
 
 [[package]]
