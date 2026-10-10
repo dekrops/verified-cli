@@ -23,6 +23,12 @@ states exactly how much of it this implementation performs.
 | Work-unit identity v1: identity, nullifier, key commitment | n/a (claims have no inputs) | yes, as a library (`verified-work-unit`) |
 | Work-unit registry ("was this unit already billed?") | **no**, by design | **no**, by design |
 
+Claim registration v1 is a separate draft protocol, not a part of either WVP
+version. Of it, this project verifies a registration (agreement, claim and
+receipt), as a library: `verified_verifier::registration`. Log segments,
+responses, closures, notices, disputes, audits and the unit check are not
+implemented.
+
 Chain verification is not one of the thirteen checks. A package's statements
 may carry chain links; their shape is checked and their continuity is not,
 which is also what the two upstream verifiers do for packages. A relying
@@ -46,7 +52,8 @@ expectation is compared in full, never by refusal code alone.
 | The two worked examples beside the specifications | Both verify completely as `SUPPORTED` under their registries. |
 | `work-contract/v1`, 82 case files and 5 differential batches | 641 cases reproduced, from 81 case files and the 5 batches. 1 case file cannot be represented (below). |
 | `work-unit/v1/vectors.json` | 3 of 3 key commitments and 10 of 10 identities and nullifiers reproduced. |
-| `claim-registration/v1`, 123 cases in 6 files | **Not run.** Claim registration is not implemented here. |
+| `claim-registration/v1/vectors.json`, 28 cases | 28 reproduced: the refusal code of the 26 refused, and every stated fact of the 2 accepted registrations. |
+| `claim-registration/v1`, the other 95 cases in 5 files (`log`, `audit`, `notice`, `dispute`, `unit`) | **Not run.** Those parts of claim registration are not implemented here. |
 | `evidence-statement/v1`, 39 vectors | 39 reproduced: 17 statement, 13 chain and 9 admission. Refusals by code; accepted statements by key, canonical text, digest and signing input; accepted chains by their whole summary; accepted admissions by their evidence manifest. **Not compared:** the `verificationResultSha256` and `verificationStatus` of the 3 accepted admissions, which are the platform's verification result and are not computed here. |
 
 One case is not reproduced because it cannot reach the evaluator:
@@ -178,6 +185,30 @@ Readings of Evidence Statement v1 where it leaves room, for
 25. **Admission returns the evidence manifest, not a decision.** The corpus's
     accepted admissions also state the platform's verification result; that
     object is not specified in the published material and is not computed.
+
+## Claim registration
+
+Readings of claim registration v1 where it leaves room, for
+`verified_verifier::registration`. They were made from the published
+specification and vectors alone.
+
+26. **Step 1 is applied to all three objects before step 2 to any**, and so
+    on: a check that concerns several objects is finished for all of them
+    before the next begins. Within a step, the agreement comes first, then
+    the claim, then the receipt.
+27. **A party's signature is looked up among the keys of parties, a
+    receipt's among the keys of registries.** A registry's key under a
+    party's signature is `UNKNOWN_KEY`, and the reverse.
+28. **Soundness is what step 4 lists and no more.** An empty scope name and an
+    empty list of identifying inputs are not refused by this step; the
+    specification names a non-empty operation and distinct inputs.
+29. **`validUntil` must be after `validFrom`**, so an agreement that ends
+    when it starts is `AGREEMENT_INVALID`.
+30. **The deadline keeps the receipt time's fraction of a second.**
+    `respondBy` is `receivedAt` plus whole seconds, compared as instants.
+31. **A trust configuration's `validUntil` and `revokedAt` may be absent**, as
+    in a trust registry, and a key identifier or a public key occurs once
+    among the parties' keys and once among the registries' keys.
 
 ## Versions are never interchanged
 
