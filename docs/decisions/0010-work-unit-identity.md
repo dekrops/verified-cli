@@ -30,6 +30,15 @@ the draft outside the platform.
   Deriving an identity only from inputs of a claim whose verification is
   relied on is the caller's responsibility, and the documentation says so.
 
+## Amendment: the unit of a registered claim
+
+Claim registration v1 lets holders of the parties' unit key check that a
+registered claim's unit is the nullifier of its inputs. That check is here,
+in `verified_work_unit::registered`, because it is this crate's computation
+applied to an agreement and a claim. For it the crate depends on
+`verified-protocol`, which reads those objects. It still does not depend on
+the verifier, verifies no signature, and keeps no state or key.
+
 ## Consequences
 
 - One more small crate and one more dependency (`hmac`, MIT or Apache-2.0).

@@ -33,13 +33,16 @@
 //! nullifier made with it. The key is a tenant's, except for a claim
 //! registered under claim registration v1, where it is the two parties'
 //! key, pinned by their agreement. The computation is the same in both
-//! cases; this crate does not verify registrations.
+//! cases. [`registered`] checks such a claim's unit against its inputs; it
+//! verifies no signature.
 //! Rotating a key changes every nullifier, so a registry must compare a new
 //! unit under every key its holders have had; this crate computes under one key
 //! at a time and leaves that to the registry.
 //!
 //! Values are compared exactly: no case folding, trimming or removal of
 //! leading zeros. `INV-01001` and `INV-1001` are different units.
+
+pub mod registered;
 
 use std::fmt;
 

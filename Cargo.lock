@@ -736,6 +736,7 @@ dependencies = [
  "sha2",
  "thiserror",
  "verified-canonical",
+ "verified-protocol",
 ]
 
 [[package]]
