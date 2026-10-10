@@ -26,6 +26,8 @@
 //! start, with the agreements and claims: the protocol's audit, which this
 //! project does not implement.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use verified_canonical::{Sha256Digest, Value};
 use verified_protocol::registration::{
     EntryKind, LogEntry, REGISTRATION_PROTOCOL, RegistrationCode as Code,
@@ -127,9 +129,12 @@ fn segment(entries: &[LogEntry<'_>], anchor: Option<&LogEntry<'_>>) -> Checked<S
         );
     }
     let digests: Vec<Sha256Digest> = entries.iter().map(|e| e.entry.digest()).collect();
-    let forked = (0..entries.len()).any(|i| {
-        (0..i).any(|j| entries[j].sequence == entries[i].sequence && digests[j] != digests[i])
-    });
+    // Linear in the number of entries: a log is untrusted input.
+    let mut at_position = BTreeMap::new();
+    let forked = entries
+        .iter()
+        .zip(&digests)
+        .any(|(e, digest)| *at_position.entry(e.sequence).or_insert(digest) != digest);
     if forked {
         return refuse(
             Code::Equivocation,
@@ -189,11 +194,11 @@ fn segment(entries: &[LogEntry<'_>], anchor: Option<&LogEntry<'_>>) -> Checked<S
 
     // A claim is registered once. Closures and dispute records name the
     // claim again and are not counted.
-    let registered: Vec<&str> = all()
+    let mut registered = BTreeSet::new();
+    let twice = all()
         .filter(|e| matches!(e.kind, EntryKind::Receipt { .. }))
-        .map(|e| e.claim.hex)
-        .collect();
-    if (1..registered.len()).any(|i| registered[..i].contains(&registered[i])) {
+        .any(|e| !registered.insert(e.claim.hex));
+    if twice {
         return refuse(
             Code::DuplicateClaim,
             "a claim is registered at two positions",
