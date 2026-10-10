@@ -35,6 +35,10 @@ relying party's own trust registry.
 | A genuine package about something else | `wvp-0.2` expectations: the relying party names the tenant, contract digest and claim it means, and a package about another is refused. |
 | A contract that never finishes evaluating | Work Contract Language 1 has no code, recursion or unbounded quantifier; predicate size, nesting, fact count and total work are bounded before evaluation. |
 | A misconfigured registry silently trusting more | Registry files are closed: an unknown or misspelt member, a duplicate key identifier or duplicate key material is an error. |
+| A package steering the file system | Stored objects are named only by digests this tool computed. No name from a package or from the command line is joined to a path; symbolic links in a workspace are refused ([decision 0004](../decisions/0004-content-addressed-object-storage.md)). |
+| A stored package altered after import | Every read re-checks the bytes against the object name and the package identifier; damage is reported and nothing is shown. |
+| Import mistaken for acceptance | `import` checks integrity only and says so; it reports no decision. `show` labels everything as stated by the package. Only `verify` under a supplied registry reports a decision. |
+| Terminal control sequences in package text | Human output escapes control and bidirectional characters, so a tenant, source or key name cannot erase, recolor or reorder a report. |
 | Overstated results | No single validity flag. Unchecked properties are reported as not checked. Exit code 0 is reserved for complete verification. |
 | Code execution from artifacts | Packages are data. Nothing in one is executed, loaded or fetched. |
 | Network exposure | The dependency graph has no network or async runtime; `deny.toml` bans them. |
@@ -56,9 +60,12 @@ relying party's own trust registry.
   read it (`--json`, `properties.decisionReproduced.decision`).
 - **Chains of statements** are not verified: a package's statements are
   checked individually.
-- **Local storage.** There is no workspace, so no path-traversal, symlink or
-  atomic-write surface exists yet. Those defenses are requirements of the
-  workspace design ([decision 0004](../decisions/0004-content-addressed-object-storage.md)).
+- **A local attacker on the workspace directory.** The workspace refuses
+  symbolic links and re-checks every object it reads, which covers what a
+  package could cause and accidental damage. It does not defend against
+  another process changing the directory while this one runs.
+- **A forged import history.** `imports.log` is a plain local file. It is
+  shown as local and unauthenticated, and nothing relies on it.
 - **Fuzzing.** Property tests exercise the reader with arbitrary bytes and
   the verifier with arbitrary changes to consistently re-signed packages;
   coverage-guided fuzz targets do not exist.

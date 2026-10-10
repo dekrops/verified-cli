@@ -4,7 +4,9 @@
 
 ```text
 verified-cli        binary `verified`: arguments, files, terminal, exit codes
-   │
+   │        │
+   │   verified-workspace  the local store: objects and import history
+   │        │
 verified-verifier   verify(bytes, options) -> Report | Rejection   (pure)
    │        │
    │   verified-contract   Work Contract Language 1: read, check, evaluate
@@ -15,9 +17,11 @@ verified-canonical  ┘      verified-json-v1: parse, encode, SHA-256,
                            signing input
 ```
 
-Dependencies point downward only. The four library crates perform no I/O,
-read no clock and no environment, and forbid `unsafe`. Everything that touches
-the outside world is in `verified-cli`.
+Dependencies point downward only. The four protocol crates (`canonical`,
+`protocol`, `contract`, `verifier`) perform no I/O, read no clock and no
+environment. `verified-workspace` reads and writes one directory and nothing
+else; the clock is read only by `verified-cli`, once per import. Every crate
+forbids `unsafe`.
 
 External consumers (Agent Billing Center first) depend on the library crates,
 never on the binary.
@@ -50,8 +54,17 @@ version, then expectations. It is the only crate that verifies signatures,
 and it does so only with keys from a `Trust` the caller built from their own
 registry.
 
+**`verified-workspace`** owns the `.verified` directory: where an imported
+package's bytes go, how they are named and re-checked, and the local import
+history. It uses the verifier for exactly one thing, package integrity, and
+never holds a registry: nothing it stores or reports is a verification
+result ([decisions 0003](../decisions/0003-workspace-is-not-a-ledger.md) and
+[0004](../decisions/0004-content-addressed-object-storage.md)).
+
 **`verified-cli`** owns presentation. It maps a `Report` or `Rejection` to
-text, JSON and an exit code and adds no conclusion of its own.
+text, JSON and an exit code and adds no conclusion of its own. Text that
+comes from a package is shown with control and bidirectional characters
+escaped, so that a package cannot redraw the report it appears in.
 
 ## The report
 
@@ -96,7 +109,6 @@ particular decision is an open question for the command-line interface.
 
 ## Not built yet
 
-`verified-workspace` (local content-addressed store) and `verified-history`
-(graph and provenance over imported artifacts) are designed in
-[the decision records](../decisions/) and do not exist as crates. No command
-that needs them is offered.
+`verified-history` (graph and provenance over imported artifacts) does not
+exist as a crate. No command that needs it is offered: there is no `trace`,
+and `log` shows import history only.

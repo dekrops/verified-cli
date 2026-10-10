@@ -5,8 +5,9 @@
 Inspect work claims, trace evidence, verify outcomes, and exchange portable
 work records, without trusting the system that produced them.
 
-> **Status: early, private, pre-release.** One command exists: `verify`,
-> which runs all thirteen of the protocol's checks. The protocol is a draft.
+> **Status: early, private, pre-release.** `verify` runs all thirteen of the
+> protocol's checks; `init`, `import`, `show` and `log` keep a local workspace
+> for inspection. The protocol is a draft.
 > Nothing here is audited, certified or production-hardened.
 >
 > **Open source under the [Apache License 2.0](LICENSE).** The repository is
@@ -107,7 +108,7 @@ $ echo $?
 | 0 | Every protocol check ran and the package was not refused. **The reproduced decision may still be `CONTRADICTED` or `UNDETERMINED`: read it.** |
 | 1 | Refused by a protocol check. |
 | 2 | The command could not run (usage, unreadable input, unusable registry, resource limit). |
-| 3 | Not refused, but not every check ran (no registry). |
+| 3 | `verify`: not refused, but not every check ran (no registry). |
 
 A trust registry is a JSON file:
 
@@ -139,24 +140,77 @@ and conformance vectors are in a private repository and await
 [publication approval](docs/protocol/publication-review.md). With access to
 them, see [`conformance/README.md`](conformance/README.md).
 
+## A local workspace
+
+A workspace is a `.verified` directory holding packages you have imported. It
+is a cache for inspection and **authoritative for nothing**: not a ledger, and
+not a record of what anyone accepted.
+
+```console
+$ verified init
+Initialized an empty Verified workspace in /work/invoices/.verified
+It is a cache for inspection, and authoritative for nothing.
+$ verified import package.json
+package               wvp:sha-256:d0982b73f310… (wvp-0.2, draft), stored
+package integrity     established
+
+imported, not verified: importing is not accepting. No signature was checked and the decision was not reproduced. To check it: verified verify wvp:sha-256:d0982b73f310…972f84 --trust <registry>
+$ verified log
+Import history
+(local and unauthenticated: this workspace's own note of what it imported, by this machine's clock; not a history of work)
+
+2026-10-10T07:14:13Z  wvp:sha-256:d0982b73f310…  wvp-0.2
+$ verified show d0982b73
+Work Verification Protocol package (wvp-0.2, draft)
+package               wvp:sha-256:d0982b73f310…
+object                object:sha-256:4275b8e74c23…, 3930 bytes
+package integrity     established
+
+Stated by the package, and checked by nobody:
+tenant                tenant-test
+claim                 00000000-0000-4000-8000-000000000500
+contract              posting-test 1.0.0, sha-256:6a2c3b0bf581…
+recorded decision     SUPPORTED (the issuer's claim, not reproduced)
+evidence statements   1 (signatures not checked)
+                        00000000-0000-4000-8000-000000000001  Event  from erp  key test-erp-gateway  2026-03-01T10:00:00Z
+issuer signatures     none
+imported here         2026-10-10T07:14:13Z (this machine's clock)
+
+not verified. To check it: verified verify wvp:sha-256:d0982b73f310…972f84 --trust <registry>
+$ verified verify wvp:sha-256:d0982b73f310…972f84 --trust trust.json
+```
+
+(Identifiers in the two `verify` hints are printed in full; they are
+shortened here.)
+
+- **Importing is not accepting.** `import` stores a package that has
+  integrity and refuses one that does not. It checks no signature, trusts no
+  key and reports no decision.
+- **`show` reports what the package says**, labelled as the package's own
+  statement. The recorded decision is the issuer's claim until `verify`
+  reproduces it under your registry.
+- **`log` is import history**: this machine's note, by its own clock. It is
+  not an authenticated history of work and is never shown as one.
+- A stored package is named by its package identifier, or a prefix of at least
+  four hexadecimal characters. Two texts of one package that differ only in
+  their issuer signatures share that identifier, so each also has an
+  `object:sha-256:…` name, and the tool asks which you mean instead of
+  choosing.
+- Stored packages are checked against their names every time they are read.
+  A damaged one is reported, never shown.
+
 ## Where it is going
 
 ```sh
-verified init                                   # a local workspace for inspection
-verified import invoice.wvp                     # importing is not accepting
-verified log                                    # what this workspace has seen
-verified show <id>
-verified trace <id>                             # only relationships the artifact contains
-verified verify invoice.wvp --trust trust.json  # complete verification under your registry
-verified fsck
+verified trace <id>      # only relationships the artifact contains
+verified fsck            # check every stored object and the history
+verified export / diff / replay
 ```
 
-Only `verify` exists. The rest arrive in order:
+None of these exists yet. They arrive in order:
 
-1. **Workspace**: `init`, `import`, `show`, `log` over immutable
-   content-addressed storage.
-2. **Provenance and integrity**: `trace`, `fsck`.
-3. **Portability**: `export`, `diff`, `replay` of authenticated histories,
+1. **Provenance and integrity**: `trace`, `fsck`.
+2. **Portability**: `export`, `diff`, `replay` of authenticated histories,
    and comparison of a package with a work record.
 
 ## Relationship to WVP
@@ -175,14 +229,16 @@ corpus: [`docs/protocol/compatibility.md`](docs/protocol/compatibility.md).
 
 ```text
 verified-cli        the `verified` binary: arguments, files, terminal
+verified-workspace  the local store of imported packages
 verified-verifier   pure verification: bytes in, report or refusal out
 verified-contract   Work Contract Language 1: read, check, evaluate
 verified-protocol   typed protocol structures and refusal codes
 verified-canonical  canonical encoding, SHA-256 commitments, signing input
 ```
 
-Each crate depends only on those below it. The library crates do no I/O and
-contain no `unsafe`. More in
+Each crate depends only on those below it. No crate contains `unsafe`. Only
+`verified-cli` and `verified-workspace` touch the file system; the others do
+no I/O at all. More in
 [`docs/architecture/overview.md`](docs/architecture/overview.md) and the
 [decision records](docs/decisions/).
 
@@ -204,8 +260,8 @@ project is the independent checking side, and it is genuinely independent:
   private repository, service, package or credential. CI does exactly that.
 - It verifies any conforming package under any registry, whoever produced
   them. Nothing in it calls, requires or favors the platform.
-- It is not a second platform or a second ledger. A local workspace, when it
-  exists, will be a cache for inspection and authoritative for nothing.
+- It is not a second platform or a second ledger. A local workspace is a
+  cache for inspection and authoritative for nothing.
 
 The protocol's specifications and conformance vectors are maintained with the
 platform and are published only after their provenance has been reviewed

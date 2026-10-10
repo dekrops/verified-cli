@@ -48,8 +48,10 @@ conformance corpus, also run the tests as described in
   Changing one is a breaking change.
 - **Dependencies earn their place.** A new one is justified in the pull
   request; `deny.toml` bans network and async runtimes outright.
-- **Library crates do no I/O.** Files, the terminal and the process
-  environment belong to `verified-cli`.
+- **The protocol crates do no I/O.** `verified-canonical`, `-protocol`,
+  `-contract` and `-verifier` read no file, clock or environment.
+  `verified-workspace` touches only its own directory. The terminal, the
+  clock and everything else belong to `verified-cli`.
 - `unsafe` is forbidden workspace-wide.
 
 ## Decisions

@@ -32,8 +32,8 @@ mod version;
 
 pub use component::ComponentPath;
 pub use container::{
-    Component, Container, DeclaredVersion, IssuerSignature, ManifestEntry, PackageId, ShapeError,
-    ShapeProblem, WireDigest,
+    Component, Container, DeclaredVersion, IssuerSignature, ManifestEntry, PackageId,
+    PackageIdParseError, ShapeError, ShapeProblem, WireDigest,
 };
 pub use decision::{DECISION_SOURCE, Decision, Evaluator, RecordedDecision};
 pub use evidence::Evidence;

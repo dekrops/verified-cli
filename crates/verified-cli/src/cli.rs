@@ -15,7 +15,7 @@ Exit codes:
   1  the package was refused; the refusal code is printed
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
-  3  the package was not refused, but not every check ran
+  3  verify: the package was not refused, but not every check ran
 
 The Work Verification Protocol is a draft. No check establishes that a
 source told the truth.";
@@ -65,11 +65,58 @@ pub(crate) enum Command {
     /// Exit code 0 means every check ran, not that the claim is supported:
     /// read the decision.
     Verify(Verify),
+    /// Create a local workspace for inspecting packages
+    ///
+    /// A workspace is a `.verified` directory holding the packages you
+    /// import. It is a cache for inspection and authoritative for nothing:
+    /// not a ledger, and not a record of what anyone accepted.
+    Init(Init),
+    /// Store a package in the workspace, without accepting it
+    ///
+    /// The package must have integrity (its contents are the ones it
+    /// commits to); otherwise nothing is stored. No signature is checked, no
+    /// key is trusted and no decision is reproduced. A stored package is
+    /// exactly as trustworthy as it was before.
+    Import(Import),
+    /// Show what a stored package says about itself
+    ///
+    /// Everything shown is stated by the package and, apart from its
+    /// integrity, checked by nobody. To check it, run `verified verify`.
+    Show(Show),
+    /// List what this workspace imported, newest first
+    ///
+    /// This is the workspace's own note, by this machine's clock. It is
+    /// local and unauthenticated: not a history of work, and not evidence
+    /// of anything.
+    Log(Log),
 }
 
 #[derive(Debug, ClapArgs)]
-pub(crate) struct Verify {
+pub(crate) struct Init {
+    /// Where to create the workspace (default: the current directory)
+    pub(crate) directory: Option<PathBuf>,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Import {
     /// The package file, or `-` for standard input
+    pub(crate) package: PathBuf,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Show {
+    /// A package identifier (`wvp:sha-256:…`), an object identifier
+    /// (`object:sha-256:…`), or at least 4 leading hexadecimal characters
+    pub(crate) package: String,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Log {}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Verify {
+    /// The package: a file, `-` for standard input, or the identifier of a
+    /// package stored in the workspace (`wvp:sha-256:…`, `object:sha-256:…`)
     pub(crate) package: PathBuf,
     /// Your trust registry: a JSON file of the keys you accept
     #[arg(long, value_name = "REGISTRY")]

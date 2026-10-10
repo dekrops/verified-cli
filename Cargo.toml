@@ -39,6 +39,7 @@ verified-canonical = { path = "crates/verified-canonical", version = "0.1.0" }
 verified-contract = { path = "crates/verified-contract", version = "0.1.0" }
 verified-protocol = { path = "crates/verified-protocol", version = "0.1.0" }
 verified-verifier = { path = "crates/verified-verifier", version = "0.1.0" }
+verified-workspace = { path = "crates/verified-workspace", version = "0.1.0" }
 
 anstream = "1.0.0"
 anstyle = "1.0.14"

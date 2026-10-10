@@ -1,11 +1,11 @@
 # 0003. A local workspace is not an authoritative ledger
 
-Status: accepted as a constraint. The workspace is not implemented.
+Status: accepted and implemented (`init`, `import`, `show`, `log`).
 
 ## Decision
 
-`verified init` will create a local cache for inspecting imported artifacts.
-It will be specified, documented and displayed as exactly that:
+`verified init` creates a local cache for inspecting imported artifacts. It
+is specified, documented and displayed as exactly that:
 
 - Importing never implies accepting. An imported package is not trusted,
   verified or commercially accepted by being imported.
@@ -14,8 +14,11 @@ It will be specified, documented and displayed as exactly that:
   different commands' output, and are never merged into one timeline.
 - Relationships are shown only when an imported artifact contains them. A
   standalone package carries no acceptance or finalization; none is drawn.
-- Cached verification results are labeled as cached, with the registry they
-  were computed under, and are never shown as freshly checked.
+- Verification results are not cached at all. `show` reports what a package
+  states, labelled as the package's own statement; only `verify`, run now
+  under a registry supplied now, reports anything as established. If results
+  are ever cached they will be labeled as cached, with the registry they were
+  computed under, and never shown as freshly checked.
 
 ## Why now
 
