@@ -222,16 +222,13 @@ pub fn verify_chain(
     }
 
     // Each step follows a predecessor: the anchor, then the step before it.
-    let names = |link: &ChainLink<'_>, digest: &Sha256Digest| {
-        link.previous.is_some_and(|p| p.hex == digest.to_hex())
-    };
     let follows = |link: &ChainLink<'_>, sequence: i64, digest: &Sha256Digest| {
         if sequence.checked_add(1) != Some(link.sequence) {
             refuse(
                 EvidenceCode::ChainGap,
                 format!("step {} does not follow step {sequence}", link.sequence),
             )
-        } else if names(link, digest) {
+        } else if link.previous.is_some_and(|p| p.hex == digest.to_hex()) {
             Ok(())
         } else {
             refuse(
