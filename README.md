@@ -152,11 +152,15 @@ A key that may sign decisions as an issuer lists the source `wvp-decision`.
 
 ```sh
 cargo build --release --locked
-./target/release/verified verify path/to/package.json
+./target/release/verified verify examples/invoice-posting/supported.json \
+  --trust examples/invoice-posting/trust.json
 ```
 
-There is no example package in this repository yet: the protocol's examples
-and conformance vectors are in a private repository and await
+[`examples/invoice-posting`](examples/invoice-posting/) holds six synthetic
+packages (supported, undetermined, contradicted, and two that are refused)
+with the registry to verify them under. They are synthetic test data, not the
+protocol's conformance corpus: the official vectors and examples are in a
+private repository and await
 [publication approval](docs/protocol/publication-review.md). With access to
 them, see [`conformance/README.md`](conformance/README.md).
 
@@ -267,7 +271,11 @@ no I/O at all. More in
 The crates are the Rust SDK and are meant to be depended on directly (not
 through the binary). They are Apache-2.0 and not yet published to crates.io.
 Python and TypeScript SDKs are planned and not started; their boundaries are
-in [decision 0007](docs/decisions/0007-sdk-boundaries.md).
+in [decision 0007](docs/decisions/0007-sdk-boundaries.md). What a dependent
+program may rely on is in the
+[compatibility policy](docs/development/compatibility-policy.md); where this
+project's responsibility ends is in
+[consumers and boundaries](docs/architecture/consumers.md).
 
 ## Relationship to commercial Verified
 

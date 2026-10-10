@@ -789,3 +789,49 @@ fn usage_errors_exit_2_and_help_and_version_exit_0() {
         assert!(text.contains(expected), "{expected}: {text}");
     }
 }
+
+/// The table in `examples/invoice-posting/README.md`, run as written there.
+#[test]
+fn the_checked_in_examples_exit_as_their_readme_says() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/invoice-posting");
+    let trust = dir.join("trust.json");
+    // (file, exit with the registry, exit when SUPPORTED is required)
+    let cases = [
+        ("supported.json", 0, 0),
+        ("supported-issuer-signed.json", 0, 0),
+        ("undetermined.json", 0, 4),
+        ("contradicted.json", 0, 4),
+        ("refused-decision-mismatch.json", 1, 1),
+        ("refused-component-digest.json", 1, 1),
+    ];
+    for (file, plain, required) in cases {
+        let package = dir.join(file);
+        assert_eq!(
+            verify_with(&trust, &["--quiet"], &package).status.code(),
+            Some(plain),
+            "{file}"
+        );
+        assert_eq!(
+            verify_with(
+                &trust,
+                &["--quiet", "--require-decision", "SUPPORTED"],
+                &package
+            )
+            .status
+            .code(),
+            Some(required),
+            "{file} with a required decision"
+        );
+        // Without a registry: integrity only, or the integrity refusal.
+        let expected = if file == "refused-component-digest.json" {
+            1
+        } else {
+            3
+        };
+        assert_eq!(
+            run(&["verify", "--quiet"], Some(&package)).status.code(),
+            Some(expected),
+            "{file} without a registry"
+        );
+    }
+}
