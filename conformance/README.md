@@ -4,20 +4,20 @@ The Work Verification Protocol's conformance corpus is the measure of this
 implementation: packages produced by another implementation, each with the
 outcome every verifier must reach.
 
-## Status: the corpus is not in this repository
+## Where the corpus is
 
-The corpus lives in the private `dekrops/verified` repository, which grants no
-license. Copying it here needs the approval described in
-[`docs/protocol/publication-review.md`](../docs/protocol/publication-review.md).
-Until then this directory holds no fixtures, and the tests that need them read
-them from a path you supply.
+The corpus is published in [`dekrops/wvp`](https://github.com/dekrops/wvp),
+with the specifications ([publication review](../docs/protocol/publication-review.md)).
+That repository is private until its license is chosen. This directory holds
+no fixtures; the tests that need them read them from a path you supply.
 
 ## Running against the corpus
 
-With a checkout of `dekrops/verified`:
+With a checkout of `dekrops/wvp` (or of `dekrops/verified`, where the corpus
+is generated; the paths are the same):
 
 ```sh
-VERIFIED_CONFORMANCE_DIR=/path/to/verified/test-vectors \
+VERIFIED_CONFORMANCE_DIR=/path/to/wvp/test-vectors \
 VERIFIED_CONFORMANCE_REQUIRED=1 \
   cargo test --workspace --locked -- --nocapture
 ```

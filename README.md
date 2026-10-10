@@ -160,10 +160,10 @@ cargo build --release --locked
 [`examples/invoice-posting`](examples/invoice-posting/) holds six synthetic
 packages (supported, undetermined, contradicted, and two that are refused)
 with the registry to verify them under. They are synthetic test data, not the
-protocol's conformance corpus: the official vectors and examples are in a
-private repository and await
-[publication approval](docs/protocol/publication-review.md). With access to
-them, see [`conformance/README.md`](conformance/README.md).
+protocol's conformance corpus: the official specifications, vectors and
+examples are published in [`dekrops/wvp`](https://github.com/dekrops/wvp),
+private until its license is chosen. With access to it, see
+[`conformance/README.md`](conformance/README.md).
 
 ## A local workspace
 
@@ -351,10 +351,11 @@ project is the independent checking side, and it is genuinely independent:
   cache for inspection and authoritative for nothing.
 
 The protocol's specifications and conformance vectors are maintained with the
-platform and are published only after their provenance has been reviewed
-([publication review](docs/protocol/publication-review.md)). Until then the
-conformance tests that need them skip, and everything else runs on synthetic
-data built in this repository.
+platform. After review ([publication review](docs/protocol/publication-review.md))
+they are published in [`dekrops/wvp`](https://github.com/dekrops/wvp), private
+until its license is chosen. Nothing from it is copied here: the conformance
+tests that need the corpus skip unless `VERIFIED_CONFORMANCE_DIR` points to it,
+and everything else runs on synthetic data built in this repository.
 
 ## License
 

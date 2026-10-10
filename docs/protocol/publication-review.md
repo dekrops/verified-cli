@@ -1,19 +1,20 @@
 # Publication review
 
-Status: **partly decided.** The license (A) and the independent
-implementation (E) were decided on 2026-10-10. Publishing protocol material
-(B, C, D) is open. Owner of those decisions: whoever holds the rights in
-`dekrops/verified`.
+Status: **decided.** All five decisions were made on 2026-10-10 by the
+owner of `dekrops/verified`. The protocol material is published in its own
+repository, [`dekrops/wvp`](https://github.com/dekrops/wvp), which is private
+until its license is chosen. It is not copied into this repository.
 
 This repository is licensed under Apache-2.0 and is intended to become public.
-The protocol's specifications, vectors and examples are in a private
-repository that grants no license. This document is the request to publish
-them: what would be published, where it comes from, and what is blocked until
-their provenance has been reviewed.
+This document began as the request to publish the protocol's specifications,
+vectors and examples, which were then only in a private repository that grants
+no license. Sections 1 to 3 are that request as it was made; section 4 records
+the decisions.
 
-Until then: no file from `dekrops/verified` is present here. Independently of
-this review, the repository's visibility is not changed, nothing is published
-to a package registry and no release is made without explicit authorization.
+No file from `dekrops/verified` or `dekrops/wvp` is copied here. Independently
+of this review, the repository's visibility is not changed, nothing is
+published to a package registry and no release is made without explicit
+authorization.
 
 ## 1. Decisions requested
 
@@ -33,7 +34,9 @@ question for the rights holder, so it is asked rather than assumed.
 
 ## 2. Files
 
-Provenance for all: `dekrops/verified`, `origin/main`, commit `3d6f022a`.
+Provenance for all: `dekrops/verified`, `origin/main`, commit `3d6f022a`, as
+reviewed. The published export was taken at `880e419`, which has the same files
+at the same paths; `PROVENANCE.md` in `dekrops/wvp` lists each file's digest.
 Licensing status for all: all rights reserved (upstream `LICENSE`).
 
 ### 2.1 Specifications
@@ -92,7 +95,7 @@ No Scala, JavaScript, Lean or Rust source. No schemas. Nothing from `apps/`,
 | Decision | Approved by | Date | Scope or conditions |
 | --- | --- | --- | --- |
 | A | Repository owner (licensing directive) | 2026-10-10 | Apache-2.0, repository-wide. Visibility, package publication and releases still need explicit authorization. |
-| B | | | Open: provenance review of the specifications. |
-| C | | | Open: provenance review of the corpus. |
-| D | | | Open: provenance review of the examples. |
+| B | Repository owner | 2026-10-10 | Published in `dekrops/wvp`, exported from `dekrops/verified` at `880e419` with links to unpublished files removed; that repository's license is not yet chosen. |
+| C | Repository owner | 2026-10-10 | As B. Content reviewed before export: synthetic data only, invented names, test keys from published seeds. The work-unit vectors are included. |
+| D | Repository owner | 2026-10-10 | As B, with the Work Contract Language 1 examples beside its specification. |
 | E | Repository owner (licensing directive) | 2026-10-10 | The independent implementation is Apache-2.0. No proprietary source may be copied because the projects implement the same protocol. |
