@@ -1,6 +1,6 @@
 # 0006. Trust anchors come only from the relying party
 
-Status: accepted as a constraint. Registry support is not implemented.
+Status: accepted and implemented (`verified verify --trust`).
 
 ## Decision
 
@@ -17,6 +17,12 @@ Status: accepted as a constraint. Registry support is not implemented.
   everything else has passed, as the protocol orders.
 - Registry files hold public keys only. Diagnostics never print signature or
   key material beyond a key identifier.
+- A registry is read strictly. A member it does not define, a key identifier
+  or key material that occurs twice, and Ed25519 key material that cannot be
+  used (not a curve point, or a small-order point) are configuration errors
+  found when the registry is loaded, before any package is examined.
+- Expectations given for a protocol version that does not define them are an
+  error, not ignored.
 
 ## Consequences
 

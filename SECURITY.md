@@ -1,6 +1,6 @@
 # Security
 
-Verified CLI reads untrusted files and will check signatures. Reports of ways
+Verified CLI reads untrusted files and checks signatures. Reports of ways
 to make it accept, misreport or mishandle input are welcome.
 
 ## Reporting

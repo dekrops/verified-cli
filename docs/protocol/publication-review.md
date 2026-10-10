@@ -78,8 +78,9 @@ No Scala, JavaScript, Lean or Rust source. No schemas. Nothing from `apps/`,
 | Here | Basis |
 | --- | --- |
 | `verified-canonical` | Implements the encoding rules. Independent parser and encoder; shares no code with upstream's Rust checker, which wraps `serde_json` and `bigdecimal`. |
-| `verified-protocol`, `verified-verifier` | Container structures and checks 1 to 6, written from the specification. Subject to decision E. |
-| Tests | Build synthetic containers in process. The corpus is read from a path outside the repository when one is supplied. |
+| `verified-protocol`, `verified-verifier` | Structures of both protocol versions, evidence statements and trust registries, and all thirteen checks with their refusal codes, written from the specifications. Subject to decision E. |
+| `verified-contract` | Work Contract Language 1 (forms, static rules, evaluation, refusal codes), written from its specification. Subject to decision E. |
+| Tests | Build synthetic packages in process, signed with throwaway keys derived from fixed seeds. The corpus is read from a path outside the repository when one is supplied. |
 | Documentation | Describes the protocol in this project's own words and quotes identifiers (member names, refusal codes, signing domains). |
 
 ## 4. Record of approval

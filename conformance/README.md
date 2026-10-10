@@ -23,26 +23,28 @@ VERIFIED_CONFORMANCE_REQUIRED=1 \
 ```
 
 - `VERIFIED_CONFORMANCE_DIR` is the directory containing
-  `canonical-hash-v1.json` and `wvp/`.
+  `canonical-hash-v1.json`, `wvp/` and `work-contract/`.
 - Without it the corpus tests print `skipped` and pass. With
   `VERIFIED_CONFORMANCE_REQUIRED=1` a missing corpus is a failure, so a run
   that claims conformance cannot skip silently.
 
-Two tests use it:
+Three test files use it:
 
 | Test | Corpus | What it checks |
 | --- | --- | --- |
 | `verified-canonical/tests/shared_vectors.rs` | `canonical-hash-v1.json` | Canonical bytes and SHA-256 of every valid case; refusal of every invalid case. |
-| `verified-verifier/tests/conformance.rs` | `wvp/v0.1`, `wvp/v0.2` | Container checks (protocol steps 1 to 6) on every vector. |
+| `verified-contract/tests/conformance.rs` | `work-contract/v1` | The whole expected result of every case: decision, requirement values, ignored records, conflicts, or the refusal. |
+| `verified-verifier/tests/conformance.rs` | `wvp/v0.1`, `wvp/v0.2`, `expectations.json`, the worked examples | The whole expected report or refusal of every vector, under the registry the vector supplies. |
 
 ## Rules
 
 - Expected outcomes come from the vectors. If this implementation disagrees
   with one, the specification is investigated; the expectation is never edited
   to make a test pass.
-- A vector whose expected refusal belongs to a check this implementation does
-  not have yet is counted as **deferred** and reported as such. It is never
-  counted as conforming.
+- A vector this implementation cannot run is named in the test's output and
+  in [`docs/protocol/compatibility.md`](../docs/protocol/compatibility.md).
+  It is never counted as conforming.
 - Tests in this repository that do not need the corpus build their packages in
-  process (`crates/verified-verifier/tests/support`). That data is synthetic
-  and is not protocol test material.
+  process (`crates/verified-verifier/tests/support`). That data is synthetic,
+  signed with throwaway keys derived from fixed seeds, and is not protocol
+  test material.
