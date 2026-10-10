@@ -8,8 +8,9 @@ outcome every verifier must reach.
 
 The corpus is published in [`dekrops/wvp`](https://github.com/dekrops/wvp),
 with the specifications ([publication review](../docs/protocol/publication-review.md)).
-That repository is private until its license is chosen. This directory holds
-no fixtures; the tests that need them read them from a path you supply.
+Its specifications are licensed under CC BY 4.0, its vectors and examples
+under Apache-2.0. This directory holds no fixtures; the tests that need them
+read them from a path you supply.
 
 ## Running against the corpus
 

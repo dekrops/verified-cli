@@ -19,7 +19,7 @@ Status: accepted.
 
 ## Consequences
 
-Until the corpus is published (see the publication review), conformance can
-only be demonstrated by someone with access to it. Public CI cannot show it.
-A private interoperability workflow, using the corpus without exposing
-credentials to public CI, is the interim plan.
+The corpus was published in `dekrops/wvp` on 2026-10-10 (see the publication
+review), so anyone can demonstrate conformance from a checkout of it. Public
+CI does not run the corpus yet: it still runs only the synthetic tests, and
+checking out the corpus at a pinned commit is the remaining step.
