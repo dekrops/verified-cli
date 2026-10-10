@@ -59,7 +59,9 @@ every verifier report the same first failure, so the checks run top to bottom
 in specification order: the container (shared), then one module per protocol
 version, then expectations. It is the only crate that verifies signatures,
 and it does so only with keys from a `Trust` the caller built from their own
-registry.
+registry. Its `evidence` module applies the statement protocol's rules
+to statements held outside a package, including chains, which verifying a
+package does not check.
 
 **`verified-workspace`** owns the `.verified` directory: where an imported
 package's bytes go, how they are named and re-checked, and the local import

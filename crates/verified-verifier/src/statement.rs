@@ -7,6 +7,7 @@ use verified_canonical::Value;
 use verified_protocol::{Evidence, RefusalCode, STATEMENT_PROTOCOL, SignedStatement, WireDigest};
 
 use crate::container::{Refusal, refusal};
+use crate::json::{digest, object, text};
 use crate::trust::{ED25519, Trust, verifies};
 
 fn is_commitment(digest: WireDigest<'_>) -> bool {
@@ -28,7 +29,8 @@ pub(crate) fn authenticate(statement: &SignedStatement<'_>, trust: &Trust) -> Re
             "is not an evidence statement v1",
         );
     }
-    if !is_commitment(statement.payload) || !statement.chain_previous.is_none_or(is_commitment) {
+    let previous = statement.chain.and_then(|link| link.previous);
+    if !is_commitment(statement.payload) || !previous.is_none_or(is_commitment) {
         return fail(
             RefusalCode::MalformedCommitment,
             "carries a commitment that is not a SHA-256 digest",
@@ -138,4 +140,58 @@ pub(crate) fn admit<B>(
         }
     }
     Ok(())
+}
+
+/// The evidence manifest that admission produces: the admitted statements,
+/// in ascending order of identifier, as the evidence of one claim. The
+/// identifiers and times are the caller's, in wire form.
+pub(crate) fn manifest<'a>(
+    statements: impl Iterator<Item = &'a SignedStatement<'a>>,
+    package_id: &Value,
+    claim_id: &Value,
+    ingested_at: &Value,
+    assembled_at: &Value,
+) -> Value {
+    let item = |statement: &SignedStatement<'_>| {
+        let transformation = object([
+            ("name", text("verified-evidence-statement")),
+            (
+                "version",
+                object([
+                    ("major", Value::Integer(1.into())),
+                    ("minor", Value::Integer(0.into())),
+                    ("patch", Value::Integer(0.into())),
+                ]),
+            ),
+            (
+                "inputHashes",
+                Value::Array(vec![digest(&statement.digest())]),
+            ),
+        ]);
+        object([
+            ("id", statement.member("id").clone()),
+            ("kind", statement.member("kind").clone()),
+            ("subject", statement.member("subject").clone()),
+            ("payloadHash", statement.member("payload").clone()),
+            (
+                "provenance",
+                object([
+                    ("source", statement.member("source").clone()),
+                    ("witness", statement.member("issuer").clone()),
+                    ("trust", object([("Signed", object([]))])),
+                    ("observedAt", statement.member("observedAt").clone()),
+                    ("ingestedAt", ingested_at.clone()),
+                    ("transformations", Value::Array(vec![transformation])),
+                    ("causedBy", Value::Array(Vec::new())),
+                ]),
+            ),
+        ])
+    };
+    object([
+        ("version", text("verified-evidence-manifest-v1")),
+        ("id", package_id.clone()),
+        ("claimId", claim_id.clone()),
+        ("items", Value::Array(statements.map(item).collect())),
+        ("assembledAt", assembled_at.clone()),
+    ])
 }

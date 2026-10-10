@@ -37,6 +37,21 @@ pub const EVIDENCE_KINDS: [&str; 11] = [
     "CryptographicProof",
 ];
 
+/// A statement's stated position in its issuer's stream.
+///
+/// Nothing about it has been checked but its structure. Whether a list of
+/// statements really is a run of consecutive steps is chain verification.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChainLink<'a> {
+    /// The stream's name. A stream is one tenant's, one issuer's and has one
+    /// name.
+    pub stream: &'a str,
+    /// The step's number. The first step of a stream is 0.
+    pub sequence: i64,
+    /// The stated digest of the previous step, absent at the first.
+    pub previous: Option<WireDigest<'a>>,
+}
+
 /// A signed statement of the right structure, borrowed from its JSON.
 ///
 /// Structure is all that has been checked: not the protocol identifier, the
@@ -62,9 +77,8 @@ pub struct SignedStatement<'a> {
     pub observed_at: Instant,
     /// The stated commitment to the evidence body.
     pub payload: WireDigest<'a>,
-    /// The stated digest of the previous step of the issuer's stream, if the
-    /// statement is chained and is not the first step.
-    pub chain_previous: Option<WireDigest<'a>>,
+    /// The statement's position in its issuer's stream, if it is chained.
+    pub chain: Option<ChainLink<'a>>,
     /// The signature, as carried.
     pub signature: IssuerSignature<'a>,
 }
@@ -101,17 +115,18 @@ impl<'a> SignedStatement<'a> {
         let member = |name| shape::get(o, name);
         shape::subject(member("subject"), &at.member("subject"))?;
         let chain_at = at.member("chain");
-        let chain_previous = shape::nullable(member("chain"), &chain_at, |chain, at| {
+        let chain = shape::nullable(member("chain"), &chain_at, |chain, at| {
             let chain = shape::object(chain, at, &["previous", "sequence", "stream"])?;
-            shape::text(shape::get(chain, "stream"), &at.member("stream"))?;
-            shape::int64(shape::get(chain, "sequence"), &at.member("sequence"))?;
-            shape::nullable(
-                shape::get(chain, "previous"),
-                &at.member("previous"),
-                shape::digest,
-            )
-        })?
-        .flatten();
+            Ok(ChainLink {
+                stream: shape::text(shape::get(chain, "stream"), &at.member("stream"))?,
+                sequence: shape::int64(shape::get(chain, "sequence"), &at.member("sequence"))?,
+                previous: shape::nullable(
+                    shape::get(chain, "previous"),
+                    &at.member("previous"),
+                    shape::digest,
+                )?,
+            })
+        })?;
         Ok(Self {
             statement,
             protocol: shape::text(member("protocol"), &at.member("protocol"))?,
@@ -122,7 +137,7 @@ impl<'a> SignedStatement<'a> {
             source_system: shape::source(member("source"), &at.member("source"))?,
             observed_at: shape::instant(member("observedAt"), &at.member("observedAt"))?,
             payload: shape::digest(member("payload"), &at.member("payload"))?,
-            chain_previous,
+            chain,
             signature,
         })
     }

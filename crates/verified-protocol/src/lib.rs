@@ -40,6 +40,8 @@ pub use evidence::Evidence;
 pub use inputs::Inputs;
 pub use refusal::RefusalCode;
 pub use registry::{RegistryError, TrustRegistry, TrustedKey};
-pub use statement::{EVIDENCE_KINDS, STATEMENT_DOMAIN, STATEMENT_PROTOCOL, SignedStatement};
+pub use statement::{
+    ChainLink, EVIDENCE_KINDS, STATEMENT_DOMAIN, STATEMENT_PROTOCOL, SignedStatement,
+};
 pub use time::Instant;
 pub use version::{PACKAGE_VERSION, ProtocolVersion, UnknownProtocol};

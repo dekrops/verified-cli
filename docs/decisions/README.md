@@ -12,6 +12,7 @@
 | [0008](0008-portability-guarantees.md) | Portability guarantees | Accepted; implemented |
 | [0009](0009-signature-verification.md) | Signatures are verified by `ed25519-dalek`, strictly | Accepted; implemented |
 | [0010](0010-work-unit-identity.md) | Work-unit identity is a library without state, keys or a command | Accepted; implemented |
+| [0011](0011-statement-chains.md) | Statement chains are verified outside packages, by the library | Accepted; implemented |
 
 "Proposed" means the design is a starting point for the pull request that
 builds it, not a commitment.
