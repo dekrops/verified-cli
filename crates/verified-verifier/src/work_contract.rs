@@ -118,8 +118,8 @@ fn work_record(checked: &Checked<'_>, components: &Components<'_>, contract: &Co
             .cloned()
             .unwrap_or(Value::Null)
     };
+    let commitments = stated("commitments");
     let commitment = |name: &str| {
-        let commitments = stated("commitments");
         let member = commitments.as_object().and_then(|o| o.get(name));
         member.cloned().unwrap_or(Value::Null)
     };

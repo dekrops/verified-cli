@@ -14,8 +14,8 @@ major version.
   reused; which check reports which code changes only if the protocol does.
 - **Exit codes** of `verified`: 0, 1, 2, 3 and 4, with the meanings in the
   README.
-- **JSON output** as described in [`docs/sdk/json-output.md`](../sdk/json-output.md).
-- **JSON output**: member names and the shape of their values. Members may be
+- **JSON output**: member names and the shape of their values, as described
+  in [`docs/sdk/json-output.md`](../sdk/json-output.md). Members may be
   added. Read values you know and ignore members you do not.
 - **What a report means.** A property is established only if its check ran and
   passed; a decision is reported only if it was reproduced.
