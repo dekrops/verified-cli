@@ -11,7 +11,8 @@ pub(crate) enum Exit {
     /// Every check the protocol defines ran, and the package was not refused.
     /// A reproduced `CONTRADICTED` or `UNDETERMINED` decision also ends here.
     Complete = 0,
-    /// The package failed a protocol check.
+    /// The package failed a protocol check, or `fsck` found damage in the
+    /// workspace.
     Refused = 1,
     /// The command could not run: bad usage, an unreadable file, or input
     /// beyond a resource limit. Nothing was concluded about the package.

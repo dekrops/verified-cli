@@ -91,7 +91,7 @@ pub(crate) fn package_text(bytes: &[u8]) -> &[u8] {
 
 /// Reads the relying party's registry. It is configuration, so it need not
 /// be canonical text, but it must be exactly a registry.
-fn registry(path: &std::path::Path, limits: &Limits) -> Result<Trust, String> {
+pub(crate) fn registry(path: &std::path::Path, limits: &Limits) -> Result<Trust, String> {
     let name = path.display();
     let bytes = match input::read(path, limits.max_bytes) {
         Ok(bytes) => bytes,
@@ -157,7 +157,7 @@ fn finding_json(finding: Finding) -> serde_json::Value {
     }
 }
 
-fn decision_json(finding: &DecisionFinding) -> serde_json::Value {
+pub(crate) fn decision_json(finding: &DecisionFinding) -> serde_json::Value {
     let DecisionFinding::Reproduced(Reproduced {
         decision,
         evaluation,
@@ -197,7 +197,7 @@ fn decision_json(finding: &DecisionFinding) -> serde_json::Value {
     reproduced
 }
 
-fn issuer_json(issuer: IssuerSignature) -> serde_json::Value {
+pub(crate) fn issuer_json(issuer: IssuerSignature) -> serde_json::Value {
     match issuer {
         IssuerSignature::Established { count } => {
             json!({ "status": "established", "count": count })
@@ -263,7 +263,7 @@ fn finding_row(label: &'static str, finding: Finding, established: &str) -> Row 
     }
 }
 
-fn decision_rows(finding: &DecisionFinding) -> Vec<Row> {
+pub(crate) fn decision_rows(finding: &DecisionFinding) -> Vec<Row> {
     const LABEL: &str = "decision reproduced";
     let DecisionFinding::Reproduced(Reproduced {
         decision,
@@ -342,7 +342,7 @@ fn decision_rows(finding: &DecisionFinding) -> Vec<Row> {
     rows
 }
 
-fn issuer_row(issuer: IssuerSignature) -> Row {
+pub(crate) fn issuer_row(issuer: IssuerSignature) -> Row {
     const LABEL: &str = "issuer signature";
     match issuer {
         IssuerSignature::Established { count } => Row::new(
