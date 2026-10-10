@@ -47,12 +47,15 @@
 //! know. Asserted times are not authenticated either: the holder of a
 //! revoked key can backdate a statement into the key's validity period.
 //!
-//! # Not implemented
+//! # Statements outside a package
 //!
-//! Comparing a package with a work record (`RECORD_MISMATCH`) and verifying
-//! chains of statements.
+//! [`evidence`] authenticates single statements, verifies that a list of
+//! them is a run of an issuer's stream, and admits them as the evidence of
+//! a claim. Verifying a package does not verify chains: a package's
+//! statements may carry chain links, and only their structure is checked.
 
 mod container;
+pub mod evidence;
 mod inspect;
 mod json;
 mod order_transition;

@@ -19,13 +19,15 @@ states exactly how much of it this implementation performs.
 | Relying-party expectations | not defined by the protocol | yes |
 | Work Contract Language 1 (`kleene-1`) | n/a | yes |
 | Work record: computed from the package, and compared with one supplied (`RECORD_MISMATCH`) | not defined by the protocol | yes |
-| Chains of statements (evidence statement v1) | **no** | **no** |
+| Chains of statements (evidence statement v1) | as a library, for statements outside a package (`verified_verifier::evidence`); **not** for a package's statements | the same |
 | Work-unit identity v1: identity, nullifier, key commitment | n/a (claims have no inputs) | yes, as a library (`verified-work-unit`) |
 | Work-unit registry ("was this unit already billed?") | **no**, by design | **no**, by design |
 
-The missing verification item is not one of the thirteen checks. A package's statements
+Chain verification is not one of the thirteen checks. A package's statements
 may carry chain links; their shape is checked and their continuity is not,
-which is also what the two upstream verifiers do for packages.
+which is also what the two upstream verifiers do for packages. A relying
+party that holds an issuer's statements can verify their continuity with the
+library; there is no command for it yet.
 
 ## Measured against the corpus
 
@@ -45,7 +47,7 @@ expectation is compared in full, never by refusal code alone.
 | `work-contract/v1`, 82 case files and 5 differential batches | 641 cases reproduced, from 81 case files and the 5 batches. 1 case file cannot be represented (below). |
 | `work-unit/v1/vectors.json` | 3 of 3 key commitments and 10 of 10 identities and nullifiers reproduced. |
 | `claim-registration/v1`, 123 cases in 6 files | **Not run.** Claim registration is not implemented here. |
-| `evidence-statement/v1` | **Not run.** Its statement and admission rules are exercised through the package vectors; its chain vectors need chain verification, which does not exist here. |
+| `evidence-statement/v1`, 39 vectors | 39 reproduced: 17 statement, 13 chain and 9 admission. Refusals by code; accepted statements by key, canonical text, digest and signing input; accepted chains by their whole summary; accepted admissions by their evidence manifest. **Not compared:** the `verificationResultSha256` and `verificationStatus` of the 3 accepted admissions, which are the platform's verification result and are not computed here. |
 
 One case is not reproduced because it cannot reach the evaluator:
 `72-scale-not-whole` gives a type a fractional `scale`. `verified-json-v1`
@@ -154,6 +156,28 @@ A package is canonical text, which has no trailing line end. A package *file*
 conventionally has one. `verified verify` treats exactly one final line end
 (`\n` or `\r\n`) as the file's, as the upstream CLI does; the library's
 `verify` takes the package text itself and is strict.
+
+## Evidence statements outside a package
+
+Readings of Evidence Statement v1 where it leaves room, for
+`verified_verifier::evidence`:
+
+20. **A statement is taken as JSON, not as text.** The specification refuses a
+    statement whose re-encoding differs from what was received. The library
+    takes a parsed value and checks its structure exactly; whether the text
+    it was parsed from was canonical is the caller's to require. Text that is
+    not JSON at all is not a statement.
+21. **An empty list is `CHAIN_MISSING`.** The specification says every
+    statement must have a chain link and does not name the case of none.
+22. **The same statement twice is `CHAIN_REORDERED`, not a fork.**
+    Equivocation is two *different* statements at one sequence number.
+23. **At each step, the sequence number is checked before the predecessor's
+    digest**, so a step that both skips and misnames is `CHAIN_GAP`.
+24. **A sequence number below 0 is not refused by structure.** It can never
+    be part of an accepted run, which starts at 0 or after an anchor.
+25. **Admission returns the evidence manifest, not a decision.** The corpus's
+    accepted admissions also state the platform's verification result; that
+    object is not specified in the published material and is not computed.
 
 ## Versions are never interchanged
 

@@ -289,7 +289,9 @@ decision was reached. It is not an acceptance.
 
 Every command of the original plan exists. What is not built:
 
-- Verifying chains of evidence statements.
+- A command for chains of evidence statements. The library verifies them
+  (`verified_verifier::evidence`); no command does, and verifying a package
+  does not.
 - Claim registration v1, a newer draft published beside WVP.
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).

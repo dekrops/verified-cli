@@ -4,14 +4,12 @@
 
 use verified_canonical::Value;
 use verified_protocol::v01::{Body, Claim, Components, Contract};
-use verified_protocol::{
-    Decision, Evidence, Inputs, ProtocolVersion, RefusalCode, SignedStatement,
-};
+use verified_protocol::{Decision, Evidence, Inputs, ProtocolVersion, RefusalCode};
 
 use crate::container::{Checked, Refusal, refusal};
-use crate::json::{digest, object, text, wrapped};
+use crate::json::{object, text, wrapped};
 use crate::report::{Condition, DecisionFinding, Evaluation, Reproduced};
-use crate::statement::{admit, authenticate};
+use crate::statement::{admit, authenticate, manifest};
 use crate::trust::Trust;
 use crate::verify::{Parts, decision_document, issuer_signatures, without_registry};
 
@@ -124,56 +122,16 @@ pub(crate) fn verify(checked: &Checked<'_>, trust: Option<&Trust>) -> Result<Par
 /// decision's commitment to the evidence.
 fn evidence_manifest(components: &Components<'_>) -> Value {
     let inputs = &components.inputs;
-    let item = |statement: &SignedStatement<'_>| {
-        let transformation = object([
-            ("name", text("verified-evidence-statement")),
-            (
-                "version",
-                object([
-                    ("major", Value::Integer(1.into())),
-                    ("minor", Value::Integer(0.into())),
-                    ("patch", Value::Integer(0.into())),
-                ]),
-            ),
-            (
-                "inputHashes",
-                Value::Array(vec![digest(&statement.digest())]),
-            ),
-        ]);
-        object([
-            ("id", statement.member("id").clone()),
-            ("kind", statement.member("kind").clone()),
-            ("subject", statement.member("subject").clone()),
-            ("payloadHash", statement.member("payload").clone()),
-            (
-                "provenance",
-                object([
-                    ("source", statement.member("source").clone()),
-                    ("witness", statement.member("issuer").clone()),
-                    ("trust", object([("Signed", object([]))])),
-                    ("observedAt", statement.member("observedAt").clone()),
-                    ("ingestedAt", inputs.member("ingestedAt").clone()),
-                    ("transformations", Value::Array(vec![transformation])),
-                    ("causedBy", Value::Array(Vec::new())),
-                ]),
-            ),
-        ])
-    };
+    let claim_id = components.claim.value.as_object().and_then(|o| o.get("id"));
     // Statements are in ascending order of identifier (step 7) and distinct
     // (step 10), which is the order the manifest lists them in.
-    let items = components
-        .evidence
-        .iter()
-        .map(|e| item(&e.statement))
-        .collect();
-    let claim_id = components.claim.value.as_object().and_then(|o| o.get("id"));
-    object([
-        ("version", text("verified-evidence-manifest-v1")),
-        ("id", inputs.member("packageId").clone()),
-        ("claimId", claim_id.cloned().unwrap_or(Value::Null)),
-        ("items", Value::Array(items)),
-        ("assembledAt", inputs.member("assembledAt").clone()),
-    ])
+    manifest(
+        components.evidence.iter().map(|e| &e.statement),
+        inputs.member("packageId"),
+        claim_id.unwrap_or(&Value::Null),
+        inputs.member("ingestedAt"),
+        inputs.member("assembledAt"),
+    )
 }
 
 /// The evaluator: qualifying transitions, the four conditions, the decision.

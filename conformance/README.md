@@ -24,18 +24,20 @@ VERIFIED_CONFORMANCE_REQUIRED=1 \
 ```
 
 - `VERIFIED_CONFORMANCE_DIR` is the directory containing
-  `canonical-hash-v1.json`, `wvp/`, `work-contract/` and `work-unit/`.
+  `canonical-hash-v1.json`, `wvp/`, `work-contract/`, `work-unit/` and
+  `evidence-statement/`.
 - Without it the corpus tests print `skipped` and pass. With
   `VERIFIED_CONFORMANCE_REQUIRED=1` a missing corpus is a failure, so a run
   that claims conformance cannot skip silently.
 
-Four test files use it:
+Five test files use it:
 
 | Test | Corpus | What it checks |
 | --- | --- | --- |
 | `verified-canonical/tests/shared_vectors.rs` | `canonical-hash-v1.json` | Canonical bytes and SHA-256 of every valid case; refusal of every invalid case. |
 | `verified-contract/tests/conformance.rs` | `work-contract/v1` | The whole expected result of every case: decision, requirement values, ignored records, conflicts, or the refusal. |
 | `verified-work-unit/tests/work_unit.rs` | `work-unit/v1/vectors.json` | Every key commitment, canonical identity and nullifier. |
+| `verified-verifier/tests/evidence_conformance.rs` | `evidence-statement/v1` | The refusal code of every refused statement, chain and admission; the key, canonical text and digests of every accepted statement; the summary of every accepted chain; the evidence manifest of every accepted admission. Not the platform's verification result. |
 | `verified-verifier/tests/conformance.rs` | `wvp/v0.1`, `wvp/v0.2`, `expectations.json`, the worked examples | The whole expected report or refusal of every vector, under the registry the vector supplies. |
 
 ## In CI
@@ -47,8 +49,8 @@ commit and the results in
 [`docs/protocol/compatibility.md`](../docs/protocol/compatibility.md) in one
 pull request.
 
-Two parts of the corpus have no test here yet and are not counted:
-`evidence-statement/v1` and `claim-registration/v1`.
+One part of the corpus has no test here yet and is not counted:
+`claim-registration/v1`.
 
 ## Synthetic examples are something else
 
