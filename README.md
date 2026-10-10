@@ -302,6 +302,10 @@ verified registration log --trust keys.json log.jsonl --held receipt.json
 
 # What state is every claim in, and did the registry keep its rules?
 verified registration audit --trust keys.json log.jsonl documents.jsonl
+
+# Does this claim's unit belong to its inputs? (for holders of the unit key)
+verified registration unit --agreement agreement.json --claim claim.json \
+    --inputs inputs.json --unit-key unit.key
 ```
 
 `keys.json` is `{ "parties": [ … ], "registries": [ … ] }`: your keys for
@@ -325,6 +329,12 @@ claims, or closed a claim wrongly. A state is the log's, not a verification
 result: `ANSWERED` means evidence was offered, not that it supports the
 claim.
 
+The unit check is for the two parties, who share a unit key: it shows that a
+claim's unit is the one of its inputs, so that a claim for one invoice cannot
+take the unit of another. It checks no signature, so verify the registration
+first. The key is read from a file, 64 lowercase hexadecimal characters, and
+is never printed or accepted as an argument.
+
 ## Where it is going
 
 Every command of the original plan exists. What is not built:
@@ -332,8 +342,6 @@ Every command of the original plan exists. What is not built:
 - A command for chains of evidence statements. The library verifies them
   (`verified_verifier::evidence`); no command does, and verifying a package
   does not.
-- A command for the unit check of claim registration v1. The check is a
-  library only (`verified_work_unit::registered`).
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - Coverage-guided fuzzing, and Windows in CI.

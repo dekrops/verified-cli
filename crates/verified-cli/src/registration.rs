@@ -14,7 +14,9 @@ use verified_verifier::registration::{
     RegistrationRefusal, RegistrationTrust, verify_registration,
 };
 
-use crate::cli::{RegistrationAudit, RegistrationLog, RegistrationVerify};
+use verified_work_unit::registered::check_registered_unit;
+
+use crate::cli::{RegistrationAudit, RegistrationLog, RegistrationUnit, RegistrationVerify};
 use crate::exit::Exit;
 use crate::input::{self, InputError};
 use crate::render::{Mode, Output, Row, Tone};
@@ -39,17 +41,21 @@ fn object(path: &Path) -> Result<Vec<u8>, String> {
 }
 
 fn refused(out: &mut Output, refusal: &RegistrationRefusal) -> Exit {
+    refused_with(out, refusal.code.as_str(), &refusal.detail)
+}
+
+fn refused_with(out: &mut Output, code: &str, detail: &str) -> Exit {
     match out.mode {
         Mode::Quiet => {}
         Mode::Json => out.json(&json!({
             "outcome": "refused",
-            "refusal": { "code": refusal.code.as_str(), "detail": refusal.detail },
+            "refusal": { "code": code, "detail": detail },
         })),
         Mode::Human => {
             out.heading(TITLE);
             out.rows(&[
-                Row::new("refused", Tone::Negative, refusal.code.as_str()),
-                Row::new("", Tone::Plain, &refusal.detail),
+                Row::new("refused", Tone::Negative, code),
+                Row::new("", Tone::Plain, detail),
             ]);
         }
     }
@@ -294,6 +300,45 @@ pub(crate) fn audit(command: &RegistrationAudit, out: &mut Output) -> Exit {
                 "A state is the log's, not a verification result: ANSWERED means evidence was \
                  offered, not that it supports the claim. Nothing is shown about entries after \
                  the last.",
+            );
+        }
+    }
+    Exit::Complete
+}
+
+pub(crate) fn unit(command: &RegistrationUnit, out: &mut Output) -> Exit {
+    let read = object(&command.agreement).and_then(|agreement| {
+        Ok((
+            agreement,
+            object(&command.claim)?,
+            object(&command.inputs)?,
+            object(&command.unit_key)?,
+        ))
+    });
+    let (agreement, claim, inputs, key) = match read {
+        Ok(read) => read,
+        Err(message) => return failed(out, "INPUT", &message),
+    };
+    // A key that is not text is not a key; the check says so without
+    // repeating what the file held.
+    let key = std::str::from_utf8(&key).unwrap_or("");
+    if let Err(refusal) = check_registered_unit(&agreement, &claim, &inputs, key) {
+        return refused_with(out, refusal.code.as_str(), &refusal.detail);
+    }
+    match out.mode {
+        Mode::Quiet => {}
+        Mode::Json => out.json(&json!({ "outcome": "unit_matches", "signaturesChecked": false })),
+        Mode::Human => {
+            out.heading(TITLE);
+            out.rows(&[Row::new(
+                "unit",
+                Tone::Established,
+                "is the nullifier of the claim's identifying inputs, under the agreement's key",
+            )]);
+            out.line("");
+            out.line(
+                "No signature was checked. This says the four inputs fit together, not who \
+                 made them: verify the registration first.",
             );
         }
     }

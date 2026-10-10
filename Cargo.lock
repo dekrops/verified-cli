@@ -697,6 +697,7 @@ dependencies = [
  "verified-canonical",
  "verified-protocol",
  "verified-verifier",
+ "verified-work-unit",
  "verified-workspace",
 ]
 

@@ -80,6 +80,8 @@ pass `--require-decision` and require exit code 0.
 
 | `registration audit` | `audited`, `refused` (exit 1) | `claims[]` in log order: `claim` (identifier), `claimDigest`, `position`, `respondBy`, `state` (`OPEN`, `ANSWERED`, `REFUSED`, `EXPIRED`, `WITHDRAWN`, `SUPERSEDED`), `dispute` (`null`, `OPEN`, `UPHELD`, `REJECTED`) |
 
+| `registration unit` | `unit_matches`, `refused` (exit 1) | `signaturesChecked` (always `false`). Refused: `refusal.code` (a unit check code), `refusal.detail`, which never contains the key or an input value. |
+
 A `state` is the log's, not a verification result, and a claim whose
 `dispute` is `OPEN` is not ready to be acted on, whatever its state.
 

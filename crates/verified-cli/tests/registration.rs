@@ -143,6 +143,13 @@ fn signed_receipt(entry: &Value) -> String {
 
 /// The signed agreement, claim and receipt of one registration.
 fn registration() -> [String; 3] {
+    let unit: String = std::iter::repeat_n('d', 64).collect();
+    registration_of(sha256('b'), sha256('c'), &unit)
+}
+
+/// A registration whose agreement pins `unit_key`, and whose claim commits
+/// to `inputs` and states `unit`.
+fn registration_of(unit_key: Value, inputs: Value, unit: &str) -> [String; 3] {
     let agreement = object([
         ("claimant", wrapped(claimant().issuer)),
         (
@@ -168,7 +175,7 @@ fn registration() -> [String; 3] {
             ]),
         ),
         ("tenant", wrapped("tenant-test")),
-        ("unitKey", sha256('b')),
+        ("unitKey", unit_key),
         ("validFrom", wrapped("2026-02-01T00:00:00Z")),
         ("validUntil", Value::Null),
     ]);
@@ -176,21 +183,11 @@ fn registration() -> [String; 3] {
         ("agreement", hash(&agreement)),
         ("claimedAt", wrapped("2026-03-01T09:59:00Z")),
         ("id", wrapped(support::uuid(0x501))),
-        ("inputs", sha256('c')),
+        ("inputs", inputs),
         ("protocol", string(PROTOCOL)),
         (
             "unit",
-            object([
-                ("algorithm", string("hmac-sha-256")),
-                (
-                    "hex",
-                    sha256('d')
-                        .as_object()
-                        .and_then(|o| o.get("hex"))
-                        .cloned()
-                        .expect("hex"),
-                ),
-            ]),
+            object([("algorithm", string("hmac-sha-256")), ("hex", string(unit))]),
         ),
     ]);
     let domain = "verified:claim-agreement:v1\n";
@@ -388,4 +385,80 @@ fn audit_reports_each_claim_s_state_from_the_log_and_its_documents() {
         text.contains("OPEN") && text.contains("not a verification result"),
         "{text}"
     );
+}
+
+#[test]
+fn unit_checks_a_claim_s_unit_against_its_inputs_without_showing_the_key() {
+    use verified_work_unit::{Identity, Scope, SecretKey};
+
+    let key_hex = "5c".repeat(32);
+    let key = SecretKey::from_bytes([0x5c; 32]);
+    let scope = Scope {
+        scope: "orders".to_owned(),
+        operation: "fulfil".to_owned(),
+        identity: vec!["order".to_owned()],
+    };
+    let unit_of = |order: &str| {
+        let identity = Identity::new("tenant-test", &scope, &[string(order)]).expect("a unit");
+        key.nullifier(&identity).to_hex()
+    };
+    let inputs = object([("amount", string("1250")), ("order", string("SO-1001"))]);
+    let commitment = object([
+        ("algorithm", string("sha-256")),
+        ("hex", string(key.commitment().to_hex())),
+    ]);
+
+    let scratch = Scratch::new("unit");
+    let [agreement, claim, _] =
+        registration_of(commitment.clone(), hash(&inputs), &unit_of("SO-1001"));
+    let [_, other_claim, _] = registration_of(commitment, hash(&inputs), &unit_of("SO-1002"));
+    scratch.file("agreement.json", &agreement);
+    scratch.file("claim.json", &claim);
+    scratch.file("other-claim.json", &other_claim);
+    scratch.file(
+        "inputs.json",
+        &format!("{}\n", inputs.to_canonical_string()),
+    );
+    scratch.file("unit.key", &format!("{key_hex}\n"));
+    scratch.file("wrong.key", &"5d".repeat(32));
+    let run = |claim: &str, key: &str| {
+        scratch.run(&[
+            "registration",
+            "unit",
+            "--json",
+            "--agreement",
+            "agreement.json",
+            "--claim",
+            claim,
+            "--inputs",
+            "inputs.json",
+            "--unit-key",
+            key,
+        ])
+    };
+
+    let matches = run("claim.json", "unit.key");
+    assert_eq!(exit(&matches), 0, "{matches:?}");
+    assert_eq!(json(&matches)["outcome"], "unit_matches");
+    assert_eq!(json(&matches)["signaturesChecked"], false);
+
+    for (claim, key, code) in [
+        ("other-claim.json", "unit.key", "UNIT_MISMATCH"),
+        ("claim.json", "wrong.key", "UNIT_KEY_MISMATCH"),
+        ("claim.json", "inputs.json", "MALFORMED"),
+    ] {
+        let refused = run(claim, key);
+        assert_eq!(exit(&refused), 1, "{refused:?}");
+        assert_eq!(json(&refused)["refusal"]["code"], code);
+        let shown = format!(
+            "{}{}",
+            String::from_utf8_lossy(&refused.stdout),
+            String::from_utf8_lossy(&refused.stderr)
+        );
+        assert!(
+            !shown.contains(&key_hex) && !shown.contains("5d5d"),
+            "{shown}"
+        );
+    }
+    assert_eq!(exit(&run("claim.json", "absent.key")), 2);
 }

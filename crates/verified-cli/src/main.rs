@@ -42,6 +42,9 @@ fn main() -> ExitCode {
         cli::Command::Registration(cli::Registration::Audit(command)) => {
             registration::audit(command, &mut out)
         }
+        cli::Command::Registration(cli::Registration::Unit(command)) => {
+            registration::unit(command, &mut out)
+        }
     };
     code.into()
 }

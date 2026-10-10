@@ -19,6 +19,7 @@ serde_json.workspace = true
 verified-canonical.workspace = true
 verified-protocol.workspace = true
 verified-verifier.workspace = true
+verified-work-unit.workspace = true
 verified-workspace.workspace = true
 
 [dev-dependencies]

@@ -29,8 +29,8 @@ receipt) and a segment of a registry's log, with an entry held against it:
 `verified registration verify` and `verified registration log`; and it
 audits a whole log, with the responses, notices, dispute terms, disputes and
 resolutions it names: `verified registration audit`. The library is
-`verified_verifier::registration`. The unit check is a library only:
-`verified_work_unit::registered`.
+`verified_verifier::registration`. The unit check is
+`verified registration unit`, and `verified_work_unit::registered`.
 
 Chain verification is not one of the thirteen checks. A package's statements
 may carry chain links; their shape is checked and their continuity is not,

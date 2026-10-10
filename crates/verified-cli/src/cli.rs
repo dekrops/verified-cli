@@ -17,8 +17,8 @@ Exit codes:
      fsck: damage was found in the workspace
      diff: the two packages differ
      replay: a package was refused or is damaged
-     registration: the registration, the log or the audit was refused, or
-     the log contradicts the entry you hold
+     registration: the registration, the log, the audit or the unit check
+     was refused, or the log contradicts the entry you hold
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
@@ -175,6 +175,33 @@ pub(crate) enum Registration {
     /// A state is the log's, not a verification result: ANSWERED means
     /// evidence was offered, not that it supports the claim.
     Audit(RegistrationAudit),
+    /// Check that a registered claim's unit belongs to its inputs
+    ///
+    /// For holders of the two parties' unit key. Takes the agreement, the
+    /// claim, the claim's input values and the key, and checks that the
+    /// claim's unit is the nullifier of the inputs the agreement's scope
+    /// names. A respondent that finds a mismatch refuses the claim.
+    ///
+    /// No signature is checked: run `verified registration verify` first.
+    /// The key is read from a file and never printed.
+    Unit(RegistrationUnit),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct RegistrationUnit {
+    /// The signed agreement
+    #[arg(long, value_name = "FILE")]
+    pub(crate) agreement: PathBuf,
+    /// The signed claim
+    #[arg(long, value_name = "FILE")]
+    pub(crate) claim: PathBuf,
+    /// The claim's input values: a JSON object of strings
+    #[arg(long, value_name = "FILE")]
+    pub(crate) inputs: PathBuf,
+    /// A file holding the unit key: 32 bytes as 64 lowercase hexadecimal
+    /// characters. A secret; it is not accepted as an argument
+    #[arg(long, value_name = "FILE")]
+    pub(crate) unit_key: PathBuf,
 }
 
 #[derive(Debug, ClapArgs)]
