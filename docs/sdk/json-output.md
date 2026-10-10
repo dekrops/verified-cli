@@ -78,6 +78,11 @@ pass `--require-decision` and require exit code 0.
 | `registration verify` | `registered`, `refused` (exit 1) | `claim`, `claimDigest`, `agreement`, `receipt` (digests), `claimant`, `respondent`, `registry`, `sequence`, `receivedAt`, `respondBy`. Refused: `refusal.code` (a claim registration code, stable), `refusal.detail`. |
 | `registration log` | `verified`, `not_covered` (exit 3), `equivocation` (exit 1), `refused` (exit 1) | `registry`, `first`, `last`, `head`, `inclusion` (`null` without `--held`, else `INCLUDED`, `NOT_COVERED` or `EQUIVOCATION`); for `equivocation` also `held` and `logged` (digests) |
 
+| `registration audit` | `audited`, `refused` (exit 1) | `claims[]` in log order: `claim` (identifier), `claimDigest`, `position`, `respondBy`, `state` (`OPEN`, `ANSWERED`, `REFUSED`, `EXPIRED`, `WITHDRAWN`, `SUPERSEDED`), `dispute` (`null`, `OPEN`, `UPHELD`, `REJECTED`) |
+
+A `state` is the log's, not a verification result, and a claim whose
+`dispute` is `OPEN` is not ready to be acted on, whatever its state.
+
 `registered` says a claim was made and received. It never says the claim is
 true. `verified` says a run of a log is intact, not that it is complete.
 

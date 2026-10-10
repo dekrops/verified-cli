@@ -8,12 +8,13 @@ use std::path::Path;
 
 use serde_json::json;
 use verified_canonical::Limits;
+use verified_verifier::registration::audit::{ClaimState, DisputeState, audit as audit_log};
 use verified_verifier::registration::log::{Inclusion, check_log};
 use verified_verifier::registration::{
     RegistrationRefusal, RegistrationTrust, verify_registration,
 };
 
-use crate::cli::{RegistrationLog, RegistrationVerify};
+use crate::cli::{RegistrationAudit, RegistrationLog, RegistrationVerify};
 use crate::exit::Exit;
 use crate::input::{self, InputError};
 use crate::render::{Mode, Output, Row, Tone};
@@ -53,6 +54,15 @@ fn refused(out: &mut Output, refusal: &RegistrationRefusal) -> Exit {
         }
     }
     Exit::Refused
+}
+
+/// One entry or document per line. Canonical text has no line end.
+fn lines(text: &[u8]) -> Vec<&[u8]> {
+    if text.is_empty() {
+        Vec::new()
+    } else {
+        text.split(|byte| *byte == b'\n').collect()
+    }
 }
 
 pub(crate) fn verify(command: &RegistrationVerify, out: &mut Output) -> Exit {
@@ -134,12 +144,7 @@ pub(crate) fn log(command: &RegistrationLog, out: &mut Output) -> Exit {
         Ok(read) => read,
         Err(message) => return failed(out, "INPUT", &message),
     };
-    // One entry per line. An entry is canonical text, which has no line end.
-    let entries: Vec<&[u8]> = if log.is_empty() {
-        Vec::new()
-    } else {
-        log.split(|byte| *byte == b'\n').collect()
-    };
+    let entries = lines(&log);
     let check = match check_log(&entries, anchor.as_deref(), held.as_deref(), &trust) {
         Ok(check) => check,
         Err(refusal) => return refused(out, &refusal),
@@ -220,4 +225,77 @@ pub(crate) fn log(command: &RegistrationLog, out: &mut Output) -> Exit {
         }
     }
     exit
+}
+
+pub(crate) fn audit(command: &RegistrationAudit, out: &mut Output) -> Exit {
+    let read = trust(&command.trust).and_then(|trust| {
+        let documents = command
+            .documents
+            .iter()
+            .map(|path| object(path))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok((object(&command.log)?, documents, trust))
+    });
+    let (log, documents, trust) = match read {
+        Ok(read) => read,
+        Err(message) => return failed(out, "INPUT", &message),
+    };
+    let documents: Vec<&[u8]> = documents.iter().flat_map(|file| lines(file)).collect();
+    let claims = match audit_log(&lines(&log), &documents, &trust) {
+        Ok(claims) => claims,
+        Err(refusal) => return refused(out, &refusal),
+    };
+    match out.mode {
+        Mode::Quiet => {}
+        Mode::Json => {
+            let claims: Vec<_> = claims
+                .iter()
+                .map(|claim| {
+                    json!({
+                        "claim": claim.id,
+                        "claimDigest": digest_json(&claim.claim),
+                        "position": claim.position,
+                        "respondBy": claim.respond_by,
+                        "state": claim.state.as_str(),
+                        "dispute": claim.dispute.map(DisputeState::as_str),
+                    })
+                })
+                .collect();
+            out.json(&json!({ "outcome": "audited", "claims": claims }));
+        }
+        Mode::Human => {
+            out.heading(TITLE);
+            out.line(&format!(
+                "The log is a consistent history of {} claim(s):",
+                claims.len()
+            ));
+            for claim in &claims {
+                let tone = match claim.state {
+                    ClaimState::Open | ClaimState::Answered => Tone::Unknown,
+                    _ => Tone::Plain,
+                };
+                let dispute = claim
+                    .dispute
+                    .map_or_else(String::new, |d| format!(", dispute {}", d.as_str()));
+                out.rows(&[Row::new(
+                    "",
+                    tone,
+                    format!(
+                        "{}  entry {}  {}{dispute}  respond by {}",
+                        claim.id,
+                        claim.position,
+                        claim.state.as_str(),
+                        claim.respond_by
+                    ),
+                )]);
+            }
+            out.line("");
+            out.line(
+                "A state is the log's, not a verification result: ANSWERED means evidence was \
+                 offered, not that it supports the claim. Nothing is shown about entries after \
+                 the last.",
+            );
+        }
+    }
+    Exit::Complete
 }

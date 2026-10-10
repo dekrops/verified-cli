@@ -1,8 +1,8 @@
 # 0012. Claim registration is verified here, in stages, and no registry is run
 
-Status: accepted. The first two stages are implemented in
-`verified_verifier::registration`: verifying a registration, and checking a
-segment of a registry's log with an entry held against it.
+Status: accepted and implemented in `verified_verifier::registration`:
+verifying a registration, checking a segment of a registry's log with an
+entry held against it, and auditing a whole log.
 
 ## Context
 
@@ -50,6 +50,14 @@ cases in six files.
 - **`NOT_COVERED` is exit code 3.** The log was not refused and does not
   contradict the held entry; it does not reach it. That is "not everything
   could be concluded", which is what 3 already means for `verify`.
+
+- **An audit takes one list of documents.** Agreements, claims, responses,
+  notices, terms, disputes and resolutions are told apart by their own
+  member and found by digest, so a caller does not sort them. Its command
+  reads them from files with one document per line.
+- **An audit reports states and nothing else.** It does not say what to do
+  about a claim. Acting on a state, and on an open dispute, is the
+  consumer's.
 
 ## Consequences
 

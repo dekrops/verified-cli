@@ -13,7 +13,7 @@
 | [0009](0009-signature-verification.md) | Signatures are verified by `ed25519-dalek`, strictly | Accepted; implemented |
 | [0010](0010-work-unit-identity.md) | Work-unit identity is a library without state, keys or a command | Accepted; implemented |
 | [0011](0011-statement-chains.md) | Statement chains are verified outside packages, by the library | Accepted; implemented |
-| [0012](0012-claim-registration.md) | Claim registration is verified here, in stages, and no registry is run | Accepted; registration and log segments implemented |
+| [0012](0012-claim-registration.md) | Claim registration is verified here, in stages, and no registry is run | Accepted; implemented |
 
 "Proposed" means the design is a starting point for the pull request that
 builds it, not a commitment.

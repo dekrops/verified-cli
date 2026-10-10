@@ -17,8 +17,8 @@ Exit codes:
      fsck: damage was found in the workspace
      diff: the two packages differ
      replay: a package was refused or is damaged
-     registration: the registration or the log was refused, or the log
-     contradicts the entry you hold
+     registration: the registration, the log or the audit was refused, or
+     the log contradicts the entry you hold
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
@@ -163,6 +163,29 @@ pub(crate) enum Registration {
     /// the log is refused or contradicts your entry, 3 if it does not reach
     /// your entry's position.
     Log(RegistrationLog),
+    /// Audit a registry's whole log: each claim's state, and the registry's
+    /// rules
+    ///
+    /// The log is a file with one signed entry per line, from the log's
+    /// first entry. The other files hold the documents the log names, one
+    /// per line, in any order: agreements, claims, responses, notices,
+    /// dispute terms, disputes and resolutions. Documents the log does not
+    /// name are ignored. Exits 1 if the audit is refused.
+    ///
+    /// A state is the log's, not a verification result: ANSWERED means
+    /// evidence was offered, not that it supports the claim.
+    Audit(RegistrationAudit),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct RegistrationAudit {
+    /// The log: one signed entry per line, from its first entry
+    pub(crate) log: PathBuf,
+    /// Files of the documents the log names, one document per line
+    pub(crate) documents: Vec<PathBuf>,
+    /// Your keys for parties and registries
+    #[arg(long, value_name = "KEYS")]
+    pub(crate) trust: PathBuf,
 }
 
 #[derive(Debug, ClapArgs)]

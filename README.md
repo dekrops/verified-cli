@@ -299,6 +299,9 @@ verified registration verify --trust keys.json \
 
 # Is this run of the registry's log intact, and is my receipt in it?
 verified registration log --trust keys.json log.jsonl --held receipt.json
+
+# What state is every claim in, and did the registry keep its rules?
+verified registration audit --trust keys.json log.jsonl documents.jsonl
 ```
 
 `keys.json` is `{ "parties": [ … ], "registries": [ … ] }`: your keys for
@@ -311,9 +314,16 @@ signed both, which shows that it rewrote its log.
 A verified registration shows that the claim was made and received, and when
 an answer is due. It does not show that the claim is true. A verified run of
 a log shows that nothing was inserted, removed or altered inside it; it shows
-nothing about entries after its last, or about whether the registry kept its
-own rules. Checking those rules needs the protocol's audit, which is not
-built.
+nothing about entries after its last.
+
+An audit reads the whole log from its first entry, with the documents it
+names (one per line, in any order). It reports each claim as `OPEN`,
+`ANSWERED`, `REFUSED`, `EXPIRED`, `WITHDRAWN` or `SUPERSEDED`, with the state
+of its dispute if it has one, and is refused if the registry registered a
+claim for a unit another claim held, exceeded an agreement's limit on open
+claims, or closed a claim wrongly. A state is the log's, not a verification
+result: `ANSWERED` means evidence was offered, not that it supports the
+claim.
 
 ## Where it is going
 
@@ -322,9 +332,8 @@ Every command of the original plan exists. What is not built:
 - A command for chains of evidence statements. The library verifies them
   (`verified_verifier::evidence`); no command does, and verifying a package
   does not.
-- The rest of claim registration v1: the audit of a whole log (with
-  responses, notices and disputes). The unit check is a library only
-  (`verified_work_unit::registered`), without a command.
+- A command for the unit check of claim registration v1. The check is a
+  library only (`verified_work_unit::registered`).
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - Coverage-guided fuzzing, and Windows in CI.
