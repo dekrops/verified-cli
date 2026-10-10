@@ -24,6 +24,7 @@ pub(crate) struct Parts {
     pub(crate) signer_authority: Finding,
     pub(crate) decision: DecisionFinding,
     pub(crate) issuer_signature: IssuerSignature,
+    pub(crate) work_record: Option<Value>,
 }
 
 impl Parts {
@@ -55,6 +56,7 @@ pub(crate) fn without_registry(
             carried: checked.signatures.len(),
             reason,
         },
+        work_record: None,
     }
 }
 
@@ -174,6 +176,38 @@ fn expect(expected: &Expectations, parts: &Parts, checked: &Checked<'_>) -> Resu
     Ok(())
 }
 
+/// The members in which a supplied work record and the record computed from
+/// the package disagree, in ascending order; a member either lacks counts.
+fn record_differences(computed: &Value, supplied: &Value) -> Vec<String> {
+    let members = |value: &'_ Value| value.as_object().cloned().unwrap_or_default();
+    let (computed, supplied) = (members(computed), members(supplied));
+    let mut names: Vec<&str> = computed.keys().chain(supplied.keys()).collect();
+    names.sort_by(|a, b| verified_canonical::cmp_keys(a, b));
+    names.dedup();
+    names
+        .into_iter()
+        .filter(|name| computed.get(name) != supplied.get(name))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// A supplied work record must be about this package, member for member.
+fn compare_record(supplied: &Value, parts: &Parts) -> Result<(), Refusal> {
+    let computed = parts.work_record.as_ref().unwrap_or(&Value::Null);
+    let differing = record_differences(computed, supplied);
+    if differing.is_empty() {
+        Ok(())
+    } else {
+        Err(refusal(
+            RefusalCode::RecordMismatch,
+            format!(
+                "the record is not about this package; it differs in: {}",
+                differing.join(", ")
+            ),
+        ))
+    }
+}
+
 /// Verifies a package.
 ///
 /// Checks run in protocol order and stop at the first failure, which is the
@@ -192,11 +226,19 @@ pub fn verify(package: &[u8], options: &Options<'_>) -> Result<Report, Rejection
             if !options.expectations.is_empty() {
                 return Err(Rejection::ExpectationsUndefined(checked.protocol));
             }
+            if options.record.is_some() {
+                return Err(Rejection::RecordUndefined(checked.protocol));
+            }
             order_transition::verify(&checked, options.trust)?
         }
         ProtocolVersion::V0_2 => {
             let parts = work_contract::verify(&checked, options.trust)?;
             expect(&options.expectations, &parts, &checked)?;
+            // The record is compared last: with a package that verified and
+            // is the one the relying party expected.
+            if let Some(record) = options.record {
+                compare_record(record, &parts)?;
+            }
             parts
         }
     };
@@ -213,6 +255,8 @@ pub fn verify(package: &[u8], options: &Options<'_>) -> Result<Report, Rejection
         signer_authority: parts.signer_authority,
         decision: parts.decision,
         issuer_signature: parts.issuer_signature,
+        work_record: parts.work_record,
+        record_matched: options.record.is_some(),
         expectations_met: options.expectations.clone(),
     })
 }

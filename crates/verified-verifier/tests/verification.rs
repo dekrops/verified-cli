@@ -1284,3 +1284,162 @@ proptest! {
         }
     }
 }
+
+// ---- work records ------------------------------------------------------------
+
+/// The record of a package, stated by hand from the scenario's own parts.
+fn expected_record(scenario: &Scenario) -> Value {
+    let draft = scenario.draft();
+    let decision = scenario.decision();
+    let commitments = decision
+        .as_object()
+        .and_then(|d| d.get("commitments"))
+        .expect("commitments");
+    let commitment = |name| {
+        commitments
+            .as_object()
+            .and_then(|c| c.get(name))
+            .expect("a commitment")
+            .clone()
+    };
+    object([
+        ("claimId", wrapped(uuid(0x500))),
+        ("claim", hash(&scenario.claim)),
+        ("contract", hash(&scenario.contract)),
+        ("contractId", string("posting-test")),
+        ("contractVersion", string("1.0.0")),
+        ("evidence", commitment("evidence")),
+        ("inputs", commitment("inputs")),
+        ("decision", string("SUPPORTED")),
+        ("decisionDigest", hash(&decision)),
+        ("packageCommitment", hash(&draft.manifest())),
+        ("protocol", string("wvp-0.2")),
+        ("evaluator", string("work-contract")),
+        ("specification", string("1")),
+        ("language", string("work-contract-1")),
+        ("semantics", string("kleene-1")),
+    ])
+}
+
+fn with_record(
+    scenario: &Scenario,
+    record: &Value,
+    registry: Option<&Trust>,
+) -> Result<Report, Rejection> {
+    let options = Options {
+        trust: registry,
+        record: Some(record),
+        ..Options::default()
+    };
+    verify(scenario.text().as_bytes(), &options)
+}
+
+#[test]
+fn a_work_record_is_a_function_of_the_package() {
+    let scenario = Scenario::posted();
+    let registry = trust(&[&evidence_key()]);
+    let report = run(&scenario.text(), &registry).expect("not refused");
+    assert_eq!(report.work_record, Some(expected_record(&scenario)));
+    assert!(!report.record_matched);
+    // The same record with or without a registry: it is computed from the
+    // package, not from what was established.
+    let integrity_only =
+        verify(scenario.text().as_bytes(), &Options::default()).expect("not refused");
+    assert_eq!(integrity_only.work_record, report.work_record);
+    // wvp-0.1 defines none.
+    let shipped = run(&Scenario::shipped().text(), &registry).expect("not refused");
+    assert_eq!(shipped.work_record, None);
+}
+
+#[test]
+fn a_record_about_this_package_is_accepted_and_any_other_is_refused_by_member() {
+    let scenario = Scenario::posted();
+    let registry = trust(&[&evidence_key()]);
+    let record = expected_record(&scenario);
+    let report = with_record(&scenario, &record, Some(&registry)).expect("not refused");
+    assert!(report.record_matched && report.is_complete());
+
+    let differing = |record: &Value| match with_record(&scenario, record, Some(&registry)) {
+        Err(Rejection::Refused(refusal)) if refusal.code == RefusalCode::RecordMismatch => {
+            refusal.detail
+        }
+        other => panic!("expected RECORD_MISMATCH, got {other:?}"),
+    };
+    // Each member on its own.
+    let members: Vec<String> = record
+        .as_object()
+        .expect("an object")
+        .keys()
+        .map(str::to_owned)
+        .collect();
+    assert_eq!(members.len(), 15);
+    for member in &members {
+        let changed = replaced(&record, &[member.as_str()], Some(string("something else")));
+        assert_eq!(
+            differing(&changed),
+            format!("the record is not about this package; it differs in: {member}"),
+        );
+        let missing = replaced(&record, &[member.as_str()], None);
+        assert!(
+            differing(&missing).ends_with(&format!(": {member}")),
+            "{member} missing"
+        );
+    }
+    // A record of another contract version, and one with a member the
+    // protocol does not define: every difference is named, in order.
+    let mut later = replaced(&record, &["contractVersion"], Some(string("1.1.0")));
+    later = replaced(&later, &["contract"], Some(hash(&Value::Null)));
+    later = replaced(&later, &["acceptedBy"], Some(string("someone")));
+    assert!(differing(&later).ends_with(": acceptedBy, contract, contractVersion"));
+    // Not a record at all.
+    assert!(differing(&Value::Null).contains("claim, claimId"));
+}
+
+#[test]
+fn a_record_is_compared_last_and_never_silently_dropped() {
+    let scenario = Scenario::posted();
+    let registry = trust(&[&evidence_key()]);
+    let wrong = replaced(
+        &expected_record(&scenario),
+        &["decision"],
+        Some(string("CONTRADICTED")),
+    );
+
+    // A package that fails a protocol check is refused for that.
+    let mut changed = scenario.clone();
+    changed.outcome = replaced(
+        &changed.outcome,
+        &["decision"],
+        Some(string("CONTRADICTED")),
+    );
+    assert_eq!(
+        code(with_record(&changed, &wrong, Some(&registry))),
+        RefusalCode::DecisionMismatch
+    );
+    // An unmet expectation comes before the record.
+    let options = Options {
+        trust: Some(&registry),
+        record: Some(&wrong),
+        expectations: Expectations {
+            tenant: Some("tenant-other".to_owned()),
+            ..Expectations::default()
+        },
+        ..Options::default()
+    };
+    assert_eq!(
+        code(verify(scenario.text().as_bytes(), &options)),
+        RefusalCode::TenantNotExpected
+    );
+    // Without a registry the record is still compared with the package.
+    assert_eq!(
+        code(with_record(&scenario, &wrong, None)),
+        RefusalCode::RecordMismatch
+    );
+    let report = with_record(&scenario, &expected_record(&scenario), None).expect("not refused");
+    assert!(report.record_matched && !report.is_complete());
+    // wvp-0.1 defines no work record; one given is an error, not ignored.
+    assert_eq!(
+        with_record(&Scenario::shipped(), &wrong, Some(&registry)),
+        Err(Rejection::RecordUndefined(ProtocolVersion::V0_1))
+    );
+}

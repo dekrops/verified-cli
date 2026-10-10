@@ -1,0 +1,85 @@
+# JSON output: the contract for tools and SDKs
+
+Every command accepts `--json` and then writes exactly one JSON value to
+standard output. This page is what a script, or a Python or TypeScript wrapper,
+may rely on. Stability rules are in the
+[compatibility policy](../development/compatibility-policy.md): members may be
+added, and existing members keep their names and shapes.
+
+## Rules that hold for every command
+
+- **Read `outcome` first**, then the exit code. Never infer success from the
+  absence of an error.
+- **There is no `valid`, `verified`, `ok` or `trusted` member, anywhere.** A
+  consumer that wants one boolean must compute it from the properties it
+  actually needs, and own that decision.
+- A digest is `{ "algorithm": "sha-256", "hex": "<64 lowercase hex>" }`.
+  Identifiers are full, never shortened.
+- A property is `{ "status": "established" }`, or
+  `{ "status": "not_checked", "reason": … }`. A property that was checked and
+  failed never appears: the outcome is then `refused`.
+- Text from a package is JSON-escaped and otherwise unchanged. It is
+  untrusted input to whatever reads it next.
+
+## Outcomes shared by commands
+
+| `outcome` | Exit | Members |
+| --- | --- | --- |
+| `refused` | 1 | `refusal.code` (a protocol refusal code, stable), `refusal.detail` (for people, not stable) |
+| `error` | 2 | `error.code`, `error.message`. Nothing was concluded about any package. |
+
+`error.code` is one of `IO_ERROR`, `RESOURCE_LIMIT`, `TRUST_REGISTRY`,
+`WORK_RECORD`, `WORKSPACE`, `USAGE`, `EXPECTATIONS_UNDEFINED`,
+`RECORD_UNDEFINED`, `NOT_COMPARABLE`.
+
+## `verify`
+
+`outcome` is `complete` (exit 0, or 4 if a required decision was not met) or
+`incomplete` (exit 3).
+
+| Member | Meaning |
+| --- | --- |
+| `protocol`, `protocolStatus` | `wvp-0.1` or `wvp-0.2`; always `draft` |
+| `packageId`, `tenant`, `claim`, `statements` | Of the package. `tenant` and `claim` are what it states. |
+| `components[]` | `path` and `digest` of each of the six components |
+| `contract` | `wvp-0.2` only: `id`, `version`, `digest` |
+| `properties.packageIntegrity` | A property |
+| `properties.evidenceSignatures`, `properties.signerAuthority` | Properties |
+| `properties.decisionReproduced` | A property. When established it also has `decision` (`SUPPORTED`, `CONTRADICTED` or `UNDETERMINED`) and either `conditions[]` (`wvp-0.1`) or `requirements[]`, `ignored[]`, `conflicts[]` (`wvp-0.2`). **When not checked it has no `decision`**: the decision a package carries is never echoed here. |
+| `properties.issuerSignature` | `established` with `count`, `absent`, or `not_checked` with `carried` |
+| `properties.sourceTruthfulness` | Always `{ "status": "not_established", … }` |
+| `expectationsMet` | The expectations that were given, each `null` if not given |
+| `workRecord`, `recordMatched` | `wvp-0.2` only: the record computed from the package, and whether a supplied one was compared (it matched, or the outcome would be `refused`) |
+| `requiredDecision` | Only with `--require-decision`: `decision` and `met` |
+| `note` | Only when `incomplete`: why |
+
+To act on a package: require `outcome == "complete"` **and**
+`properties.decisionReproduced.decision` equal to the decision you need, or
+pass `--require-decision` and require exit code 0.
+
+## Workspace commands
+
+| Command | `outcome` | Notable members |
+| --- | --- | --- |
+| `init` | `initialized`, `exists` | `workspace` |
+| `import` | `imported` | `package`, `object`, `protocol`, `alreadyPresent`, `properties` (integrity established; signatures and decision `not_checked`) |
+| `show` | `shown` | `package`, `object`, `bytes`, `stated` (everything the package says, with `status: "stated_by_the_package_not_verified"`), `importedAtUnix[]` |
+| `log` | none | `imports[]` (newest first: `importedAtUnix`, `importedAt`, `package`, `object`, `protocol`), `damagedRecords`, `note` |
+| `trace` | `traced` | `links` (`checked` or `stated_not_checked`), `claim`, `contract`, `evidence[]`, `decision` |
+| `fsck` | `clean`, `damaged` (exit 1) | `objects`, `records`, `problems[]` (`kind`, `damage`, `detail`) |
+| `export --output` | `exported` | `package`, `object`, `bytes`, `output`. Without `--output`, standard output is the package itself and `--json` is refused. |
+| `diff` | `identical`, `different` (exit 1) | `samePackageIdentifier`, `components[]` (`path`, `same`), `stated[]` (`what`, `a`, `b`), `statementsOnlyInA`, `statementsOnlyInB` |
+| `replay` | `replayed`, `failed` (exit 1), `decision_not_required` (exit 4) | `packages[]` (`package`, `object`, `status`: `reproduced`, `refused` or `damaged`; `detail`), `requiredDecision` |
+
+`show`, `trace` without `--trust`, `diff`, `import` and `export` establish
+nothing beyond package integrity, and their output says so in a member, not
+only in prose.
+
+## What a wrapper must not do
+
+- Turn `incomplete` into success. Exit code 3 exists so that it cannot happen
+  by accident.
+- Present `stated` values, or anything from `show`, as verified.
+- Cache a result and return it later as current. Verify again; it is cheap and
+  the registry may have changed.
+- Supply a default trust registry.

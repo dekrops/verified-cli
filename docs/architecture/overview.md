@@ -100,10 +100,10 @@ first is a statement about the package.
 | Code | Meaning |
 | --- | --- |
 | 0 | Every protocol check ran; the package was not refused. A reproduced `CONTRADICTED` or `UNDETERMINED` also ends here. |
-| 1 | Refused by a protocol check. `fsck`: damage found in the workspace. |
+| 1 | Refused by a protocol check. `fsck`: damage found. `diff`: the packages differ. `replay`: a package was refused or is damaged. |
 | 2 | The command could not run: usage, unreadable input, unusable registry, resource limit. |
 | 3 | Not refused, but not every check ran. |
-| 4 | `verify --require-decision`: every check ran, but the reproduced decision is not the required one. |
+| 4 | `--require-decision` (`verify`, `replay`): every check ran, but a reproduced decision is not the required one. |
 
 Code 3 is where upstream's CLI and this one differ on purpose: upstream exits
 0 for integrity-only verification without a registry. Here, "not everything

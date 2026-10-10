@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use verified_canonical::{Value, cmp_keys};
 use verified_contract::Contract;
 use verified_protocol::v02::{Body, Claim, Components};
-use verified_protocol::{Decision, Evidence, Inputs, ProtocolVersion, RefusalCode};
+use verified_protocol::{ComponentPath, Decision, Evidence, Inputs, ProtocolVersion, RefusalCode};
 
 use crate::container::{Checked, Refusal, refusal};
 use crate::json::{digest, object, text};
@@ -102,6 +102,56 @@ fn times_in_order(
             .all(|e| e.statement.observed_at <= inputs.ingested_at)
 }
 
+/// What a work record of this package states. Every member is a function of
+/// the package: three component digests, the decision's own commitments to
+/// the evidence and the inputs, and what the contract, the decision and the
+/// container say they are.
+fn work_record(checked: &Checked<'_>, components: &Components<'_>, contract: &Contract) -> Value {
+    let component = |path| {
+        let found = checked.components.iter().find(|c| c.path == path);
+        found.map_or(Value::Null, |c| digest(&c.digest))
+    };
+    let recorded = components.decision.value.as_object();
+    let stated = |name: &str| {
+        recorded
+            .and_then(|o| o.get(name))
+            .cloned()
+            .unwrap_or(Value::Null)
+    };
+    let commitment = |name: &str| {
+        let commitments = stated("commitments");
+        let member = commitments.as_object().and_then(|o| o.get(name));
+        member.cloned().unwrap_or(Value::Null)
+    };
+    let claim = components.claim.value.as_object();
+    object([
+        (
+            "claimId",
+            claim
+                .and_then(|o| o.get("id"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        ),
+        ("claim", component(ComponentPath::Claim)),
+        ("contract", component(ComponentPath::Contract)),
+        ("contractId", text(contract.id())),
+        ("contractVersion", text(contract.version())),
+        ("evidence", commitment("evidence")),
+        ("inputs", commitment("inputs")),
+        ("decision", stated("decision")),
+        ("decisionDigest", component(ComponentPath::Decision)),
+        ("packageCommitment", digest(checked.package_id.commitment())),
+        ("protocol", text(components.decision.protocol)),
+        ("evaluator", text(components.decision.evaluator.name)),
+        (
+            "specification",
+            text(components.decision.evaluator.specification),
+        ),
+        ("language", text(contract.language())),
+        ("semantics", text(contract.semantics())),
+    ])
+}
+
 pub(crate) fn verify(checked: &Checked<'_>, trust: Option<&Trust>) -> Result<Parts, Refusal> {
     // Step 7. The contract must be a well-formed contract; its text is
     // canonical because the package's is.
@@ -125,6 +175,7 @@ pub(crate) fn verify(checked: &Checked<'_>, trust: Option<&Trust>) -> Result<Par
         version: contract.version().to_owned(),
         digest: contract_digest,
     });
+    parts.work_record = Some(work_record(checked, &components, &contract));
     let Some(trust) = trust else {
         return Ok(parts);
     };

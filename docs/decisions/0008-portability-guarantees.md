@@ -1,6 +1,6 @@
 # 0008. Portability guarantees
 
-Status: accepted for verification; export is not implemented.
+Status: accepted and implemented.
 
 ## The benchmark
 
@@ -26,8 +26,17 @@ without access to its producer.
 - A resource limit is this tool's own. Input beyond one is reported as not
   examined, never as refused by the protocol.
 
-## Export (future)
+## Export, diff and replay
 
-An exported closure will be the original package bytes, unmodified, plus
-whatever was imported alongside it. Export adds no signature and no claim of
-its own: the recipient verifies it exactly as they would verify the original.
+- **Export** writes the stored bytes unmodified: the exact canonical text that
+  was imported, with no line end added. It adds no signature and no claim of
+  its own, and never overwrites a file. The recipient verifies it exactly as
+  they would the original. Nothing was imported alongside a package, so there
+  is nothing else to export.
+- **Diff** compares two packages that have integrity and reports what they
+  state differently. It verifies nothing beyond integrity, and says so.
+- **Replay** recomputes. It verifies stored packages in the current run under
+  the registry given to the current run and reuses no earlier result, because
+  nothing is cached to reuse ([decision 0003](0003-workspace-is-not-a-ledger.md)).
+  It is not a replay of a ledger: a workspace has no authenticated history to
+  replay, only packages to verify again.

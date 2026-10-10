@@ -6,8 +6,9 @@ Inspect work claims, trace evidence, verify outcomes, and exchange portable
 work records, without trusting the system that produced them.
 
 > **Status: early, private, pre-release.** `verify` runs all thirteen of the
-> protocol's checks; `init`, `import`, `show`, `log`, `trace` and `fsck` keep
-> and inspect a local workspace. The protocol is a draft.
+> protocol's checks; `init`, `import`, `show`, `log`, `trace`, `fsck`, `export`,
+> `diff` and `replay` keep, inspect and move packages in a local workspace.
+> The protocol is a draft.
 > Nothing here is audited, certified or production-hardened.
 >
 > **Open source under the [Apache License 2.0](LICENSE).** The repository is
@@ -107,10 +108,10 @@ $ echo $?
 | Exit | Meaning |
 | --- | --- |
 | 0 | Every protocol check ran and the package was not refused. **Without `--require-decision`, the reproduced decision may still be `CONTRADICTED` or `UNDETERMINED`.** |
-| 1 | Refused by a protocol check. `fsck`: damage found in the workspace. |
+| 1 | Refused by a protocol check. `fsck`: damage found. `diff`: the packages differ. `replay`: a package was refused or is damaged. |
 | 2 | The command could not run (usage, unreadable input, unusable registry, resource limit). |
 | 3 | `verify`: not refused, but not every check ran (no registry). |
-| 4 | `verify --require-decision`: every check ran, but the reproduced decision is not the required one. |
+| 4 | `--require-decision` (`verify`, `replay`): every check ran, but a reproduced decision is not the required one. |
 
 ### Gating a script on the decision
 
@@ -269,14 +270,30 @@ Checked 1 stored package(s) and 1 import record(s).
 no damage found. Every stored package is the content its names commit to; that says nothing about its signatures or its decision.
 ```
 
+### Moving packages around
+
+| Command | What it does |
+| --- | --- |
+| `verified export <id> [-o FILE]` | Writes a stored package out byte for byte, to standard output or to a file that must not exist. Nothing is added: no signature, no result, no claim of this tool's own. |
+| `verified diff <a> <b>` | Compares two packages (files or stored ones): which components differ and what the two state differently. Both need integrity; nothing else is checked. Exits 0 if the texts are identical, 1 if not. |
+| `verified replay --trust REGISTRY [id…]` | Verifies stored packages again, now, under the registry given now. Nothing from an earlier run is reused. Exits 1 if any is refused or damaged; with `--require-decision`, 4 if any reproduces another decision. |
+| `verified verify <package> --record FILE` | Refuses (`RECORD_MISMATCH`) a `wvp-0.2` package that a work record you hold is not about, naming every member that differs. |
+
+A **work record** states one verification of one package: the claim, the
+digests of what was evaluated, the decision and the contract it was made
+under. Every member is a function of the package, so two verifiers compute the
+same record; `verify --json` prints it as `workRecord`. A record says a
+decision was reached. It is not an acceptance.
+
 ## Where it is going
 
-```sh
-verified export / diff / replay
-```
+Every command of the original plan exists. What is not built:
 
-None of these exists yet. **Portability** is next: `export`, `diff`, `replay`
-of authenticated histories, and comparison of a package with a work record.
+- Verifying chains of evidence statements.
+- Python and TypeScript SDKs. The contract they would be built on is
+  [the JSON output](docs/sdk/json-output.md).
+- Coverage-guided fuzzing, and Windows in CI.
+- A first release: the repository is private, untagged and unpublished.
 
 ## Relationship to WVP
 
