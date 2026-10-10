@@ -334,10 +334,11 @@ project is the independent checking side, and it is genuinely independent:
   cache for inspection and authoritative for nothing.
 
 The protocol's specifications and conformance vectors are maintained with the
-platform and are published only after their provenance has been reviewed
-([publication review](docs/protocol/publication-review.md)). Until then the
-conformance tests that need them skip, and everything else runs on synthetic
-data built in this repository.
+platform. After review ([publication review](docs/protocol/publication-review.md))
+they are published in [`dekrops/wvp`](https://github.com/dekrops/wvp), private
+until its license is chosen. Nothing from it is copied here: the conformance
+tests that need the corpus skip unless `VERIFIED_CONFORMANCE_DIR` points to it,
+and everything else runs on synthetic data built in this repository.
 
 ## License
 
