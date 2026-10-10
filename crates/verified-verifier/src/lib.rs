@@ -4,33 +4,66 @@
 //! returns either a [`Report`] of what was established or a [`Rejection`].
 //! It reads no file, opens no socket and consults no clock.
 //!
-//! # What this version checks
+//! # What is checked
 //!
-//! The container checks shared by `wvp-0.1` and `wvp-0.2`, in protocol order:
+//! The protocol's thirteen checks, in order, stopping at the first failure:
 //!
-//! 1. the text is the canonical encoding of a JSON value (`NOT_CANONICAL`);
-//! 2. the package, protocol and canonical-encoding versions are supported
-//!    (`UNSUPPORTED_VERSION`);
-//! 3. the package has exactly the container's members (`MALFORMED_COMPONENT`);
-//! 4. the components are exactly the protocol's six, in order
-//!    (`COMPONENT_SET`);
-//! 5. every component's digest is the one its manifest entry states
-//!    (`COMPONENT_DIGEST`);
-//! 6. the package commitment and identifier follow from the manifest
-//!    (`COMMITMENT_MISMATCH`).
+//! | Step | Check | Refusal |
+//! | --- | --- | --- |
+//! | 1 | canonical text | `NOT_CANONICAL` |
+//! | 2 | package, protocol and encoding versions | `UNSUPPORTED_VERSION` |
+//! | 3 | container members | `MALFORMED_COMPONENT` |
+//! | 4 | the six components, in order | `COMPONENT_SET` |
+//! | 5 | component digests | `COMPONENT_DIGEST` |
+//! | 6 | package commitment and identifier | `COMMITMENT_MISMATCH` |
+//! | 7 | every component well formed at every depth | `MALFORMED_COMPONENT` |
+//! | 8 | the decision names this protocol's evaluator | `UNSUPPORTED_EVALUATOR` |
+//! | 9 | each statement verifies under the registry | the statement's code |
+//! | 10 | admission | the admission code |
+//! | 11 | input conditions | `INPUT_MISMATCH` |
+//! | 12 | the recomputed decision equals the recorded one | `DECISION_MISMATCH` |
+//! | 13 | every issuer signature counts | `ISSUER_SIGNATURE_INVALID` |
 //!
-//! # What it does not check
+//! Steps 1 to 7 establish **package integrity**. Steps 8 to 13 need a trust
+//! registry ([`Trust`]), which only the relying party can supply: a key
+//! carried by a package is never trusted. Without a registry verification
+//! stops after step 7 and the report says that signatures were not checked
+//! and the decision was not reproduced.
 //!
-//! Step 7 (every component well formed at every depth) and everything that
-//! needs a trust registry: evidence signatures, signer authority, contract
-//! evaluation, decision reproduction and issuer signatures. A [`Report`]
-//! says so property by property, and **package integrity is not established**
-//! until step 7 exists. There is deliberately no single "valid" flag.
+//! For `wvp-0.2` a relying party may also state [`Expectations`] (tenant,
+//! contract digest, claim), checked after everything else.
 //!
-//! No check, in any version, establishes that a source told the truth.
+//! # What a report means
+//!
+//! A [`Report`] states each property separately. There is deliberately no
+//! single "valid" flag. A reproduced decision says the signed records, from
+//! signers the relying party's registry authorizes, lead to that decision
+//! under the package's contract. It may be `CONTRADICTED` or `UNDETERMINED`.
+//!
+//! No check establishes that a source told the truth, that a completeness
+//! statement was honest, or that the package holds everything its sources
+//! know. Asserted times are not authenticated either: the holder of a
+//! revoked key can backdate a statement into the key's validity period.
+//!
+//! # Not implemented
+//!
+//! Comparing a package with a work record (`RECORD_MISMATCH`) and verifying
+//! chains of statements.
 
 mod container;
+mod json;
+mod order_transition;
 mod report;
+mod statement;
+mod trust;
+mod verify;
+mod work_contract;
 
-pub use container::{Options, ProtocolSelection, Refusal, Rejection, verify};
-pub use report::{ComponentCommitment, Finding, NotChecked, Report};
+pub use container::{Options, ProtocolSelection, Refusal, Rejection};
+pub use report::{
+    ComponentCommitment, Condition, ContractSummary, DecisionFinding, Evaluation, Expectations,
+    Finding, IssuerSignature, NotChecked, Report, Reproduced,
+};
+pub use trust::{Trust, TrustError};
+pub use verified_contract::{Conflict, RequirementValue, Truth};
+pub use verify::verify;

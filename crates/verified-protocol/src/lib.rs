@@ -6,13 +6,26 @@
 //! code, and makes no decision about whether a package is acceptable: the
 //! order of checks belongs to `verified-verifier`.
 //!
-//! This version covers the package container shared by `wvp-0.1` and
-//! `wvp-0.2`. Component contents (claims, contracts, statements, decisions)
-//! and trust registries are not modeled yet.
+//! Reading a structure checks its shape and nothing else. Whether a digest
+//! matches, a signature verifies or a key is trusted are separate checks with
+//! their own refusal codes.
+//!
+//! `wvp-0.1` and `wvp-0.2` have different components and different
+//! semantics. They live in separate modules ([`v01`], [`v02`]) and nothing
+//! converts between them.
 
 mod component;
 mod container;
+mod decision;
+mod evidence;
+mod inputs;
 mod refusal;
+mod registry;
+mod shape;
+mod statement;
+mod time;
+pub mod v01;
+pub mod v02;
 mod version;
 
 pub use component::ComponentPath;
@@ -20,5 +33,11 @@ pub use container::{
     Component, Container, DeclaredVersion, IssuerSignature, ManifestEntry, PackageId, ShapeError,
     ShapeProblem, WireDigest,
 };
+pub use decision::{DECISION_SOURCE, Decision, Evaluator, RecordedDecision};
+pub use evidence::Evidence;
+pub use inputs::Inputs;
 pub use refusal::RefusalCode;
+pub use registry::{RegistryError, TrustRegistry, TrustedKey};
+pub use statement::{EVIDENCE_KINDS, STATEMENT_DOMAIN, STATEMENT_PROTOCOL, SignedStatement};
+pub use time::Instant;
 pub use version::{PACKAGE_VERSION, ProtocolVersion, UnknownProtocol};

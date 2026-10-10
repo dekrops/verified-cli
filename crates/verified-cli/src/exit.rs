@@ -8,7 +8,6 @@ use std::process::ExitCode;
 pub(crate) enum Exit {
     /// Every check the protocol defines ran, and the package was not refused.
     /// A reproduced `CONTRADICTED` or `UNDETERMINED` decision also ends here.
-    #[allow(dead_code)] // No command can conclude this until verification is complete.
     Complete = 0,
     /// The package failed a protocol check.
     Refused = 1,

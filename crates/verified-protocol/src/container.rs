@@ -154,6 +154,15 @@ pub enum ShapeProblem {
     /// The object's members are not exactly the ones listed.
     #[error("does not have exactly the members {0:?}")]
     Members(&'static [&'static str]),
+    /// The value is not one of the listed enumeration cases.
+    #[error("is not one of the cases {0:?}")]
+    Case(&'static [&'static str]),
+    /// The value is not what the protocol requires here.
+    #[error("is not {0}")]
+    Not(&'static str),
+    /// Two parts of a component that must agree do not.
+    #[error("{0}")]
+    Inconsistent(&'static str),
 }
 
 /// A package that does not have the container's shape.

@@ -8,11 +8,16 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+base64.workspace = true
+ed25519-dalek.workspace = true
 thiserror.workspace = true
 verified-canonical.workspace = true
+verified-contract.workspace = true
 verified-protocol.workspace = true
 
 [dev-dependencies]
+base64.workspace = true
+ed25519-dalek.workspace = true
 proptest.workspace = true
 
 [lints]

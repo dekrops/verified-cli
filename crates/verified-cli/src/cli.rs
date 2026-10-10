@@ -3,13 +3,16 @@
 use std::path::PathBuf;
 
 use clap::{Args as ClapArgs, Parser, Subcommand};
+use verified_canonical::Sha256Digest;
 use verified_protocol::ProtocolVersion;
 
 const AFTER_HELP: &str = "\
 Exit codes:
-  0  every protocol check ran and the package was not refused
+  0  every protocol check ran and the package was not refused; the decision
+     it reproduced may still be CONTRADICTED or UNDETERMINED
   1  the package was refused; the refusal code is printed
-  2  the command could not run (usage, unreadable file, resource limit)
+  2  the command could not run (usage, unreadable file, unusable registry,
+     resource limit)
   3  the package was not refused, but not every check ran
 
 The Work Verification Protocol is a draft. No check establishes that a
@@ -50,11 +53,15 @@ pub(crate) struct Global {
 pub(crate) enum Command {
     /// Check a Work Verification Protocol package offline
     ///
-    /// This version runs the container checks (protocol steps 1 to 6):
-    /// canonical text, versions, container shape, component set, component
-    /// digests and the package commitment. It does not yet check component
-    /// shapes, signatures, signer authority or the decision, and says so in
-    /// its report; it therefore never exits 0.
+    /// Runs the protocol's checks in order and stops at the first that
+    /// fails. Without --trust only package integrity can be established:
+    /// the components are well formed and are the ones the package commits
+    /// to. Signatures, signer authority and the decision need a trust
+    /// registry, which is yours to supply; a key inside a package is never
+    /// trusted.
+    ///
+    /// Exit code 0 means every check ran, not that the claim is supported:
+    /// read the decision.
     Verify(Verify),
 }
 
@@ -62,9 +69,30 @@ pub(crate) enum Command {
 pub(crate) struct Verify {
     /// The package file, or `-` for standard input
     pub(crate) package: PathBuf,
+    /// Your trust registry: a JSON file of the keys you accept
+    #[arg(long, value_name = "REGISTRY")]
+    pub(crate) trust: Option<PathBuf>,
     /// Require this protocol version instead of detecting it
     #[arg(long, value_name = "VERSION", value_parser = protocol)]
     pub(crate) protocol: Option<ProtocolVersion>,
+    /// Refuse a package evaluated for another tenant (wvp-0.2)
+    #[arg(long, value_name = "TENANT")]
+    pub(crate) expect_tenant: Option<String>,
+    /// Refuse a package about another contract, by digest (wvp-0.2)
+    #[arg(long, value_name = "SHA-256", value_parser = digest)]
+    pub(crate) expect_contract: Option<Sha256Digest>,
+    /// Refuse a package carrying another claim, by identifier (wvp-0.2)
+    #[arg(long, value_name = "CLAIM")]
+    pub(crate) expect_claim: Option<String>,
+}
+
+/// A SHA-256 digest: 64 lowercase hexadecimal characters, optionally after
+/// `sha-256:`.
+fn digest(text: &str) -> Result<Sha256Digest, String> {
+    text.strip_prefix("sha-256:")
+        .unwrap_or(text)
+        .parse()
+        .map_err(|e: verified_canonical::DigestParseError| e.to_string())
 }
 
 fn protocol(identifier: &str) -> Result<ProtocolVersion, String> {

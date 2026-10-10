@@ -18,6 +18,8 @@ verified-protocol.workspace = true
 verified-verifier.workspace = true
 
 [dev-dependencies]
+base64.workspace = true
+ed25519-dalek.workspace = true
 serde_json.workspace = true
 
 [[bin]]

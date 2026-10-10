@@ -11,7 +11,9 @@ yanked = "deny"
 version = 2
 # Permissive licenses compatible with the Apache-2.0 target. Additions are a
 # reviewed decision, not a convenience.
-allow = ["Apache-2.0", "MIT", "Unicode-3.0"]
+# BSD-3-Clause: the dalek Ed25519 crates. It asks binary distributions to
+# reproduce its copyright notice, which a release process must do.
+allow = ["Apache-2.0", "BSD-3-Clause", "MIT", "Unicode-3.0"]
 confidence-threshold = 0.93
 
 [licenses.private]

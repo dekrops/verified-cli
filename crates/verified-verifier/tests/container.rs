@@ -4,10 +4,13 @@
 mod support;
 
 use proptest::prelude::*;
-use support::{Draft, PATHS, hash, json, object, string};
+use support::{Draft, PATHS, Scenario, hash, json, object, replaced, string};
 use verified_canonical::{LimitExceeded, Limits, Value};
 use verified_protocol::{ComponentPath, ProtocolVersion, RefusalCode};
-use verified_verifier::{Finding, NotChecked, Options, ProtocolSelection, Rejection, verify};
+use verified_verifier::{
+    DecisionFinding, Finding, IssuerSignature, NotChecked, Options, ProtocolSelection, Rejection,
+    verify,
+};
 
 fn check(text: &str) -> Result<verified_verifier::Report, Rejection> {
     verify(text.as_bytes(), &Options::default())
@@ -20,12 +23,13 @@ fn refusal(draft: &Draft) -> RefusalCode {
     }
 }
 
+/// A well-formed package, so that only the defect a test introduces is wrong.
 fn draft() -> Draft {
-    Draft::consistent("wvp-0.2")
+    Scenario::posted().draft()
 }
 
 #[test]
-fn a_consistent_container_is_reported_and_nothing_more_is_claimed() {
+fn without_a_registry_integrity_is_established_and_nothing_more_is_claimed() {
     let draft = draft();
     let report = check(&draft.text()).expect("not refused");
 
@@ -38,24 +42,31 @@ fn a_consistent_container_is_reported_and_nothing_more_is_claimed() {
     for (component, (_, content)) in report.components.iter().zip(&draft.files) {
         assert_eq!(component.digest, content.digest());
     }
-    assert_eq!(report.issuer_signatures_carried, 0);
 
-    let pending = Finding::NotChecked(NotChecked::NotImplemented);
-    assert_eq!(report.container, Finding::Established);
-    assert_eq!(report.component_shapes, pending);
-    assert_eq!(report.evidence_signatures, pending);
-    assert_eq!(report.signer_authority, pending);
-    assert_eq!(report.decision_reproduced, pending);
-    assert_eq!(report.issuer_signature, pending);
-    // Integrity needs step 7, which did not run.
-    assert_eq!(report.integrity(), pending);
+    // No registry was supplied: integrity, and nothing about anyone's word.
+    let pending = NotChecked::NoTrustRegistry;
+    assert_eq!(report.integrity, Finding::Established);
+    assert_eq!(report.evidence_signatures, Finding::NotChecked(pending));
+    assert_eq!(report.signer_authority, Finding::NotChecked(pending));
+    assert_eq!(report.decision, DecisionFinding::NotChecked(pending));
+    assert_eq!(
+        report.issuer_signature,
+        IssuerSignature::NotChecked {
+            carried: 0,
+            reason: pending
+        }
+    );
     assert!(!report.is_complete());
 }
 
 #[test]
 fn both_protocol_versions_are_detected_and_never_interchanged() {
     for version in ProtocolVersion::ALL {
-        let text = Draft::consistent(version.identifier()).text();
+        let text = match version {
+            ProtocolVersion::V0_1 => Scenario::shipped(),
+            ProtocolVersion::V0_2 => Scenario::posted(),
+        }
+        .text();
         assert_eq!(check(&text).expect("not refused").protocol, version);
 
         for required in ProtocolVersion::ALL {
@@ -298,14 +309,16 @@ fn the_first_failing_step_is_the_one_reported() {
 }
 
 #[test]
-fn carried_issuer_signatures_are_counted_not_verified() {
+fn without_a_registry_carried_issuer_signatures_are_counted_not_verified() {
     let mut d = draft();
     d.signatures = json(r#"[{"encoded":"AA==","keyId":"anyone","scheme":"Ed25519"}]"#);
     let report = check(&d.text()).expect("not refused");
-    assert_eq!(report.issuer_signatures_carried, 1);
     assert_eq!(
         report.issuer_signature,
-        Finding::NotChecked(NotChecked::NotImplemented)
+        IssuerSignature::NotChecked {
+            carried: 1,
+            reason: NotChecked::NoTrustRegistry
+        }
     );
 }
 
@@ -358,12 +371,13 @@ proptest! {
     }
 
     #[test]
-    fn any_component_content_is_committed_to(seed in "[a-z]{0,12}", index in 0usize..6) {
-        let mut a = draft();
-        a.files[index].1 = string(seed.clone());
-        let report = check(&a.text()).map_err(|e| TestCaseError::fail(e.to_string()))?;
-        prop_assert_eq!(report.components[index].digest, string(seed).digest());
+    fn component_content_is_committed_to(seed in "[a-z]{1,12}") {
+        let mut scenario = Scenario::posted();
+        scenario.claim = replaced(&scenario.claim, &["inputs", "invoice"], Some(string(seed)));
+        let report = check(&scenario.text()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+        prop_assert_eq!(report.components[0].digest, scenario.claim.digest());
         // And the identifier moves with the content.
-        prop_assert_ne!(report.package_id, check(&draft().text()).map_err(|e| TestCaseError::fail(e.to_string()))?.package_id);
+        let original = check(&draft().text()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+        prop_assert_ne!(report.package_id, original.package_id);
     }
 }
