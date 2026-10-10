@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! SHA-256 commitments.
 
 use std::fmt;

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Domain-separated signing input.
 
 use crate::value::Value;

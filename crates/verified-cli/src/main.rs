@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! `verified`: Git-like tools for verifiable work.
 //!
 //! This binary parses arguments, reads files and prints. Every protocol rule

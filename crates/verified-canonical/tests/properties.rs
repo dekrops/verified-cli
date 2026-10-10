@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Properties of the canonical encoding over generated values.
 
 use std::fmt::Write as _;

@@ -1,14 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The container checks: protocol steps 1 to 6.
 
 use verified_canonical::{
     CANONICAL_VERSION, Integer, LimitExceeded, Limits, Value, parse_canonical,
 };
 use verified_protocol::{
-    ComponentPath, Container, DeclaredVersion, PACKAGE_VERSION, PackageId, ProtocolVersion,
-    RefusalCode,
+    ComponentPath, Container, DeclaredVersion, IssuerSignature, PACKAGE_VERSION, PackageId,
+    ProtocolVersion, RefusalCode,
 };
 
-use crate::report::{ComponentCommitment, Finding, NotChecked, Report};
+use crate::report::{ComponentCommitment, Expectations};
+use crate::trust::Trust;
 
 /// Which protocol version a package must declare.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -22,12 +25,18 @@ pub enum ProtocolSelection {
 }
 
 /// How to verify.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Options {
+#[derive(Clone, Debug, Default)]
+pub struct Options<'a> {
     /// Resource bounds for reading the package.
     pub limits: Limits,
     /// Which protocol version to accept.
     pub protocol: ProtocolSelection,
+    /// The relying party's trust registry. Without one, verification stops
+    /// once package integrity is established: no signature is checked and no
+    /// decision is reproduced. Keys carried by a package are never trusted.
+    pub trust: Option<&'a Trust>,
+    /// What the relying party expects the package to be about.
+    pub expectations: Expectations,
 }
 
 /// A protocol refusal: the first check the package failed.
@@ -51,13 +60,22 @@ pub enum Rejection {
     /// with other limits may accept it.
     #[error("not examined: the package exceeds a resource limit: {0}")]
     Limit(#[from] LimitExceeded),
+    /// Expectations were given for a protocol version that does not define
+    /// them. Ignoring them would report more than was checked, so nothing
+    /// is reported.
+    #[error("not examined: {0} does not define relying-party expectations")]
+    ExpectationsUndefined(ProtocolVersion),
+}
+
+pub(crate) fn refusal(code: RefusalCode, detail: impl Into<String>) -> Refusal {
+    Refusal {
+        code,
+        detail: detail.into(),
+    }
 }
 
 fn refuse<T>(code: RefusalCode, detail: impl Into<String>) -> Result<T, Rejection> {
-    Err(Rejection::Refused(Refusal {
-        code,
-        detail: detail.into(),
-    }))
+    Err(Rejection::Refused(refusal(code, detail)))
 }
 
 /// Step 2. Versions are read before the shape is checked, so that a package
@@ -104,27 +122,34 @@ fn supported_version(
     Ok(protocol)
 }
 
-/// Verifies a package as far as this version can. See the crate
-/// documentation for exactly which checks run.
-///
-/// Checks run in protocol order and stop at the first failure.
-pub fn verify(package: &[u8], options: &Options) -> Result<Report, Rejection> {
-    // Step 1.
-    let value = match parse_canonical(package, &options.limits) {
-        Ok(value) => value,
-        Err(error) => {
-            return match error.limit() {
-                Some(limit) => Err(Rejection::Limit(limit)),
-                None => refuse(RefusalCode::NotCanonical, error.to_string()),
-            };
-        }
-    };
+/// A package that passed the container checks, borrowed from its value.
+pub(crate) struct Checked<'a> {
+    pub(crate) protocol: ProtocolVersion,
+    pub(crate) package_id: PackageId,
+    pub(crate) components: [ComponentCommitment; 6],
+    /// The component contents, in protocol order.
+    pub(crate) files: [&'a Value; 6],
+    pub(crate) signatures: Vec<IssuerSignature<'a>>,
+}
 
+/// Step 1: the text is the canonical encoding of a JSON value.
+pub(crate) fn read(package: &[u8], limits: &Limits) -> Result<Value, Rejection> {
+    match parse_canonical(package, limits) {
+        Ok(value) => Ok(value),
+        Err(error) => match error.limit() {
+            Some(limit) => Err(Rejection::Limit(limit)),
+            None => refuse(RefusalCode::NotCanonical, error.to_string()),
+        },
+    }
+}
+
+/// Steps 2 to 6, in protocol order, stopping at the first failure.
+pub(crate) fn check(value: &Value, selection: ProtocolSelection) -> Result<Checked<'_>, Rejection> {
     // Step 2.
-    let protocol = supported_version(&value, options.protocol)?;
+    let protocol = supported_version(value, selection)?;
 
     // Step 3.
-    let container = match Container::from_value(&value) {
+    let container = match Container::from_value(value) {
         Ok(container) => container,
         Err(error) => return refuse(RefusalCode::MalformedComponent, error.to_string()),
     };
@@ -146,6 +171,7 @@ pub fn verify(package: &[u8], options: &Options) -> Result<Report, Rejection> {
 
     // Step 5.
     let mut components = Vec::with_capacity(expected.len());
+    let mut files = Vec::with_capacity(expected.len());
     for ((path, file), entry) in ComponentPath::ALL
         .into_iter()
         .zip(&container.files)
@@ -159,8 +185,12 @@ pub fn verify(package: &[u8], options: &Options) -> Result<Report, Rejection> {
             );
         }
         components.push(ComponentCommitment { path, digest });
+        files.push(file.content);
     }
-    let Ok(components) = <[ComponentCommitment; 6]>::try_from(components) else {
+    let (Ok(components), Ok(files)) = (
+        <[ComponentCommitment; 6]>::try_from(components),
+        <[&Value; 6]>::try_from(files),
+    ) else {
         // Unreachable after step 4; refused rather than assumed.
         return refuse(RefusalCode::ComponentSet, "fewer than six components");
     };
@@ -181,17 +211,11 @@ pub fn verify(package: &[u8], options: &Options) -> Result<Report, Rejection> {
         );
     }
 
-    let pending = Finding::NotChecked(NotChecked::NotImplemented);
-    Ok(Report {
+    Ok(Checked {
         protocol,
         package_id,
         components,
-        issuer_signatures_carried: container.signatures.len(),
-        container: Finding::Established,
-        component_shapes: pending,
-        evidence_signatures: pending,
-        signer_authority: pending,
-        decision_reproduced: pending,
-        issuer_signature: pending,
+        files,
+        signatures: container.signatures,
     })
 }

@@ -82,18 +82,19 @@ is refused, and duplicate keys. None is covered by a vector.
 ## 6. Proposed public crate boundaries
 
 ```text
-verified-canonical   encoding, digests, signing input         (this PR)
-verified-protocol    typed structures, refusal codes          (this PR: container)
-verified-verifier    pure verification                        (this PR: steps 1 to 6)
-verified-cli         the `verified` binary                    (this PR: `verify`)
+verified-canonical   encoding, digests, signing input         (built)
+verified-protocol    typed structures, refusal codes          (built)
+verified-contract    Work Contract Language 1                 (built)
+verified-verifier    pure verification                        (built: all thirteen checks)
+verified-cli         the `verified` binary                    (built: `verify`)
 verified-workspace   local content-addressed store            (later)
 verified-history     graph and provenance over imports        (later)
 ```
 
-Dependencies point one way: `cli → verifier → protocol → canonical`. The two
-later crates are not created until they hold functionality.
+Dependencies point one way: `cli → verifier → {contract, protocol} →
+canonical`. The two later crates are not created until they hold
+functionality.
 
-`verified-verifier` will be the largest. The contract-language evaluator is a
-separable unit with its own specification and corpus; whether it becomes its
-own crate is decided when it is written, by whether Agent Billing Center
-needs it without the rest.
+The contract-language evaluator has its own specification and corpus and
+depends on nothing but the canonical encoding, so it became its own crate
+when it was written.

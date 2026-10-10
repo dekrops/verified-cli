@@ -27,24 +27,43 @@ relying party's own trust registry.
 | Substituted component | Every component digest is recomputed and compared with the manifest; the manifest is hashed into the package identifier. |
 | Digest confusion | A stated digest matches only as algorithm `sha-256` with 64 lowercase hexadecimal characters. |
 | Version confusion | The declared version is checked first. A package of one protocol version is never evaluated as another. |
-| Keys smuggled inside the package | Carried issuer signatures are counted and reported as not checked. Nothing in a package is treated as a trust input. |
+| Keys smuggled inside the package | Nothing in a package is a trust input. A signature counts only under a key in the registry the relying party supplied, for that key's tenant, issuer, sources and validity period. |
+| A signer speaking for a system it has no authority over | A statement verifies only if the registry authorizes its key for the source the statement names. In `wvp-0.2` the source reaching the contract is that name, never one taken from a record's body. |
+| A favorable decision written into the package | The recorded decision is never reported. The decision is recomputed from the package's claim, contract, evidence and inputs and must equal the recorded one byte for byte. Without a registry no decision is reported at all. |
+| A signature replayed across object kinds or protocol versions | Signing input is domain-separated: statements, `wvp-0.1` decisions and `wvp-0.2` decisions have different prefixes. |
+| Forged or malleable signatures | Ed25519 by `ed25519-dalek`, strict verification; small-order keys are refused when the registry is loaded ([decision 0009](../decisions/0009-signature-verification.md)). |
+| A genuine package about something else | `wvp-0.2` expectations: the relying party names the tenant, contract digest and claim it means, and a package about another is refused. |
+| A contract that never finishes evaluating | Work Contract Language 1 has no code, recursion or unbounded quantifier; predicate size, nesting, fact count and total work are bounded before evaluation. |
+| A misconfigured registry silently trusting more | Registry files are closed: an unknown or misspelt member, a duplicate key identifier or duplicate key material is an error. |
 | Overstated results | No single validity flag. Unchecked properties are reported as not checked. Exit code 0 is reserved for complete verification. |
 | Code execution from artifacts | Packages are data. Nothing in one is executed, loaded or fetched. |
 | Network exposure | The dependency graph has no network or async runtime; `deny.toml` bans them. |
 | Memory safety | `unsafe` is forbidden in every crate of the workspace. |
 
-## Not yet defended, because not yet built
+## Not defended
 
-- **Signature verification, signer authority, decision reproduction.** Not
-  implemented. The tool says so and cannot be used to establish them.
+- **Backdating.** Times in a statement are asserted by its signer and are not
+  authenticated. The holder of a revoked or expired key can sign a statement
+  dated inside the key's validity period, and it will verify. Freshness needs
+  an external timestamp or witness, which the protocol does not have.
+- **Withheld evidence.** A package can omit records its sources hold. The
+  contract language answers with completeness statements, which are
+  themselves only as honest as the source that signs them.
+- **A wrong registry.** The tool cannot tell a relying party whom to trust.
+  Revocation is only as fresh as the registry file supplied.
+- **Exit code 0 read as "supported".** Exit 0 means every check ran. The
+  reproduced decision can be `CONTRADICTED` or `UNDETERMINED`; a script must
+  read it (`--json`, `properties.decisionReproduced.decision`).
+- **Chains of statements** are not verified: a package's statements are
+  checked individually.
 - **Local storage.** There is no workspace, so no path-traversal, symlink or
   atomic-write surface exists yet. Those defenses are requirements of the
   workspace design ([decision 0004](../decisions/0004-content-addressed-object-storage.md)).
-- **Fuzzing.** Property tests exercise the reader and verifier with arbitrary
-  bytes; coverage-guided fuzz targets are planned and do not exist.
-- **Timing side channels.** Digest comparison is not constant-time. All
-  compared values are public, so this is not believed to matter; it will be
-  revisited when signatures are verified.
+- **Fuzzing.** Property tests exercise the reader with arbitrary bytes and
+  the verifier with arbitrary changes to consistently re-signed packages;
+  coverage-guided fuzz targets do not exist.
+- **Timing side channels.** Nothing here is constant-time. Every value
+  compared or verified is public.
 
 ## Limits of the method itself
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Reading untrusted JSON text.
 //!
 //! The parser is written for this encoding rather than borrowed from a

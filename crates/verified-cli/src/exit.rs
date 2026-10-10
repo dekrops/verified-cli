@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Exit codes. They are part of the command-line interface: scripts rely on
 //! them, so they change only with a major version.
 
@@ -8,7 +10,6 @@ use std::process::ExitCode;
 pub(crate) enum Exit {
     /// Every check the protocol defines ran, and the package was not refused.
     /// A reproduced `CONTRADICTED` or `UNDETERMINED` decision also ends here.
-    #[allow(dead_code)] // No command can conclude this until verification is complete.
     Complete = 0,
     /// The package failed a protocol check.
     Refused = 1,

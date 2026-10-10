@@ -5,10 +5,12 @@
 Inspect work claims, trace evidence, verify outcomes, and exchange portable
 work records, without trusting the system that produced them.
 
-> **Status: early foundation, private, pre-release.** One command exists,
-> and it performs the first six of the protocol's thirteen checks. The
-> protocol is a draft. Nothing here is audited, certified or
-> production-hardened. The license is pending (see [`LICENSE`](LICENSE)).
+> **Status: early, private, pre-release.** One command exists: `verify`,
+> which runs all thirteen of the protocol's checks. The protocol is a draft.
+> Nothing here is audited, certified or production-hardened.
+>
+> **Open source under the [Apache License 2.0](LICENSE).** The repository is
+> not public yet and no package has been published.
 
 ## What it is
 
@@ -38,20 +40,44 @@ supported, not an invalid package.
 
 ## What works today
 
+`verified verify` checks a package against a trust registry *you* supply:
+
 ```console
-$ verified verify package.json
+$ verified verify package.json --trust trust.json
 Work Verification Protocol package (wvp-0.2, draft)
-package               wvp:sha-256:a2cc1e196acd…
-container             consistent: canonical text, versions, component set, digests, commitment
-component shapes      not checked: not implemented in this version
-package integrity     NOT established: component shapes were not checked
-evidence signatures   not checked: not implemented in this version
-signer authority      not checked: not implemented in this version
-decision reproduced   not checked: not implemented in this version
-issuer signature      not checked: not implemented in this version
+package               wvp:sha-256:d0982b73f310…
+tenant                tenant-test
+claim                 00000000-0000-4000-8000-000000000500
+package integrity     established
+contract              posting-test 1.0.0, sha-256:6a2c3b0bf581…
+evidence signatures   established (1 of 1)
+signer authority      established under the supplied registry
+decision reproduced   SUPPORTED, matches the package
+                        POSTED                      TRUE
+issuer signature      absent
 source truthfulness   NOT established: no check can establish it
 
-incomplete: this version runs protocol steps 1 to 6 of 13; the package was not refused and is not verified
+complete: every protocol check ran; the decision SUPPORTED was reproduced
+$ echo $?
+0
+```
+
+(The package above is synthetic test data.)
+
+Without a registry only integrity can be established, and the tool says so
+instead of reporting the decision the package carries:
+
+```console
+$ verified verify package.json
+…
+package integrity     established
+evidence signatures   not checked: no trust registry supplied
+signer authority      not checked: no trust registry supplied
+decision reproduced   not checked: no trust registry supplied
+issuer signature      not checked: no trust registry supplied (0 carried)
+source truthfulness   NOT established: no check can establish it
+
+incomplete: no trust registry was supplied (--trust), so no signature was checked and the decision was not reproduced; the decision the package carries is its issuer's claim
 $ echo $?
 3
 ```
@@ -59,7 +85,7 @@ $ echo $?
 A package that fails a check is refused with the protocol's own code:
 
 ```console
-$ verified verify tampered.json
+$ verified verify tampered.json --trust trust.json
 Work Verification Protocol package
 refused               COMPONENT_DIGEST
                       evidence/bodies.json is not the content its manifest entry commits to
@@ -67,16 +93,39 @@ $ echo $?
 1
 ```
 
-`--json` prints the same result as structured data with full identifiers;
-`--quiet` prints nothing and leaves the exit code; `--protocol wvp-0.2`
-requires a version instead of detecting it; `-` reads standard input.
+| Option | Effect |
+| --- | --- |
+| `--trust <REGISTRY>` | Your trust registry: the keys you accept, for which issuer, tenant, sources and period. Keys inside a package are never trusted. |
+| `--expect-tenant`, `--expect-contract`, `--expect-claim` | Refuse a `wvp-0.2` package that verifies but is about another tenant, contract (by digest) or claim than you meant. |
+| `--protocol <VERSION>` | Require a protocol version instead of detecting it. |
+| `--json` | The same result as structured data, with full identifiers. |
+| `--quiet` | Print nothing; rely on the exit code. |
+| `-` | Read the package from standard input. |
 
 | Exit | Meaning |
 | --- | --- |
-| 0 | Every protocol check ran and the package was not refused. *Not reachable yet.* |
+| 0 | Every protocol check ran and the package was not refused. **The reproduced decision may still be `CONTRADICTED` or `UNDETERMINED`: read it.** |
 | 1 | Refused by a protocol check. |
-| 2 | The command could not run (usage, unreadable input, resource limit). |
-| 3 | Not refused, but not every check ran. |
+| 2 | The command could not run (usage, unreadable input, unusable registry, resource limit). |
+| 3 | Not refused, but not every check ran (no registry). |
+
+A trust registry is a JSON file:
+
+```json
+{ "keys": [ {
+    "keyId": "erp-gateway-1",
+    "algorithm": "Ed25519",
+    "publicKey": "<base64 of the DER SubjectPublicKeyInfo>",
+    "issuer": { "value": "<uuid of the signing actor>" },
+    "tenant": { "value": "<tenant>" },
+    "sources": ["erp"],
+    "validFrom": { "value": "2026-01-01T00:00:00Z" },
+    "validUntil": null,
+    "revokedAt": null
+} ] }
+```
+
+A key that may sign decisions as an issuer lists the source `wvp-decision`.
 
 ### Try it
 
@@ -102,15 +151,13 @@ verified verify invoice.wvp --trust trust.json  # complete verification under yo
 verified fsck
 ```
 
-None of these exists except the partial `verify`. They arrive in order:
+Only `verify` exists. The rest arrive in order:
 
-1. **Complete verifier**: component shapes, evidence signatures, trust
-   registry, Work Contract evaluation, decision reproduction, issuer
-   signatures, expectations. Full agreement with the conformance corpus.
-2. **Workspace**: `init`, `import`, `show`, `log` over immutable
+1. **Workspace**: `init`, `import`, `show`, `log` over immutable
    content-addressed storage.
-3. **Provenance and integrity**: `trace`, `fsck`.
-4. **Portability**: `export`, `diff`, `replay` of authenticated histories.
+2. **Provenance and integrity**: `trace`, `fsck`.
+3. **Portability**: `export`, `diff`, `replay` of authenticated histories,
+   and comparison of a package with a work record.
 
 ## Relationship to WVP
 
@@ -129,6 +176,7 @@ corpus: [`docs/protocol/compatibility.md`](docs/protocol/compatibility.md).
 ```text
 verified-cli        the `verified` binary: arguments, files, terminal
 verified-verifier   pure verification: bytes in, report or refusal out
+verified-contract   Work Contract Language 1: read, check, evaluate
 verified-protocol   typed protocol structures and refusal codes
 verified-canonical  canonical encoding, SHA-256 commitments, signing input
 ```
@@ -141,16 +189,34 @@ contain no `unsafe`. More in
 ## Libraries and SDKs
 
 The crates are the Rust SDK and are meant to be depended on directly (not
-through the binary). They are unpublished until the license is settled.
+through the binary). They are Apache-2.0 and not yet published to crates.io.
 Python and TypeScript SDKs are planned and not started; their boundaries are
 in [decision 0007](docs/decisions/0007-sdk-boundaries.md).
 
 ## Relationship to commercial Verified
 
 Verified is a commercial platform that produces and records work proofs. This
-project is the independent checking side: it needs nothing from the platform
-to run, and is not a second platform or a second ledger. A local workspace,
-when it exists, will be a cache for inspection and authoritative for nothing.
+project is the independent checking side, and it is genuinely independent:
+
+- It is open source (Apache-2.0) and contains no source code of the platform.
+  It was written from the protocol's specifications.
+- It builds, tests and runs from a clean checkout with no access to any
+  private repository, service, package or credential. CI does exactly that.
+- It verifies any conforming package under any registry, whoever produced
+  them. Nothing in it calls, requires or favors the platform.
+- It is not a second platform or a second ledger. A local workspace, when it
+  exists, will be a cache for inspection and authoritative for nothing.
+
+The protocol's specifications and conformance vectors are maintained with the
+platform and are published only after their provenance has been reviewed
+([publication review](docs/protocol/publication-review.md)). Until then the
+conformance tests that need them skip, and everything else runs on synthetic
+data built in this repository.
+
+## License
+
+[Apache License 2.0](LICENSE). See [`NOTICE`](NOTICE). Contributions are
+accepted under the same license ([`CONTRIBUTING.md`](CONTRIBUTING.md)).
 
 ## Security and trust assumptions
 
@@ -158,6 +224,10 @@ when it exists, will be a cache for inspection and authoritative for nothing.
   integer length are bounded.
 - Trust comes only from you. Keys inside a package are never trusted, and
   there is no default registry.
+- Signatures are Ed25519, verified by `ed25519-dalek`; no cryptographic
+  algorithm is implemented here.
+- Times in a package are asserted, not authenticated: the holder of a revoked
+  key can backdate a statement into the key's validity period.
 - No network access, by construction: the dependency graph has no network
   crate and the build fails if one is added.
 
@@ -172,5 +242,5 @@ See [`SECURITY.md`](SECURITY.md) and the
 
 | Protocol | Status upstream | Here |
 | --- | --- | --- |
-| `wvp-0.1` | draft | container checks (steps 1 to 6) |
-| `wvp-0.2` | draft | container checks (steps 1 to 6) |
+| `wvp-0.1` | draft | all thirteen checks; `order-transition` evaluator |
+| `wvp-0.2` | draft | all thirteen checks; Work Contract Language 1; expectations |
