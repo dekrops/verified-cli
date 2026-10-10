@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Evaluating a well-formed contract against an environment.
 
 use std::collections::{BTreeMap, BTreeSet};

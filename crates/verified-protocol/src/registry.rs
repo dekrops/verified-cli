@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Trust registries: the keys a relying party accepts.
 //!
 //! A registry is the verifier's configuration. It is supplied by the relying

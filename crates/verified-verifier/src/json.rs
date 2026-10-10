@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Building the JSON values a verifier recomputes.
 
 use verified_canonical::{Object, Sha256Digest, Value};

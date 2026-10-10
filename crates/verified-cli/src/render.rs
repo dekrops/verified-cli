@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Terminal output: results on standard output, diagnostics on standard
 //! error, color only where a terminal wants it.
 

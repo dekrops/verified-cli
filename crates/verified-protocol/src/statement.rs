@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Signed evidence statements (`verified-evidence-statement-v1`).
 //!
 //! A statement is evidence: an attributable, tamper-evident assertion that an

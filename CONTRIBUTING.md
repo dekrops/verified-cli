@@ -1,7 +1,21 @@
 # Contributing
 
-The repository is private and pre-release. External contributions open once
-the license is approved (see `LICENSE`).
+Verified CLI is open source under the [Apache License 2.0](LICENSE). The
+repository is pre-release and not public yet.
+
+## Licensing of contributions
+
+- Contributions are accepted under Apache-2.0, the license of the project
+  (section 5 of the license: inbound is outbound).
+- New source files start with `SPDX-License-Identifier: Apache-2.0`.
+- Do not contribute code, specification text, fixtures or keys copied from
+  the proprietary Verified platform or from anything else you cannot license
+  under Apache-2.0. Implementing the same protocol is not a reason to copy.
+- A new dependency must carry a license `deny.toml` allows. Adding a license
+  to that list is a reviewed decision.
+- Never commit credentials, production trust anchors or customer data. Test
+  keys are derived from fixed seeds in the test support code and are used for
+  nothing else.
 
 ## The quality gate
 

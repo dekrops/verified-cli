@@ -7,8 +7,10 @@ work records, without trusting the system that produced them.
 
 > **Status: early, private, pre-release.** One command exists: `verify`,
 > which runs all thirteen of the protocol's checks. The protocol is a draft.
-> Nothing here is audited, certified or production-hardened. The license is
-> pending (see [`LICENSE`](LICENSE)).
+> Nothing here is audited, certified or production-hardened.
+>
+> **Open source under the [Apache License 2.0](LICENSE).** The repository is
+> not public yet and no package has been published.
 
 ## What it is
 
@@ -187,16 +189,34 @@ contain no `unsafe`. More in
 ## Libraries and SDKs
 
 The crates are the Rust SDK and are meant to be depended on directly (not
-through the binary). They are unpublished until the license is settled.
+through the binary). They are Apache-2.0 and not yet published to crates.io.
 Python and TypeScript SDKs are planned and not started; their boundaries are
 in [decision 0007](docs/decisions/0007-sdk-boundaries.md).
 
 ## Relationship to commercial Verified
 
 Verified is a commercial platform that produces and records work proofs. This
-project is the independent checking side: it needs nothing from the platform
-to run, and is not a second platform or a second ledger. A local workspace,
-when it exists, will be a cache for inspection and authoritative for nothing.
+project is the independent checking side, and it is genuinely independent:
+
+- It is open source (Apache-2.0) and contains no source code of the platform.
+  It was written from the protocol's specifications.
+- It builds, tests and runs from a clean checkout with no access to any
+  private repository, service, package or credential. CI does exactly that.
+- It verifies any conforming package under any registry, whoever produced
+  them. Nothing in it calls, requires or favors the platform.
+- It is not a second platform or a second ledger. A local workspace, when it
+  exists, will be a cache for inspection and authoritative for nothing.
+
+The protocol's specifications and conformance vectors are maintained with the
+platform and are published only after their provenance has been reviewed
+([publication review](docs/protocol/publication-review.md)). Until then the
+conformance tests that need them skip, and everything else runs on synthetic
+data built in this repository.
+
+## License
+
+[Apache License 2.0](LICENSE). See [`NOTICE`](NOTICE). Contributions are
+accepted under the same license ([`CONTRIBUTING.md`](CONTRIBUTING.md)).
 
 ## Security and trust assumptions
 

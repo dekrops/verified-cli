@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Reading a contract from JSON. Any failure here is `CONTRACT_MALFORMED`:
 //! the value is not a contract of the language's forms.
 

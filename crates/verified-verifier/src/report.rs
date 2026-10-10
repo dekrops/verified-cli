@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! What a verification established.
 
 use verified_canonical::Sha256Digest;

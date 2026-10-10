@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 [workspace]
 resolver = "3"
 members = ["crates/*"]
@@ -7,8 +9,8 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 repository = "https://github.com/dekrops/verified-cli"
-# No `license` field yet: the Apache-2.0 target is subject to IP approval
-# (see LICENSE and docs/protocol/publication-review.md).
+license = "Apache-2.0"
+# Nothing is published to a registry without explicit authorization.
 publish = false
 
 [workspace.lints.rust]

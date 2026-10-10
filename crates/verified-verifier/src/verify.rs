@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The verification procedure: the container checks, then the checks of the
 //! package's protocol version, then the relying party's expectations.
 

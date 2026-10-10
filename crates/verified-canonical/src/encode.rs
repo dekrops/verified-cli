@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Writing canonical text.
 
 use std::fmt::Write as _;

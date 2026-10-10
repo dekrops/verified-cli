@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Steps 7 to 13 and the relying party's expectations, on synthetic signed
 //! packages built in-process. Every expected decision is stated by hand in
 //! the scenario or the test, never computed by the code under test.

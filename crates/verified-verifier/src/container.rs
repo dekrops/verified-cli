@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The container checks: protocol steps 1 to 6.
 
 use verified_canonical::{

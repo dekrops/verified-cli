@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The value model of `verified-json-v1`.
 
 use std::cmp::Ordering;

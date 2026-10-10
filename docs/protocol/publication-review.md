@@ -1,16 +1,19 @@
 # Publication review
 
-Status: **open — approval outstanding.** Owner of the decision: whoever holds
-the rights in `dekrops/verified`.
+Status: **partly decided.** The license (A) and the independent
+implementation (E) were decided on 2026-10-10. Publishing protocol material
+(B, C, D) is open. Owner of those decisions: whoever holds the rights in
+`dekrops/verified`.
 
-This repository is intended to become public under Apache-2.0. The material it
-depends on is in a private repository that grants no license. This document is
-the request: what would be published, where it comes from, and what is blocked
-until someone with the authority says yes.
+This repository is licensed under Apache-2.0 and is intended to become public.
+The protocol's specifications, vectors and examples are in a private
+repository that grants no license. This document is the request to publish
+them: what would be published, where it comes from, and what is blocked until
+their provenance has been reviewed.
 
-Until then: the repository stays private, nothing is published to a package
-registry, `LICENSE` grants nothing, and no file from `dekrops/verified` is
-present here.
+Until then: no file from `dekrops/verified` is present here. Independently of
+this review, the repository's visibility is not changed, nothing is published
+to a package registry and no release is made without explicit authorization.
 
 ## 1. Decisions requested
 
@@ -87,8 +90,8 @@ No Scala, JavaScript, Lean or Rust source. No schemas. Nothing from `apps/`,
 
 | Decision | Approved by | Date | Scope or conditions |
 | --- | --- | --- | --- |
-| A | | | |
-| B | | | |
-| C | | | |
-| D | | | |
-| E | | | |
+| A | Repository owner (licensing directive) | 2026-10-10 | Apache-2.0, repository-wide. Visibility, package publication and releases still need explicit authorization. |
+| B | | | Open: provenance review of the specifications. |
+| C | | | Open: provenance review of the corpus. |
+| D | | | Open: provenance review of the examples. |
+| E | Repository owner (licensing directive) | 2026-10-10 | The independent implementation is Apache-2.0. No proprietary source may be copied because the projects implement the same protocol. |

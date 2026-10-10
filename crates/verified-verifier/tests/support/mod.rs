@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Builds synthetic package containers for tests.
 //!
 //! Nothing here is real protocol data: component contents are placeholders,

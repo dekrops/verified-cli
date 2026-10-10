@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! `inputs.json`: the explicit parameters of one evaluation.
 
 use verified_canonical::Value;

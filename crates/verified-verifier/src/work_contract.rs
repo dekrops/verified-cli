@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! `wvp-0.2`: steps 7 to 13, with a Work Contract Language 1 contract.
 
 use std::collections::BTreeMap;

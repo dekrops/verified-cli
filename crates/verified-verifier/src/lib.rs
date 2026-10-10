@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Pure offline verification of Work Verification Protocol (WVP) packages.
 //!
 //! WVP is a **draft** protocol. [`verify`] takes the bytes of a package and

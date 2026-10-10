@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The components of a `wvp-0.2` package (draft).
 //!
 //! In this version the contract is data in Work Contract Language 1. Reading

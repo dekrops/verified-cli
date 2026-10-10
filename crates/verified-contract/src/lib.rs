@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Work Contract Language 1 (`work-contract-1`, semantics `kleene-1`).
 //!
 //! The language is a **draft**. A work contract states, as data, what must be

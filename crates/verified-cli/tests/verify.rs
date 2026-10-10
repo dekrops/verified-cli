@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The `verified` binary, run as a user would run it, on synthetic packages.
 
 #[path = "../../verified-verifier/tests/support/mod.rs"]

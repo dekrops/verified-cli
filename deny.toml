@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 # cargo-deny configuration. Run: cargo deny check
 
 [graph]
@@ -9,7 +11,7 @@ yanked = "deny"
 
 [licenses]
 version = 2
-# Permissive licenses compatible with the Apache-2.0 target. Additions are a
+# Permissive licenses compatible with this project's Apache-2.0 license. Additions are a
 # reviewed decision, not a convenience.
 # BSD-3-Clause: the dalek Ed25519 crates. It asks binary distributions to
 # reproduce its copyright notice, which a release process must do.
@@ -17,8 +19,8 @@ allow = ["Apache-2.0", "BSD-3-Clause", "MIT", "Unicode-3.0"]
 confidence-threshold = 0.93
 
 [licenses.private]
-# The workspace's own crates carry no license until IP approval (see LICENSE).
-ignore = true
+# The workspace's own crates are unpublished but licensed; check them too.
+ignore = false
 
 [bans]
 multiple-versions = "warn"

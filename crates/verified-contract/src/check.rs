@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The static rules: what makes a contract well formed. They are decidable
 //! from the contract alone, and a contract that breaks one is never
 //! evaluated (`CONTRACT_ILL_FORMED`).

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! `wvp-0.1`: steps 7 to 13, with the `order-transition` evaluator.
 
 use verified_canonical::Value;

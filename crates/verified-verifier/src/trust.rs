@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The relying party's trust, ready to verify with.
 
 use base64::Engine as _;

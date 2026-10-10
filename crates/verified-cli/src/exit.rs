@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Exit codes. They are part of the command-line interface: scripts rely on
 //! them, so they change only with a major version.
 

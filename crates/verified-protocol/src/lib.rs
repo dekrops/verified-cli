@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Typed representations of Work Verification Protocol (WVP) structures.
 //!
 //! WVP is a **draft** protocol. This crate models what a verifier reads:

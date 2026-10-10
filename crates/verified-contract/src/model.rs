@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! A contract as read, and the lexical rules its values follow.
 
 use std::collections::BTreeMap;

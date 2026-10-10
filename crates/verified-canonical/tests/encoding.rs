@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Known answers and adversarial input for `verified-json-v1`.
 //!
 //! The expected canonical texts here were written by hand from the rules in

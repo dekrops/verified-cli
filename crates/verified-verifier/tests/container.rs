@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The container checks, their order and their refusal codes, on synthetic
 //! packages built in-process.
 

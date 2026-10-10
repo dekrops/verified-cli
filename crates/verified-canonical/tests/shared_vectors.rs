@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The shared `verified-json-v1` corpus, when it is available.
 //!
 //! The corpus (`canonical-hash-v1.json`) is not part of this repository until

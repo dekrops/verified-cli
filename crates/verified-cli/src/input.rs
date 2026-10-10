@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Reading input files, bounded.
 
 use std::fs::File;

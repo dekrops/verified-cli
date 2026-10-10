@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The two evidence components, which describe the same statements.
 
 use verified_canonical::Value;

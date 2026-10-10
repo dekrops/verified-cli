@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Steps 9 and 10: each statement verifies under the registry, and the
 //! statements are the evidence of this claim.
 

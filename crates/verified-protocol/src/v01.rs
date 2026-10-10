@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The components of a `wvp-0.1` package (draft).
 //!
 //! In this version a contract names a transition rule that one evaluator,

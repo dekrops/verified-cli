@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The Work Contract Language 1 conformance corpus.
 //!
 //! The corpus is not part of this repository until its publication is

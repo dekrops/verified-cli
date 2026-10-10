@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! The WVP conformance corpus.
 //!
 //! The corpus is not part of this repository until its publication is

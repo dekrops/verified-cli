@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! `verified-json-v1` canonical encoding and the commitments built on it.
 //!
 //! Every hash and signature in the Work Verification Protocol (WVP, a draft)

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Reading closed shapes out of untrusted JSON.
 //!
 //! Every protocol object is closed: a member the protocol does not list, an
