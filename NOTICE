@@ -3,8 +3,13 @@ Copyright 2026 Krops GmbH
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
-This repository contains no third-party source code. Its compiled binaries
-link third-party Rust crates under the Apache-2.0, MIT, BSD-3-Clause and
+Its Rust sources contain no third-party code. One development file is
+third-party text: .github/ponytail-review.md, from
+https://github.com/DietrichGebert/ponytail, Copyright (c) 2026 DietrichGebert,
+under the MIT license reproduced in .github/ponytail-review.LICENSE. It is a
+review prompt used in CI and is not part of any binary.
+
+The compiled binaries link third-party Rust crates under the Apache-2.0, MIT, BSD-3-Clause and
 Unicode-3.0 licenses; a binary distribution must reproduce their notices.
 The BSD-3-Clause crates are:
 

@@ -58,3 +58,9 @@ conformance corpus, also run the tests as described in
 
 Architectural decisions are recorded in `docs/decisions/`. Add a record when a
 change alters a boundary, a guarantee or a dependency policy.
+
+## Review
+
+Pull requests from branches of this repository are reviewed automatically by
+Claude, in addition to the quality gate. What it checks, what its approval
+means and how it is set up: [`docs/development/code-review.md`](docs/development/code-review.md).
