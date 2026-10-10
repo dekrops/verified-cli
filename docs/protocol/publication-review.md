@@ -2,19 +2,19 @@
 
 Status: **decided.** All five decisions were made on 2026-10-10 by the
 owner of `dekrops/verified`. The protocol material is published in its own
-repository, [`dekrops/wvp`](https://github.com/dekrops/wvp), which is private
-until its license is chosen. It is not copied into this repository.
+repository, [`dekrops/wvp`](https://github.com/dekrops/wvp), which was made
+public on 2026-10-10. It is not copied into this repository.
 
-This repository is licensed under Apache-2.0 and is intended to become public.
+This repository is licensed under Apache-2.0 and has been public since
+2026-10-10.
 This document began as the request to publish the protocol's specifications,
 vectors and examples, which were then only in a private repository that grants
 no license. Sections 1 to 3 are that request as it was made; section 4 records
 the decisions.
 
 No file from `dekrops/verified` or `dekrops/wvp` is copied here. Independently
-of this review, the repository's visibility is not changed, nothing is
-published to a package registry and no release is made without explicit
-authorization.
+of this review, nothing is published to a package registry and no release is
+made without explicit authorization.
 
 ## 1. Decisions requested
 
@@ -95,7 +95,7 @@ No Scala, JavaScript, Lean or Rust source. No schemas. Nothing from `apps/`,
 | Decision | Approved by | Date | Scope or conditions |
 | --- | --- | --- | --- |
 | A | Repository owner (licensing directive) | 2026-10-10 | Apache-2.0, repository-wide. Visibility, package publication and releases still need explicit authorization. |
-| B | Repository owner | 2026-10-10 | Published in `dekrops/wvp`, exported from `dekrops/verified` at `880e419` with links to unpublished files removed; that repository's license is not yet chosen. |
+| B | Repository owner | 2026-10-10 | Published in `dekrops/wvp`, exported from `dekrops/verified` at `880e419` with links to unpublished files removed. Licensed and made public on 2026-10-10: CC BY 4.0 for specifications and other prose, Apache-2.0 for vectors, examples and every other file. |
 | C | Repository owner | 2026-10-10 | As B. Content reviewed before export: synthetic data only, invented names, test keys from published seeds. The work-unit vectors are included. |
 | D | Repository owner | 2026-10-10 | As B, with the Work Contract Language 1 examples beside its specification. |
 | E | Repository owner (licensing directive) | 2026-10-10 | The independent implementation is Apache-2.0. No proprietary source may be copied because the projects implement the same protocol. |

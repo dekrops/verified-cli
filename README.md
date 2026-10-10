@@ -161,8 +161,8 @@ cargo build --release --locked
 packages (supported, undetermined, contradicted, and two that are refused)
 with the registry to verify them under. They are synthetic test data, not the
 protocol's conformance corpus: the official specifications, vectors and
-examples are published in [`dekrops/wvp`](https://github.com/dekrops/wvp),
-private until its license is chosen. With access to it, see
+examples are published in [`dekrops/wvp`](https://github.com/dekrops/wvp). To
+run the tests against that corpus, see
 [`conformance/README.md`](conformance/README.md).
 
 ## A local workspace
@@ -293,7 +293,7 @@ Every command of the original plan exists. What is not built:
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - Coverage-guided fuzzing, and Windows in CI.
-- A first release: the repository is private, untagged and unpublished.
+- A first release: the repository is public, but untagged and unpublished.
 
 ## Relationship to WVP
 
@@ -352,8 +352,9 @@ project is the independent checking side, and it is genuinely independent:
 
 The protocol's specifications and conformance vectors are maintained with the
 platform. After review ([publication review](docs/protocol/publication-review.md))
-they are published in [`dekrops/wvp`](https://github.com/dekrops/wvp), private
-until its license is chosen. Nothing from it is copied here: the conformance
+they are published in [`dekrops/wvp`](https://github.com/dekrops/wvp), under
+CC BY 4.0 for the specifications and Apache-2.0 for the vectors and examples.
+Nothing from it is copied here: the conformance
 tests that need the corpus skip unless `VERIFIED_CONFORMANCE_DIR` points to it,
 and everything else runs on synthetic data built in this repository.
 
