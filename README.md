@@ -292,7 +292,9 @@ Every command of the original plan exists. What is not built:
 - A command for chains of evidence statements. The library verifies them
   (`verified_verifier::evidence`); no command does, and verifying a package
   does not.
-- Claim registration v1, a newer draft published beside WVP.
+- Most of claim registration v1, a newer draft published beside WVP. The
+  library verifies a registration (`verified_verifier::registration`); log
+  segments, audits, the unit check and commands are not built.
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - Coverage-guided fuzzing, and Windows in CI.

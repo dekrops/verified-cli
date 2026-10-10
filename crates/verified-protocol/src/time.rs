@@ -98,6 +98,19 @@ impl Instant {
         Some(Self { seconds, nanos })
     }
 
+    /// The instant `seconds` later, or earlier if negative. `None` if that
+    /// is beyond what an instant can hold.
+    #[must_use]
+    pub const fn plus_seconds(self, seconds: i64) -> Option<Self> {
+        match self.seconds.checked_add(seconds) {
+            Some(seconds) => Some(Self {
+                seconds,
+                nanos: self.nanos,
+            }),
+            None => None,
+        }
+    }
+
     /// Whole seconds since 1970-01-01T00:00:00Z, rounded toward the past:
     /// the second the instant falls in.
     #[must_use]
@@ -131,6 +144,19 @@ mod tests {
         assert_eq!(at("2000-02-29T12:00:00Z").epoch_seconds(), 951_825_600);
         assert_eq!(at("0000-01-01T00:00:00Z").epoch_seconds(), -62_167_219_200);
         assert_eq!(at("9999-12-31T23:59:59Z").epoch_seconds(), 253_402_300_799);
+    }
+
+    #[test]
+    fn adds_whole_seconds_and_keeps_the_fraction() {
+        assert_eq!(
+            at("2026-10-01T10:05:02.250Z").plus_seconds(14 * 86_400),
+            Some(at("2026-10-15T10:05:02.250Z"))
+        );
+        assert_eq!(
+            at("2026-01-01T00:00:00Z").plus_seconds(-1),
+            Some(at("2025-12-31T23:59:59Z"))
+        );
+        assert_eq!(at("2026-01-01T00:00:00Z").plus_seconds(i64::MAX), None);
     }
 
     #[test]

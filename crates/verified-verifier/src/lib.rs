@@ -47,6 +47,12 @@
 //! know. Asserted times are not authenticated either: the holder of a
 //! revoked key can backdate a statement into the key's validity period.
 //!
+//! # Claim registration
+//!
+//! [`registration`] verifies that a claim was registered: a separate draft
+//! protocol with its own objects, codes and trust configuration. Nothing in
+//! package verification depends on it.
+//!
 //! # Statements outside a package
 //!
 //! [`evidence`] authenticates single statements, verifies that a list of
@@ -59,6 +65,7 @@ pub mod evidence;
 mod inspect;
 mod json;
 mod order_transition;
+pub mod registration;
 mod report;
 mod statement;
 mod trust;

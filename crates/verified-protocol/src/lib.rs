@@ -22,6 +22,7 @@ mod decision;
 mod evidence;
 mod inputs;
 mod refusal;
+pub mod registration;
 mod registry;
 mod shape;
 mod statement;

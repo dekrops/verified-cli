@@ -51,13 +51,14 @@ pub enum TrustError {
     DuplicateKey(String, String),
 }
 
-fn decode(key: &TrustedKey) -> Result<VerifyingKey, TrustError> {
+/// Decodes the stated material of the Ed25519 key `key_id`.
+pub(crate) fn decode(key_id: &str, public_key: &str) -> Result<VerifyingKey, TrustError> {
     let fail = |problem| TrustError::KeyMaterial {
-        key_id: key.key_id.clone(),
+        key_id: key_id.to_owned(),
         problem,
     };
     let der = STANDARD
-        .decode(&key.public_key)
+        .decode(public_key)
         .map_err(|_| fail("publicKey is not standard base64"))?;
     let bytes: [u8; 32] = der
         .strip_prefix(&SPKI_PREFIX)
@@ -82,7 +83,7 @@ impl Trust {
         let mut decoded: Vec<Option<VerifyingKey>> = Vec::with_capacity(registry.keys().len());
         for (i, key) in registry.keys().iter().enumerate() {
             let material = (key.algorithm == ED25519)
-                .then(|| decode(key))
+                .then(|| decode(&key.key_id, &key.public_key))
                 .transpose()?;
             if let Some(material) = &material
                 && let Some(j) = decoded.iter().position(|d| d.as_ref() == Some(material))

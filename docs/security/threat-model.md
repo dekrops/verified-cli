@@ -70,6 +70,13 @@ relying party's own trust registry.
   statements held outside a package (`verified_verifier::evidence`), and a
   verified chain still says nothing about steps after its last: whoever
   passes statements on can leave off the end.
+- **A registration is not a verified claim.** `verify_registration`
+  establishes that a claim was made under an agreement both parties signed
+  and that a registry the relying party trusts received it at a stated time.
+  It does not establish that the work was done, that the registry applied
+  its own rules, or that nothing was removed from its log. The times the
+  parties state are not authenticated; only the registry's receipt time is,
+  and only as far as the relying party trusts that registry's clock.
 - **A chain anchor is trust configuration**, like the registry. One taken
   from the party whose statements are being checked proves nothing.
 - **A local attacker on the workspace directory.** The workspace refuses

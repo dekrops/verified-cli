@@ -61,7 +61,8 @@ version, then expectations. It is the only crate that verifies signatures,
 and it does so only with keys from a `Trust` the caller built from their own
 registry. Its `evidence` module applies the statement protocol's rules
 to statements held outside a package, including chains, which verifying a
-package does not check.
+package does not check. Its `registration` module verifies a claim
+registration, a separate draft protocol, under its own trust configuration.
 
 **`verified-workspace`** owns the `.verified` directory: where an imported
 package's bytes go, how they are named and re-checked, and the local import

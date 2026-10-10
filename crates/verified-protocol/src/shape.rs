@@ -149,6 +149,15 @@ pub(crate) fn int64(value: &Value, at: &At<'_>) -> Shape<i64> {
     }
 }
 
+/// An integer every implementation represents exactly: within ±(2⁵³ − 1).
+pub(crate) fn safe_integer(value: &Value, at: &At<'_>) -> Shape<i64> {
+    const MAX: i64 = (1 << 53) - 1;
+    match value.as_integer().and_then(Integer::to_i64) {
+        Some(n) if (-MAX..=MAX).contains(&n) => Ok(n),
+        _ => at.fail(ShapeProblem::Not("an integer within ±(2^53 − 1)")),
+    }
+}
+
 /// `{ "value": <text> }`.
 pub(crate) fn wrapped<'a>(value: &'a Value, at: &At<'_>) -> Shape<&'a str> {
     let object = object(value, at, &["value"])?;
