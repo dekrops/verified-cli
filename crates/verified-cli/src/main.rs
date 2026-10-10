@@ -9,6 +9,7 @@ mod cli;
 mod exit;
 mod input;
 mod render;
+mod trace;
 mod verify;
 mod workspace;
 
@@ -25,6 +26,8 @@ fn main() -> ExitCode {
         cli::Command::Import(command) => workspace::import(command, &mut out),
         cli::Command::Show(command) => workspace::show(command, &mut out),
         cli::Command::Log(_) => workspace::log(&mut out),
+        cli::Command::Trace(command) => trace::run(command, &mut out),
+        cli::Command::Fsck(_) => workspace::fsck(&mut out),
     };
     code.into()
 }

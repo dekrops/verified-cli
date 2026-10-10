@@ -49,6 +49,15 @@ pub enum Error {
         /// The object.
         stored: Stored,
     },
+    /// The import history is larger than this version reads. It was not
+    /// read, so nothing is known about what it records.
+    #[error("{}: the import history is larger than this version reads ({limit} bytes)", path.display())]
+    HistoryTooLarge {
+        /// The history file.
+        path: PathBuf,
+        /// The largest history that is read.
+        limit: u64,
+    },
     /// A stored object is larger than the reader's limit.
     #[error("{object} exceeds the size limit and was not read")]
     TooLarge {

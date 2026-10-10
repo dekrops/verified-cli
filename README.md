@@ -6,8 +6,8 @@ Inspect work claims, trace evidence, verify outcomes, and exchange portable
 work records, without trusting the system that produced them.
 
 > **Status: early, private, pre-release.** `verify` runs all thirteen of the
-> protocol's checks; `init`, `import`, `show` and `log` keep a local workspace
-> for inspection. The protocol is a draft.
+> protocol's checks; `init`, `import`, `show`, `log`, `trace` and `fsck` keep
+> and inspect a local workspace. The protocol is a draft.
 > Nothing here is audited, certified or production-hardened.
 >
 > **Open source under the [Apache License 2.0](LICENSE).** The repository is
@@ -107,7 +107,7 @@ $ echo $?
 | Exit | Meaning |
 | --- | --- |
 | 0 | Every protocol check ran and the package was not refused. **Without `--require-decision`, the reproduced decision may still be `CONTRADICTED` or `UNDETERMINED`.** |
-| 1 | Refused by a protocol check. |
+| 1 | Refused by a protocol check. `fsck`: damage found in the workspace. |
 | 2 | The command could not run (usage, unreadable input, unusable registry, resource limit). |
 | 3 | `verify`: not refused, but not every check ran (no registry). |
 | 4 | `verify --require-decision`: every check ran, but the reproduced decision is not the required one. |
@@ -219,19 +219,60 @@ shortened here.)
 - Stored packages are checked against their names every time they are read.
   A damaged one is reported, never shown.
 
+### Tracing a package and checking the workspace
+
+`trace` shows how the parts of one stored package relate. With your registry
+it verifies the package first, and the links it draws are the checked ones:
+
+```console
+$ verified trace d0982b73 --trust trust.json
+Trace of wvp:sha-256:d0982b73f310… (wvp-0.2, draft)
+Only what this package contains is shown. It links to no other package and carries no acceptance, finalization or ledger history.
+links                 checked: the package verified completely under the supplied registry
+
+claim                 00000000-0000-4000-8000-000000000500 (tenant tenant-test)
+  made against        contract posting-test 1.0.0, sha-256:6a2c3b0bf581…
+  relies on           1 evidence statement(s)
+  statement           00000000-0000-4000-8000-000000000001
+    asserts           Event observed in erp at 2026-03-01T10:00:00Z
+    signed with       key test-erp-gateway of issuer 00000000-0000-4000-8000-000000000101
+    commits to        record of kind posting
+
+decision recorded     SUPPORTED (the issuer's claim)
+decision reproduced   SUPPORTED, matches the package
+                        POSTED                      TRUE
+issuer signature      absent
+source truthfulness   NOT established: no check can establish it
+```
+
+- Without `--trust` the same picture is drawn from the package's own
+  statements and labelled `stated by the package, not checked`.
+- A trace never leaves the package. A standalone package names no other
+  package, no acceptance and no ledger entry, so none is drawn or implied.
+- With a registry, a `wvp-0.2` trace also marks evidence that is authentic but
+  that the contract ignored, because it does not accept that source.
+- If the package is refused under your registry, `trace` prints the refusal
+  and exits 1. It does not fall back to an unchecked trace.
+
+`fsck` reads every stored package, checks it against its names, compares the
+import history with what is stored, and reports anything in the workspace the
+tool did not write. It repairs nothing and exits 1 if it finds damage:
+
+```console
+$ verified fsck
+Checked 1 stored package(s) and 1 import record(s).
+
+no damage found. Every stored package is the content its names commit to; that says nothing about its signatures or its decision.
+```
+
 ## Where it is going
 
 ```sh
-verified trace <id>      # only relationships the artifact contains
-verified fsck            # check every stored object and the history
 verified export / diff / replay
 ```
 
-None of these exists yet. They arrive in order:
-
-1. **Provenance and integrity**: `trace`, `fsck`.
-2. **Portability**: `export`, `diff`, `replay` of authenticated histories,
-   and comparison of a package with a work record.
+None of these exists yet. **Portability** is next: `export`, `diff`, `replay`
+of authenticated histories, and comparison of a package with a work record.
 
 ## Relationship to WVP
 

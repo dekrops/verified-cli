@@ -46,14 +46,24 @@ Status: accepted and implemented in `verified-workspace`.
   format is refused, not migrated.
 - No embedded database until measurement shows flat files insufficient.
 
+## Checking
+
+`verified fsck` reads every object and checks it against both names, compares
+the history with the objects, and reports anything it did not write. It makes
+two kinds of finding. **Damage**: an object that does not match its names, a
+foreign file or symbolic link, an unreadable history line, a recorded import
+whose object is gone. **Harmless traces of an interrupted import**: a leftover
+temporary file, or an object with no import recorded. Only damage changes the
+exit code. `fsck` never repairs: deleting or rewriting is a person's decision.
+
 ## Limits
 
 - The symbolic-link checks defend against what a package could cause and
   against accidents. They are not a defense against another process racing
   this one on the same directory; a workspace belongs to one user.
 - Two imports at once are safe for objects (each is written whole or not at
-  all). The history is appended one short line at a time; `fsck`, when it
-  exists, is what will check it against the objects.
+  all). The history is appended one short line at a time; `fsck` checks it
+  against the objects.
 - Durability depends on the platform honoring flushes; where a directory
   cannot be synchronized, a crash can lose the newest object, never corrupt
   one.

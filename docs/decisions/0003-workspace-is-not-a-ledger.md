@@ -1,6 +1,7 @@
 # 0003. A local workspace is not an authoritative ledger
 
-Status: accepted and implemented (`init`, `import`, `show`, `log`).
+Status: accepted and implemented (`init`, `import`, `show`, `log`, `trace`,
+`fsck`).
 
 ## Decision
 
@@ -14,6 +15,10 @@ is specified, documented and displayed as exactly that:
   different commands' output, and are never merged into one timeline.
 - Relationships are shown only when an imported artifact contains them. A
   standalone package carries no acceptance or finalization; none is drawn.
+  `trace` therefore stays inside one package, says so, and labels its links
+  as stated by the package unless it verified the package under a supplied
+  registry in the same run. A package refused under that registry gets a
+  refusal, not an unchecked trace.
 - Verification results are not cached at all. `show` reports what a package
   states, labelled as the package's own statement; only `verify`, run now
   under a registry supplied now, reports anything as established. If results

@@ -16,7 +16,7 @@ use crate::{Error, ObjectId, Stored, Workspace};
 /// The identifier of the record encoding. A record is a workspace's own
 /// object, in its own versioned encoding; it is not a protocol structure.
 const RECORD: &str = "verified-import-1";
-const FILE: &str = "imports.log";
+use crate::store::HISTORY_FILE as FILE;
 /// The history is read whole. Beyond this it is not read at all.
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -101,9 +101,9 @@ impl Workspace {
         }
         let size = io(&path, std::fs::metadata(&path))?.len();
         if size > MAX_BYTES {
-            return Err(Error::Unsafe {
+            return Err(Error::HistoryTooLarge {
                 path,
-                what: "the import history is larger than this version reads",
+                limit: MAX_BYTES,
             });
         }
         let bytes = io(&path, std::fs::read(&path))?;

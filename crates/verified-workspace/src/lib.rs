@@ -33,6 +33,7 @@
 //! refused, objects are written atomically and never modified, and every
 //! object is checked against both of its names each time it is read.
 
+mod check;
 mod error;
 mod history;
 mod store;
@@ -43,6 +44,7 @@ use std::path::{Path, PathBuf};
 use verified_canonical::Sha256Digest;
 use verified_protocol::{PackageId, ProtocolVersion};
 
+pub use check::{Check, Problem};
 pub use error::{Error, ImportError, ResolveError};
 pub use history::{History, ImportRecord};
 

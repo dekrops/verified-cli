@@ -15,8 +15,9 @@ use crate::{
     DIRECTORY, Error, FORMAT, ImportError, Imported, ObjectId, ResolveError, Stored, Workspace,
 };
 
-const PACKAGES: &str = "packages";
-const FORMAT_FILE: &str = "format";
+pub(crate) const PACKAGES: &str = "packages";
+pub(crate) const FORMAT_FILE: &str = "format";
+pub(crate) const HISTORY_FILE: &str = "imports.log";
 /// The shortest prefix of an identifier that may name a stored package.
 const MIN_PREFIX: usize = 4;
 

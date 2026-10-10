@@ -93,7 +93,7 @@ first is a statement about the package.
 | Code | Meaning |
 | --- | --- |
 | 0 | Every protocol check ran; the package was not refused. A reproduced `CONTRADICTED` or `UNDETERMINED` also ends here. |
-| 1 | Refused by a protocol check. |
+| 1 | Refused by a protocol check. `fsck`: damage found in the workspace. |
 | 2 | The command could not run: usage, unreadable input, unusable registry, resource limit. |
 | 3 | Not refused, but not every check ran. |
 | 4 | `verify --require-decision`: every check ran, but the reproduced decision is not the required one. |
@@ -113,6 +113,9 @@ reproduced can meet the requirement; without a registry the exit code stays
 
 ## Not built yet
 
-`verified-history` (graph and provenance over imported artifacts) does not
-exist as a crate. No command that needs it is offered: there is no `trace`,
-and `log` shows import history only.
+`verified-history` (graph and provenance across imported artifacts) does not
+exist as a crate, because there is nothing for it to hold yet. A package
+names no other package, so `trace` is a view of one package, built in the CLI
+from the verifier's inspection, and `log` shows import history only. A graph
+across artifacts needs artifacts that link to each other, which arrive with
+exported histories.

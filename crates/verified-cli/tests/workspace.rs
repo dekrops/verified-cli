@@ -384,3 +384,210 @@ fn a_damaged_stored_package_is_reported_and_not_shown() {
         );
     }
 }
+
+#[test]
+fn fsck_reports_damage_with_exit_1_and_changes_nothing() {
+    let scratch = Scratch::new("fsck");
+    scratch.file("package.json", Scenario::posted().text().as_bytes());
+    scratch.run(&["init"]);
+    let imported = json(&scratch.run(&["import", "--json", "package.json"]));
+
+    let output = scratch.run(&["fsck"]);
+    let text = stdout(&output);
+    assert_eq!(output.status.code(), Some(0), "{text}");
+    assert!(
+        text.starts_with("Checked 1 stored package(s) and 1 import record(s).\n"),
+        "{text}"
+    );
+    assert!(text.contains("no damage found."), "{text}");
+    assert!(
+        text.contains("says nothing about its signatures or its decision"),
+        "{text}"
+    );
+    assert_eq!(json(&scratch.run(&["fsck", "--json"]))["outcome"], "clean");
+
+    let id = imported["package"]
+        .as_str()
+        .expect("package")
+        .trim_start_matches("wvp:sha-256:");
+    let object = imported["object"]
+        .as_str()
+        .expect("object")
+        .trim_start_matches("object:sha-256:");
+    let path = scratch
+        .0
+        .join(".verified/packages")
+        .join(&id[..2])
+        .join(&id[2..])
+        .join(object);
+    let original = std::fs::read_to_string(&path).expect("read");
+    let altered = original.replace("INV-1", "INV-2");
+    std::fs::write(&path, &altered).expect("write");
+    scratch.file(".verified/notes.txt", b"mine");
+
+    let output = scratch.run(&["fsck"]);
+    let text = stdout(&output);
+    assert_eq!(output.status.code(), Some(1), "{text}");
+    assert!(
+        text.contains("damaged               object:sha-256:"),
+        "{text}"
+    );
+    assert!(
+        text.contains("foreign               notes.txt: not something this tool writes\n"),
+        "{text}"
+    );
+    assert!(
+        text.ends_with("damage found: 2 problem(s). Nothing was changed.\n"),
+        "{text}"
+    );
+    assert_eq!(std::fs::read_to_string(&path).expect("read"), altered);
+
+    let output = scratch.run(&["fsck", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    let result = json(&output);
+    assert_eq!(result["outcome"], "damaged");
+    assert_eq!(result["problems"].as_array().map(Vec::len), Some(2));
+    assert_eq!(result["problems"][0]["damage"], true);
+    assert_eq!(scratch.run(&["fsck", "--quiet"]).status.code(), Some(1));
+
+    let empty = Scratch::new("fsck-outside");
+    assert_eq!(empty.run(&["fsck"]).status.code(), Some(2));
+}
+
+#[test]
+fn trace_draws_only_what_the_package_contains_and_says_whether_it_was_checked() {
+    let scratch = Scratch::new("trace");
+    let scenario = Scenario::posted();
+    scratch.file("package.json", scenario.text().as_bytes());
+    scratch.file(
+        "trust.json",
+        registry(&[&evidence_key()])
+            .to_canonical_string()
+            .as_bytes(),
+    );
+    scratch.file(
+        "other.json",
+        registry(&[&issuer_key()]).to_canonical_string().as_bytes(),
+    );
+    scratch.run(&["init"]);
+    let imported = json(&scratch.run(&["import", "--json", "package.json"]));
+    let id = imported["package"].as_str().expect("package");
+
+    // Without a registry: the package's own statements, and no decision of
+    // the tool's own.
+    let output = scratch.run(&["trace", id]);
+    let text = stdout(&output);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    for expected in [
+        "It links to no other package and carries no acceptance, finalization or ledger history.\n",
+        "links                 stated by the package, not checked (no trust registry)\n",
+        "  made against        contract posting-test 1.0.0, sha-256:",
+        "  relies on           1 evidence statement(s)\n",
+        "    asserts           Event observed in erp at 2026-03-01T10:00:00Z\n",
+        "    signed with       key test-erp-gateway of issuer ",
+        "    commits to        record of kind posting\n",
+        "decision recorded     SUPPORTED (the issuer's claim)\n",
+        "decision reproduced   not checked: no trust registry supplied\n",
+        "source truthfulness   NOT established: no check can establish it\n",
+    ] {
+        assert!(text.contains(expected), "{expected:?} in {text}");
+    }
+
+    // With the relying party's registry: verified first, then traced.
+    let output = scratch.run(&["trace", id, "--trust", "trust.json"]);
+    let text = stdout(&output);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(text.contains("links                 checked: the package verified completely under the supplied registry\n"), "{text}");
+    assert!(
+        text.contains("decision reproduced   SUPPORTED, matches the package\n"),
+        "{text}"
+    );
+    let traced = json(&scratch.run(&["trace", "--json", id, "--trust", "trust.json"]));
+    assert_eq!(traced["links"], "checked");
+    // The same digest shape as `verify --json` and `show --json`.
+    assert_eq!(traced["contract"]["digest"]["algorithm"], "sha-256");
+    assert_eq!(
+        traced["contract"]["digest"]["hex"],
+        scenario.contract.digest().to_hex()
+    );
+    assert_eq!(traced["evidence"][0]["listedByClaim"], true);
+    assert_eq!(traced["evidence"][0]["ignoredByContract"], false);
+    assert_eq!(traced["decision"]["reproduced"]["decision"], "SUPPORTED");
+    let untrusted = json(&scratch.run(&["trace", "--json", id]));
+    assert_eq!(untrusted["links"], "stated_not_checked");
+    assert_eq!(
+        untrusted["evidence"][0]["ignoredByContract"],
+        serde_json::Value::Null
+    );
+    assert_eq!(untrusted["decision"]["recorded"], "SUPPORTED");
+    assert_eq!(untrusted["decision"]["reproduced"]["status"], "not_checked");
+
+    // Under a registry that does not hold the signer, there is no checked
+    // trace, and an unchecked one is not offered in its place.
+    let output = scratch.run(&["trace", "--json", id, "--trust", "other.json"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(json(&output)["refusal"]["code"], "UNKNOWN_KEY");
+}
+
+#[test]
+fn trace_shows_evidence_the_contract_ignored_and_evidence_the_claim_lacks() {
+    let scratch = Scratch::new("trace-ignored");
+    let agent = support::Key::new("test-agent-runtime", 3, &["agent"]);
+    let mut scenario = Scenario::posted();
+    scenario.items[0].key = agent.clone();
+    scenario.items[0].source = "agent".to_owned();
+    scenario.outcome = support::json(&format!(
+        r#"{{"decision": "UNDETERMINED", "requirements": [{{"id": "POSTED", "value": "UNKNOWN"}}],
+            "ignored": ["e-{}"], "conflicts": []}}"#,
+        support::uuid(1)
+    ));
+    scratch.file("package.json", scenario.text().as_bytes());
+    scratch.file(
+        "trust.json",
+        registry(&[&agent]).to_canonical_string().as_bytes(),
+    );
+    scratch.run(&["init"]);
+    let id = json(&scratch.run(&["import", "--json", "package.json"]))["package"]
+        .as_str()
+        .expect("package")
+        .to_owned();
+
+    let text = stdout(&scratch.run(&["trace", &id, "--trust", "trust.json"]));
+    assert!(
+        text.contains(
+            "authentic, and ignored: the contract does not accept this source for this kind\n"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.contains("decision reproduced   UNDETERMINED, matches the package\n"),
+        "{text}"
+    );
+    // Without a registry nothing is known about what the contract ignores.
+    assert!(!stdout(&scratch.run(&["trace", &id])).contains("ignored"));
+
+    // A claim that lists evidence the package does not carry has integrity,
+    // so it can be stored and traced; verification would refuse it.
+    let mut lacking = Scenario::posted();
+    lacking.claim = support::replaced(
+        &lacking.claim,
+        &["evidence"],
+        Some(support::list([
+            support::wrapped(support::uuid(1)),
+            support::wrapped(support::uuid(7)),
+        ])),
+    );
+    scratch.file("lacking.json", lacking.text().as_bytes());
+    let id = json(&scratch.run(&["import", "--json", "lacking.json"]))["package"]
+        .as_str()
+        .expect("package")
+        .to_owned();
+    let text = stdout(&scratch.run(&["trace", &id]));
+    assert!(
+        text.contains(&format!(
+            "  not carried         {}: listed by the claim, absent from the package\n",
+            support::uuid(7)
+        )),
+        "{text}"
+    );
+}

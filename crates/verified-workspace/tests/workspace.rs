@@ -490,3 +490,208 @@ fn damaged_history_lines_are_counted_and_never_guessed_at() {
     assert_eq!(history.records[0].imported_at_unix, 10);
     assert_eq!(history.damaged, 3);
 }
+
+// ---- checking a whole workspace --------------------------------------------
+
+use verified_workspace::{Problem, Stored};
+
+fn object_path(workspace: &Workspace, stored: &Stored) -> PathBuf {
+    let hex = stored.package.commitment().to_hex();
+    workspace
+        .directory()
+        .join("packages")
+        .join(&hex[..2])
+        .join(&hex[2..])
+        .join(stored.object.digest().to_hex())
+}
+
+#[test]
+fn a_sound_workspace_checks_clean_and_is_not_changed_by_checking() {
+    let scratch = Scratch::new("check-clean");
+    let workspace = scratch.workspace();
+    assert_eq!(workspace.check(&LIMITS).expect("checked").problems, []);
+
+    workspace
+        .import(Scenario::posted().text().as_bytes(), 1, &LIMITS)
+        .expect("imported");
+    workspace
+        .import(Scenario::shipped().text().as_bytes(), 2, &LIMITS)
+        .expect("imported");
+    workspace
+        .import(Scenario::shipped().text().as_bytes(), 3, &LIMITS)
+        .expect("imported");
+    let before = files(workspace.directory());
+    let check = workspace.check(&LIMITS).expect("checked");
+    assert_eq!((check.objects, check.records), (2, 3));
+    assert_eq!(check.problems, []);
+    assert!(!check.has_damage());
+    assert_eq!(files(workspace.directory()), before);
+}
+
+#[test]
+fn every_kind_of_damage_is_found_in_one_pass_and_nothing_is_repaired() {
+    let scratch = Scratch::new("check-damage");
+    let workspace = scratch.workspace();
+    let posted = workspace
+        .import(Scenario::posted().text().as_bytes(), 1, &LIMITS)
+        .expect("imported")
+        .stored;
+    let shipped = workspace
+        .import(Scenario::shipped().text().as_bytes(), 2, &LIMITS)
+        .expect("imported")
+        .stored;
+
+    // One object altered, one deleted, a foreign file in two places, and a
+    // history line that is not a record.
+    let text = std::fs::read_to_string(object_path(&workspace, &posted)).expect("read");
+    std::fs::write(
+        object_path(&workspace, &posted),
+        text.replace("INV-1", "INV-2"),
+    )
+    .expect("write");
+    std::fs::remove_file(object_path(&workspace, &shipped)).expect("remove");
+    std::fs::write(workspace.directory().join("notes.txt"), "mine").expect("write");
+    std::fs::write(
+        workspace.directory().join("packages").join("zz"),
+        "not a directory",
+    )
+    .expect("write");
+    let log = workspace.directory().join("imports.log");
+    let mut history = std::fs::read(&log).expect("read");
+    history.extend_from_slice(b"garbage\n");
+    std::fs::write(&log, history).expect("write");
+
+    let before = files(workspace.directory());
+    let check = workspace.check(&LIMITS).expect("checked");
+    assert!(check.has_damage());
+    assert_eq!(check.objects, 1);
+    let found = |wanted: fn(&Problem) -> bool| check.problems.iter().filter(|p| wanted(p)).count();
+    assert_eq!(found(|p| matches!(p, Problem::Damaged { .. })), 1);
+    assert_eq!(found(|p| matches!(p, Problem::MissingObject { .. })), 1);
+    assert_eq!(
+        found(|p| matches!(p, Problem::DamagedHistory { lines: 1 })),
+        1
+    );
+    let foreign: Vec<&Path> = check
+        .problems
+        .iter()
+        .filter_map(|p| match p {
+            Problem::Foreign { path } => Some(path.as_path()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        foreign,
+        [Path::new("notes.txt"), &Path::new("packages").join("zz")]
+    );
+    assert!(check.problems.iter().all(Problem::is_damage));
+    assert!(matches!(
+        &check.problems.iter().find(|p| matches!(p, Problem::Damaged { .. })),
+        Some(Problem::Damaged { stored, .. }) if *stored == posted
+    ));
+    assert_eq!(files(workspace.directory()), before);
+}
+
+#[test]
+fn traces_of_an_interrupted_import_are_reported_as_harmless() {
+    let scratch = Scratch::new("check-interrupted");
+    let workspace = scratch.workspace();
+    let stored = workspace
+        .import(Scenario::posted().text().as_bytes(), 1, &LIMITS)
+        .expect("imported")
+        .stored;
+    // Interrupted before the object was renamed into place, and (another
+    // time) after it was stored but before the import was recorded.
+    let leftover = object_path(&workspace, &stored).with_file_name(".tmp-99-0");
+    std::fs::write(&leftover, "partial").expect("write");
+    std::fs::write(workspace.directory().join("imports.log"), "").expect("truncate");
+
+    let check = workspace.check(&LIMITS).expect("checked");
+    assert!(!check.has_damage(), "{:?}", check.problems);
+    assert_eq!(check.problems.len(), 2);
+    assert!(
+        check
+            .problems
+            .iter()
+            .any(|p| matches!(p, Problem::Leftover { .. }))
+    );
+    assert!(
+        check
+            .problems
+            .iter()
+            .any(|p| matches!(p, Problem::Unrecorded { stored: s } if *s == stored))
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symbolic_link_in_the_store_is_found_and_not_followed() {
+    use std::os::unix::fs::symlink;
+
+    let scratch = Scratch::new("check-symlink");
+    let workspace = scratch.workspace();
+    let text = Scenario::posted().text();
+    let stored = workspace
+        .import(text.as_bytes(), 1, &LIMITS)
+        .expect("imported")
+        .stored;
+    let outside = scratch.0.join("outside.json");
+    std::fs::write(&outside, &text).expect("write");
+    std::fs::remove_file(object_path(&workspace, &stored)).expect("remove");
+    symlink(&outside, object_path(&workspace, &stored)).expect("link");
+
+    let check = workspace.check(&LIMITS).expect("checked");
+    assert!(check.has_damage());
+    // The link is foreign, so the object it stands in for is missing.
+    assert_eq!(check.objects, 0);
+    assert!(
+        check
+            .problems
+            .iter()
+            .any(|p| matches!(p, Problem::Foreign { .. }))
+    );
+    assert!(
+        check
+            .problems
+            .iter()
+            .any(|p| matches!(p, Problem::MissingObject { .. }))
+    );
+}
+
+#[test]
+fn a_history_too_large_to_read_is_damage_and_proves_nothing_about_the_objects() {
+    let scratch = Scratch::new("check-oversized");
+    let workspace = scratch.workspace();
+    workspace
+        .import(Scenario::posted().text().as_bytes(), 1, &LIMITS)
+        .expect("imported");
+    // Grown past what is read, without writing the bytes.
+    let log = std::fs::OpenOptions::new()
+        .write(true)
+        .open(workspace.directory().join("imports.log"))
+        .expect("open");
+    log.set_len(64 * 1024 * 1024 + 1).expect("extend");
+
+    assert!(matches!(
+        workspace.history(),
+        Err(Error::HistoryTooLarge { .. })
+    ));
+    let check = workspace.check(&LIMITS).expect("checked");
+    assert!(check.has_damage());
+    assert_eq!(check.objects, 1);
+    assert!(
+        matches!(
+            check.problems.as_slice(),
+            [Problem::UnreadableHistory { .. }]
+        ),
+        "{:?}",
+        check.problems
+    );
+    // In particular the stored object is not called unrecorded.
+    assert!(
+        !check
+            .problems
+            .iter()
+            .any(|p| matches!(p, Problem::Unrecorded { .. }))
+    );
+}

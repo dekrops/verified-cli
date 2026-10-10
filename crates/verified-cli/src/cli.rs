@@ -14,6 +14,7 @@ Exit codes:
      it reproduced may still be CONTRADICTED or UNDETERMINED, unless
      --require-decision was given
   1  the package was refused; the refusal code is printed
+     fsck: damage was found in the workspace
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
@@ -93,7 +94,37 @@ pub(crate) enum Command {
     /// local and unauthenticated: not a history of work, and not evidence
     /// of anything.
     Log(Log),
+    /// Show how the parts of one stored package relate
+    ///
+    /// The claim, the contract it names, the evidence it relies on, who is
+    /// said to have signed each statement, and the decision. Only what the
+    /// package itself contains is shown: a package links to no other package
+    /// and carries no acceptance or ledger history, so none is drawn.
+    ///
+    /// Without --trust every link is the package's own statement. With it,
+    /// the package is verified first and the links are the checked ones.
+    Trace(Trace),
+    /// Check every stored package and the import history
+    ///
+    /// Reads each stored package and checks it against its names, compares
+    /// the import history with what is stored, and reports anything in the
+    /// workspace this tool did not write. Nothing is repaired or changed.
+    /// Exits 1 if damage is found.
+    Fsck(Fsck),
 }
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Trace {
+    /// A package identifier (`wvp:sha-256:…`), an object identifier
+    /// (`object:sha-256:…`), or at least 4 leading hexadecimal characters
+    pub(crate) package: String,
+    /// Your trust registry: verify the package before tracing it
+    #[arg(long, value_name = "REGISTRY")]
+    pub(crate) trust: Option<PathBuf>,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Fsck {}
 
 #[derive(Debug, ClapArgs)]
 pub(crate) struct Init {

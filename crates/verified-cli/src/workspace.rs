@@ -10,7 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::json;
 use verified_canonical::Limits;
 use verified_verifier::{Inspection, Options, Rejection, inspect};
-use verified_workspace::{ImportError, ResolveError, Stored, Workspace};
+use verified_workspace::{ImportError, Problem, ResolveError, Stored, Workspace};
 
 use crate::cli::{Import, Init, Show};
 use crate::exit::Exit;
@@ -27,7 +27,7 @@ fn current_directory() -> Result<std::path::PathBuf, String> {
     std::env::current_dir().map_err(|error| format!("cannot find the current directory: {error}"))
 }
 
-fn discover() -> Result<Workspace, String> {
+pub(crate) fn discover() -> Result<Workspace, String> {
     Workspace::discover(&current_directory()?).map_err(|error| error.to_string())
 }
 
@@ -54,7 +54,7 @@ pub(crate) fn load(name: &str, limits: &Limits) -> Result<(Stored, Vec<u8>), Str
 }
 
 /// Seconds since 1970-01-01T00:00:00Z as `YYYY-MM-DDTHH:MM:SSZ`.
-fn utc(unix: u64) -> String {
+pub(crate) fn utc(unix: u64) -> String {
     let days = unix / 86_400;
     let (hour, minute, second) = ((unix % 86_400) / 3_600, (unix % 3_600) / 60, unix % 60);
     // Days to a civil date, by eras of 400 years starting on 1 March.
@@ -387,6 +387,103 @@ pub(crate) fn log(out: &mut Output) -> Exit {
         }
     }
     Exit::Complete
+}
+
+/// One finding as a short tag and a sentence.
+fn describe(problem: &Problem) -> (&'static str, String) {
+    match problem {
+        Problem::Damaged { stored, detail } => (
+            "damaged",
+            format!("{} of {}: {detail}", stored.object, stored.package),
+        ),
+        Problem::Foreign { path } => (
+            "foreign",
+            format!("{}: not something this tool writes", path.display()),
+        ),
+        Problem::DamagedHistory { lines } => (
+            "history",
+            format!("{lines} line(s) of the import history cannot be read"),
+        ),
+        Problem::UnreadableHistory { detail } => (
+            "history",
+            format!("{detail}; it was not compared with the stored packages"),
+        ),
+        Problem::MissingObject { record } => (
+            "missing",
+            format!(
+                "{} of {}: imported {}, and no longer stored",
+                record.stored.object,
+                record.stored.package,
+                utc(record.imported_at_unix)
+            ),
+        ),
+        Problem::Leftover { path } => (
+            "leftover",
+            format!(
+                "{}: temporary file of an interrupted import (harmless)",
+                path.display()
+            ),
+        ),
+        Problem::Unrecorded { stored } => (
+            "unrecorded",
+            format!(
+                "{} of {}: stored, with no import recorded (harmless)",
+                stored.object, stored.package
+            ),
+        ),
+    }
+}
+
+pub(crate) fn fsck(out: &mut Output) -> Exit {
+    let checked = discover().and_then(|workspace| {
+        workspace
+            .check(&Limits::DEFAULT)
+            .map_err(|error| error.to_string())
+    });
+    let check = match checked {
+        Ok(check) => check,
+        Err(message) => return failed(out, "WORKSPACE", &message),
+    };
+    let damaged = check.has_damage();
+    match out.mode {
+        Mode::Quiet => {}
+        Mode::Json => out.json(&json!({
+            "outcome": if damaged { "damaged" } else { "clean" },
+            "objects": check.objects,
+            "records": check.records,
+            "problems": check.problems.iter().map(|problem| {
+                let (kind, detail) = describe(problem);
+                json!({ "kind": kind, "damage": problem.is_damage(), "detail": detail })
+            }).collect::<Vec<_>>(),
+            "note": "integrity of the stored bytes only; no signature was checked and no decision reproduced",
+        })),
+        Mode::Human => {
+            out.line(&format!(
+                "Checked {} stored package(s) and {} import record(s).",
+                check.objects, check.records
+            ));
+            for problem in &check.problems {
+                let (kind, detail) = describe(problem);
+                let tone = if problem.is_damage() { Tone::Negative } else { Tone::Unknown };
+                out.rows(&[Row::new(kind, tone, detail)]);
+            }
+            out.line("");
+            if damaged {
+                let count = check.problems.iter().filter(|p| p.is_damage()).count();
+                out.line(&format!("damage found: {count} problem(s). Nothing was changed."));
+            } else {
+                out.line(
+                    "no damage found. Every stored package is the content its names commit to; \
+                     that says nothing about its signatures or its decision.",
+                );
+            }
+        }
+    }
+    if damaged {
+        Exit::Refused
+    } else {
+        Exit::Complete
+    }
 }
 
 #[cfg(test)]
