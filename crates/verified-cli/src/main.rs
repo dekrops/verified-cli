@@ -9,6 +9,7 @@ mod cli;
 mod exit;
 mod input;
 mod portable;
+mod registration;
 mod render;
 mod trace;
 mod verify;
@@ -32,6 +33,12 @@ fn main() -> ExitCode {
         cli::Command::Export(command) => portable::export(command, &mut out),
         cli::Command::Diff(command) => portable::diff(command, &mut out),
         cli::Command::Replay(command) => portable::replay(command, &mut out),
+        cli::Command::Registration(cli::Registration::Verify(command)) => {
+            registration::verify(command, &mut out)
+        }
+        cli::Command::Registration(cli::Registration::Log(command)) => {
+            registration::log(command, &mut out)
+        }
     };
     code.into()
 }

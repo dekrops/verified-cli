@@ -77,6 +77,12 @@ relying party's own trust registry.
   its own rules, or that nothing was removed from its log. The times the
   parties state are not authenticated; only the registry's receipt time is,
   and only as far as the relying party trusts that registry's clock.
+- **A verified log segment says nothing about the end of the log.** A
+  registry can withhold its latest entries, and nothing here detects that.
+  A registry that removes an entry and renumbers the rest produces a log
+  that verifies on its own; it is contradicted only by someone holding a
+  signed entry from before the change (`--held`). The anchor of a segment
+  is the relying party's own, like its keys.
 - **A chain anchor is trust configuration**, like the registry. One taken
   from the party whose statements are being checked proves nothing.
 - **A local attacker on the workspace directory.** The workspace refuses

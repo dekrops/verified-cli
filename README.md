@@ -285,6 +285,36 @@ under. Every member is a function of the package, so two verifiers compute the
 same record; `verify --json` prints it as `workRecord`. A record says a
 decision was reached. It is not an acceptance.
 
+## Claim registration
+
+Claim registration v1 is a draft protocol published beside WVP. A claim is
+registered at a registry two parties agreed on, before any evidence is asked
+for, so that a party who never answers leaves a record. Two commands check
+what a registry signed, offline, under keys you choose to trust:
+
+```sh
+# Was this claim registered, under an agreement both parties signed?
+verified registration verify --trust keys.json \
+    --agreement agreement.json --claim claim.json --receipt receipt.json
+
+# Is this run of the registry's log intact, and is my receipt in it?
+verified registration log --trust keys.json log.jsonl --held receipt.json
+```
+
+`keys.json` is `{ "parties": [ … ], "registries": [ … ] }`: your keys for
+the two parties and for the registry. A log file holds one signed entry per
+line. With `--held`, the log command reports whether the log has your entry
+at its position (`INCLUDED`), does not reach it (`NOT_COVERED`, exit code 3)
+or has another entry there (`EQUIVOCATION`, exit code 1): the registry
+signed both, which shows that it rewrote its log.
+
+A verified registration shows that the claim was made and received, and when
+an answer is due. It does not show that the claim is true. A verified run of
+a log shows that nothing was inserted, removed or altered inside it; it shows
+nothing about entries after its last, or about whether the registry kept its
+own rules. Checking those rules needs the protocol's audit, which is not
+built.
+
 ## Where it is going
 
 Every command of the original plan exists. What is not built:
@@ -292,9 +322,8 @@ Every command of the original plan exists. What is not built:
 - A command for chains of evidence statements. The library verifies them
   (`verified_verifier::evidence`); no command does, and verifying a package
   does not.
-- Most of claim registration v1, a newer draft published beside WVP. The
-  library verifies a registration (`verified_verifier::registration`); log
-  segments, audits, the unit check and commands are not built.
+- The rest of claim registration v1: the audit of a whole log (with
+  responses, notices and disputes) and the unit check.
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - Coverage-guided fuzzing, and Windows in CI.

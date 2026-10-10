@@ -28,8 +28,10 @@
 //!   state are not authenticated. The registry's receipt time is, by a key
 //!   the relying party chose to trust for honest time and order.
 //!
-//! Log segments, responses, closures, notices, disputes, audits and the
-//! unit check are parts of the protocol this module does not implement.
+//! [`log`] checks a run of a registry's log, and a held entry against it.
+//!
+//! Responses, notices, disputes, the audit of a whole log and the unit
+//! check are parts of the protocol this module does not implement.
 
 use ed25519_dalek::VerifyingKey;
 use verified_canonical::{Limits, Sha256Digest, SigningDomain, Value, parse_canonical};
@@ -42,6 +44,8 @@ use verified_protocol::{Instant, IssuerSignature, WireDigest};
 
 use crate::trust::{ED25519, TrustError, decode, verifies};
 
+pub mod log;
+
 /// Why a registration was refused.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("{code}: {detail}")]
@@ -52,9 +56,9 @@ pub struct RegistrationRefusal {
     pub detail: String,
 }
 
-type Checked<T> = Result<T, RegistrationRefusal>;
+pub(crate) type Checked<T> = Result<T, RegistrationRefusal>;
 
-fn refuse<T>(code: RegistrationCode, detail: impl Into<String>) -> Checked<T> {
+pub(crate) fn refuse<T>(code: RegistrationCode, detail: impl Into<String>) -> Checked<T> {
     Err(RegistrationRefusal {
         code,
         detail: detail.into(),
@@ -63,7 +67,7 @@ fn refuse<T>(code: RegistrationCode, detail: impl Into<String>) -> Checked<T> {
 
 /// A key with its decoded material, or `None` for an algorithm this
 /// verifier does not support.
-type Decoded = (RegistrationKey, Option<VerifyingKey>);
+pub(crate) type Decoded = (RegistrationKey, Option<VerifyingKey>);
 
 /// The relying party's keys for registrations, ready to verify with.
 ///
@@ -72,7 +76,7 @@ type Decoded = (RegistrationKey, Option<VerifyingKey>);
 #[derive(Clone, Debug)]
 pub struct RegistrationTrust {
     parties: Vec<Decoded>,
-    registries: Vec<Decoded>,
+    pub(crate) registries: Vec<Decoded>,
 }
 
 impl RegistrationTrust {
@@ -146,26 +150,26 @@ pub struct Registration {
     pub respond_by: String,
 }
 
-fn canonical(text: &[u8], what: &str) -> Checked<Value> {
+pub(crate) fn canonical(text: &[u8], what: &str) -> Checked<Value> {
     parse_canonical(text, &Limits::DEFAULT)
         .or_else(|e| refuse(RegistrationCode::Malformed, format!("the {what}: {e}")))
 }
 
-fn is_hex_digest(digest: WireDigest<'_>) -> bool {
+pub(crate) fn is_hex_digest(digest: WireDigest<'_>) -> bool {
     digest.hex.parse::<Sha256Digest>().is_ok()
 }
 
 /// A signature and what it is over.
-struct Signing<'a> {
-    signature: IssuerSignature<'a>,
-    domain: SigningDomain,
-    object: &'a Value,
-    what: &'a str,
+pub(crate) struct Signing<'a> {
+    pub(crate) signature: IssuerSignature<'a>,
+    pub(crate) domain: SigningDomain,
+    pub(crate) object: &'a Value,
+    pub(crate) what: &'a str,
 }
 
 /// One signature: the key is known, is Ed25519, belongs to `holder`, was
 /// valid at `at`, and the signature verifies. In that order.
-fn signed(
+pub(crate) fn signed(
     keys: &[Decoded],
     holder: &str,
     other_holder: RegistrationCode,

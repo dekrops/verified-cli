@@ -38,7 +38,7 @@ Six test files use it:
 | `verified-contract/tests/conformance.rs` | `work-contract/v1` | The whole expected result of every case: decision, requirement values, ignored records, conflicts, or the refusal. |
 | `verified-work-unit/tests/work_unit.rs` | `work-unit/v1/vectors.json` | Every key commitment, canonical identity and nullifier. |
 | `verified-verifier/tests/evidence_conformance.rs` | `evidence-statement/v1` | The refusal code of every refused statement, chain and admission; the key, canonical text and digests of every accepted statement; the summary of every accepted chain; the evidence manifest of every accepted admission. Not the platform's verification result. |
-| `verified-verifier/tests/registration_conformance.rs` | `claim-registration/v1/vectors.json` | The refusal code of every refused registration, and every stated fact of every accepted one. |
+| `verified-verifier/tests/registration_conformance.rs` | `claim-registration/v1/vectors.json`, `log.json` | The refusal code of every refused registration, and every stated fact of every accepted one. For logs: the refusal code, the segment's summary, or how the held entry relates to it. |
 | `verified-verifier/tests/conformance.rs` | `wvp/v0.1`, `wvp/v0.2`, `expectations.json`, the worked examples | The whole expected report or refusal of every vector, under the registry the vector supplies. |
 
 ## In CI
@@ -51,7 +51,9 @@ commit and the results in
 pull request.
 
 Part of the corpus has no test here yet and is not counted: of
-`claim-registration/v1`, only `vectors.json` (registrations) is run.
+`claim-registration/v1`, `vectors.json` (registrations) and `log.json` (log
+segments and held entries) are run; `audit.json`, `notice.json`,
+`dispute.json` and `unit.json` are not.
 
 ## Synthetic examples are something else
 

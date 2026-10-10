@@ -38,6 +38,10 @@ pub const AGREEMENT_DOMAIN: SigningDomain = domain("verified:claim-agreement:v1\
 pub const CLAIM_DOMAIN: SigningDomain = domain("verified:claim-commitment:v1\n");
 /// The domain a registry signs a receipt under.
 pub const RECEIPT_DOMAIN: SigningDomain = domain("verified:claim-receipt:v1\n");
+/// The domain a registry signs a closure under.
+pub const CLOSURE_DOMAIN: SigningDomain = domain("verified:claim-closure:v1\n");
+/// The domain a registry signs a dispute record under.
+pub const DISPUTE_RECORD_DOMAIN: SigningDomain = domain("verified:claim-dispute-record:v1\n");
 
 /// The algorithm name of a work unit's nullifier.
 pub const NULLIFIER_ALGORITHM: &str = "hmac-sha-256";
@@ -84,6 +88,23 @@ pub enum RegistrationCode {
     ClaimedAfterReceipt,
     /// The deadline is not the receipt time plus the agreed window.
     DeadlineMismatch,
+    /// Entries of a log segment, or its anchor, are from different
+    /// registries.
+    MixedRegistries,
+    /// Two different entries at one position of a log.
+    Equivocation,
+    /// Entries not in ascending order of position.
+    Reordered,
+    /// Without an anchor, a segment that does not start at position 0.
+    GenesisInvalid,
+    /// An entry that is not at the position after its predecessor's.
+    Gap,
+    /// An entry that does not name the entry before it.
+    PreviousMismatch,
+    /// An entry recorded before the one before it.
+    TimeReversed,
+    /// A claim registered at two positions of a log.
+    DuplicateClaim,
 }
 
 impl RegistrationCode {
@@ -107,6 +128,14 @@ impl RegistrationCode {
             Self::AgreementNotInForce => "AGREEMENT_NOT_IN_FORCE",
             Self::ClaimedAfterReceipt => "CLAIMED_AFTER_RECEIPT",
             Self::DeadlineMismatch => "DEADLINE_MISMATCH",
+            Self::MixedRegistries => "MIXED_REGISTRIES",
+            Self::Equivocation => "EQUIVOCATION",
+            Self::Reordered => "REORDERED",
+            Self::GenesisInvalid => "GENESIS_INVALID",
+            Self::Gap => "GAP",
+            Self::PreviousMismatch => "PREVIOUS_MISMATCH",
+            Self::TimeReversed => "TIME_REVERSED",
+            Self::DuplicateClaim => "DUPLICATE_CLAIM",
         }
     }
 }
@@ -384,6 +413,225 @@ impl<'a> SignedReceipt<'a> {
             respond_by: time(member("respondBy"), &at.member("respondBy"))?,
             signature: signature(shape::get(outer, "signature"), &root.member("signature"))?,
         })
+    }
+}
+
+/// What an entry of a registry's log records, beyond what all entries have.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EntryKind<'a> {
+    /// A receipt: the registry received a claim.
+    Receipt {
+        /// When the respondent must have answered.
+        respond_by: StatedTime<'a>,
+    },
+    /// A closure: the claim was responded to, expired, or was withdrawn or
+    /// replaced by its claimant. The digest is the stated one of the
+    /// response or notice the closure rests on; an expiry rests on none.
+    Closure {
+        /// The case: `Responded`, `Expired`, `Withdrawn` or `Superseded`.
+        closing: &'a str,
+        /// The response or notice named.
+        rests_on: Option<WireDigest<'a>>,
+    },
+    /// A dispute record: a dispute of the claim was opened or resolved. The
+    /// digest is the stated one of the dispute or the resolution.
+    DisputeRecord {
+        /// The case: `Opened` or `Resolved`.
+        step: &'a str,
+        /// The dispute or resolution named.
+        names: WireDigest<'a>,
+    },
+}
+
+/// An entry of a registry's log with the registry's signature, of the right
+/// structure: a receipt, a closure or a dispute record.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LogEntry<'a> {
+    /// The entry without its signature, whole: the signature is over its
+    /// canonical text, and the next entry names its digest.
+    pub entry: &'a Value,
+    /// The stated protocol identifier.
+    pub protocol: &'a str,
+    /// The registry's name.
+    pub registry: &'a str,
+    /// The entry's position in the log.
+    pub sequence: i64,
+    /// The stated digest of the previous entry, if one is stated.
+    pub previous: Option<WireDigest<'a>>,
+    /// The stated digest of the claim the entry is about.
+    pub claim: WireDigest<'a>,
+    /// When the registry received the claim or recorded the entry, by its
+    /// clock.
+    pub at: StatedTime<'a>,
+    /// What the entry records.
+    pub kind: EntryKind<'a>,
+    /// The signature, as carried.
+    pub signature: IssuerSignature<'a>,
+}
+
+impl<'a> From<SignedReceipt<'a>> for LogEntry<'a> {
+    fn from(receipt: SignedReceipt<'a>) -> Self {
+        Self {
+            entry: receipt.receipt,
+            protocol: receipt.protocol,
+            registry: receipt.registry,
+            sequence: receipt.sequence,
+            previous: receipt.previous,
+            claim: receipt.claim,
+            at: receipt.received_at,
+            kind: EntryKind::Receipt {
+                respond_by: receipt.respond_by,
+            },
+            signature: receipt.signature,
+        }
+    }
+}
+
+/// `{ "<Case>": { "<member>": <digest> } }`, or `{ "<Case>": {} }` for a
+/// case listed with no member.
+fn case_with_digest<'a>(
+    value: &'a Value,
+    at: &At<'_>,
+    cases: &'static [(&'static str, Option<&'static str>)],
+    names: &'static [&'static str],
+) -> Shape<(&'a str, Option<WireDigest<'a>>)> {
+    let (name, content) = shape::variant(value, at)?;
+    let Some((_, member)) = cases.iter().find(|(case, _)| *case == name) else {
+        return at.fail(ShapeProblem::Case(names));
+    };
+    let at = at.member(name);
+    match member {
+        None => {
+            shape::object(content, &at, &[])?;
+            Ok((name, None))
+        }
+        Some(member) => {
+            let Some(o) = content.as_object().filter(|o| o.has_exactly(&[member])) else {
+                return at.fail(ShapeProblem::Not("the case's one member, a digest"));
+            };
+            let digest = shape::digest(shape::get(o, member), &at.member(member))?;
+            Ok((name, Some(digest)))
+        }
+    }
+}
+
+impl<'a> LogEntry<'a> {
+    /// Reads `{ receipt | closure | disputeRecord, signature }`, refusing
+    /// any missing, extra or mistyped member at any depth.
+    pub fn from_value(signed: &'a Value) -> Result<Self, ShapeError> {
+        let root = At::root("entry");
+        let kind = ["receipt", "closure", "disputeRecord"]
+            .into_iter()
+            .find(|kind| signed.as_object().is_some_and(|o| o.get(kind).is_some()));
+        let Some(kind) = kind else {
+            return root.fail(ShapeProblem::Not(
+                "a signed receipt, closure or dispute record",
+            ));
+        };
+        if kind == "receipt" {
+            return SignedReceipt::from_value(signed).map(Self::from);
+        }
+        let is_closure = kind == "closure";
+        let outer = if is_closure {
+            shape::object(signed, &root, &["closure", "signature"])
+        } else {
+            shape::object(signed, &root, &["disputeRecord", "signature"])
+        }?;
+        let entry = shape::get(outer, kind);
+        let at = root.member(kind);
+        let o = if is_closure {
+            shape::object(
+                entry,
+                &at,
+                &[
+                    "claim",
+                    "closing",
+                    "previous",
+                    "protocol",
+                    "recordedAt",
+                    "registry",
+                    "sequence",
+                ],
+            )
+        } else {
+            shape::object(
+                entry,
+                &at,
+                &[
+                    "claim",
+                    "previous",
+                    "protocol",
+                    "recordedAt",
+                    "registry",
+                    "sequence",
+                    "step",
+                ],
+            )
+        }?;
+        let member = |name| shape::get(o, name);
+        let kind = if is_closure {
+            let (closing, rests_on) = case_with_digest(
+                member("closing"),
+                &at.member("closing"),
+                &[
+                    ("Responded", Some("response")),
+                    ("Expired", None),
+                    ("Withdrawn", Some("notice")),
+                    ("Superseded", Some("notice")),
+                ],
+                &["Responded", "Expired", "Withdrawn", "Superseded"],
+            )?;
+            EntryKind::Closure { closing, rests_on }
+        } else {
+            let step_at = at.member("step");
+            let (step, names) = case_with_digest(
+                member("step"),
+                &step_at,
+                &[
+                    ("Opened", Some("dispute")),
+                    ("Resolved", Some("resolution")),
+                ],
+                &["Opened", "Resolved"],
+            )?;
+            let Some(names) = names else {
+                return step_at.fail(ShapeProblem::Not("a case that names a digest"));
+            };
+            EntryKind::DisputeRecord { step, names }
+        };
+        Ok(Self {
+            entry,
+            protocol: shape::text(member("protocol"), &at.member("protocol"))?,
+            registry: shape::text(member("registry"), &at.member("registry"))?,
+            sequence: shape::safe_integer(member("sequence"), &at.member("sequence"))?,
+            previous: shape::nullable(member("previous"), &at.member("previous"), shape::digest)?,
+            claim: shape::digest(member("claim"), &at.member("claim"))?,
+            at: time(member("recordedAt"), &at.member("recordedAt"))?,
+            kind,
+            signature: signature(shape::get(outer, "signature"), &root.member("signature"))?,
+        })
+    }
+
+    /// The domain the registry signs this kind of entry under.
+    #[must_use]
+    pub const fn domain(&self) -> SigningDomain {
+        match self.kind {
+            EntryKind::Receipt { .. } => RECEIPT_DOMAIN,
+            EntryKind::Closure { .. } => CLOSURE_DOMAIN,
+            EntryKind::DisputeRecord { .. } => DISPUTE_RECORD_DOMAIN,
+        }
+    }
+
+    /// Every digest the entry states: the claim, the previous entry if any,
+    /// and what a closure rests on or a dispute record names.
+    pub fn commitments(&self) -> impl Iterator<Item = WireDigest<'a>> {
+        let named = match self.kind {
+            EntryKind::Receipt { .. } => None,
+            EntryKind::Closure { rests_on, .. } => rests_on,
+            EntryKind::DisputeRecord { names, .. } => Some(names),
+        };
+        [Some(self.claim), self.previous, named]
+            .into_iter()
+            .flatten()
     }
 }
 

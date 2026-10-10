@@ -17,9 +17,12 @@ Exit codes:
      fsck: damage was found in the workspace
      diff: the two packages differ
      replay: a package was refused or is damaged
+     registration: the registration or the log was refused, or the log
+     contradicts the entry you hold
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
+     registration log: the log does not reach the entry you hold
   4  --require-decision: every check ran, but a reproduced decision is not
      the required one
 
@@ -133,6 +136,64 @@ pub(crate) enum Command {
     /// names, every stored package is verified. Exits 1 if any package is
     /// refused or damaged.
     Replay(Replay),
+    /// Check a claim registration, or a registry's log (draft protocol)
+    ///
+    /// Claim registration v1 is a draft, separate from the Work Verification
+    /// Protocol: a claim is registered at a registry two parties agreed on,
+    /// before any evidence is asked for.
+    #[command(subcommand)]
+    Registration(Registration),
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum Registration {
+    /// Check that a claim was registered
+    ///
+    /// Takes the agreement both parties signed, the claim made under it and
+    /// the registry's receipt, and applies the protocol's checks in order
+    /// under keys you trust. Exit code 0 means the claim was made under that
+    /// agreement and received by the registry it names. It does not mean
+    /// the claim is true, or that the registry kept its own rules.
+    Verify(RegistrationVerify),
+    /// Check a run of a registry's log, and an entry you hold against it
+    ///
+    /// The log is a file with one signed entry per line, in order. Without
+    /// --anchor it must start at the log's first entry. With --held, also
+    /// reports whether the log has your entry at its position. Exits 1 if
+    /// the log is refused or contradicts your entry, 3 if it does not reach
+    /// your entry's position.
+    Log(RegistrationLog),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct RegistrationVerify {
+    /// The signed agreement
+    #[arg(long, value_name = "FILE")]
+    pub(crate) agreement: PathBuf,
+    /// The signed claim
+    #[arg(long, value_name = "FILE")]
+    pub(crate) claim: PathBuf,
+    /// The registry's signed receipt
+    #[arg(long, value_name = "FILE")]
+    pub(crate) receipt: PathBuf,
+    /// Your keys for parties and registries
+    #[arg(long, value_name = "KEYS")]
+    pub(crate) trust: PathBuf,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct RegistrationLog {
+    /// The log: one signed entry per line
+    pub(crate) log: PathBuf,
+    /// Your keys for parties and registries
+    #[arg(long, value_name = "KEYS")]
+    pub(crate) trust: PathBuf,
+    /// An entry you verified before, which the log continues
+    #[arg(long, value_name = "FILE")]
+    pub(crate) anchor: Option<PathBuf>,
+    /// An entry you hold, to check against the log
+    #[arg(long, value_name = "FILE")]
+    pub(crate) held: Option<PathBuf>,
 }
 
 #[derive(Debug, ClapArgs)]
