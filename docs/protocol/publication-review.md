@@ -1,9 +1,9 @@
 # Publication review
 
-Status: **partly decided.** The license (A) and the independent
-implementation (E) were decided on 2026-10-10. Publishing protocol material
-(B, C, D) is open. Owner of those decisions: whoever holds the rights in
-`dekrops/verified`.
+Status: **decided.** All five decisions were made on 2026-10-10 by the
+owner of `dekrops/verified`. The protocol material is published in its own
+repository, [`dekrops/wvp`](https://github.com/dekrops/wvp), which is private
+until its license is chosen. It is not copied into this repository.
 
 This repository is licensed under Apache-2.0 and is intended to become public.
 The protocol's specifications, vectors and examples are in a private
@@ -92,7 +92,7 @@ No Scala, JavaScript, Lean or Rust source. No schemas. Nothing from `apps/`,
 | Decision | Approved by | Date | Scope or conditions |
 | --- | --- | --- | --- |
 | A | Repository owner (licensing directive) | 2026-10-10 | Apache-2.0, repository-wide. Visibility, package publication and releases still need explicit authorization. |
-| B | | | Open: provenance review of the specifications. |
-| C | | | Open: provenance review of the corpus. |
-| D | | | Open: provenance review of the examples. |
+| B | Repository owner | 2026-10-10 | Published in `dekrops/wvp`, exported from `dekrops/verified` at `880e419` with links to unpublished files removed; that repository's license is not yet chosen. |
+| C | Repository owner | 2026-10-10 | As B. Content reviewed before export: synthetic data only, invented names, test keys from published seeds. The work-unit vectors are included. |
+| D | Repository owner | 2026-10-10 | As B, with the Work Contract Language 1 examples beside its specification. |
 | E | Repository owner (licensing directive) | 2026-10-10 | The independent implementation is Apache-2.0. No proprietary source may be copied because the projects implement the same protocol. |
