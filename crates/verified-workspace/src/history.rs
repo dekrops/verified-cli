@@ -101,9 +101,9 @@ impl Workspace {
         }
         let size = io(&path, std::fs::metadata(&path))?.len();
         if size > MAX_BYTES {
-            return Err(Error::Unsafe {
+            return Err(Error::HistoryTooLarge {
                 path,
-                what: "the import history is larger than this version reads",
+                limit: MAX_BYTES,
             });
         }
         let bytes = io(&path, std::fs::read(&path))?;

@@ -504,6 +504,12 @@ fn trace_draws_only_what_the_package_contains_and_says_whether_it_was_checked() 
     );
     let traced = json(&scratch.run(&["trace", "--json", id, "--trust", "trust.json"]));
     assert_eq!(traced["links"], "checked");
+    // The same digest shape as `verify --json` and `show --json`.
+    assert_eq!(traced["contract"]["digest"]["algorithm"], "sha-256");
+    assert_eq!(
+        traced["contract"]["digest"]["hex"],
+        scenario.contract.digest().to_hex()
+    );
     assert_eq!(traced["evidence"][0]["listedByClaim"], true);
     assert_eq!(traced["evidence"][0]["ignoredByContract"], false);
     assert_eq!(traced["decision"]["reproduced"]["decision"], "SUPPORTED");

@@ -657,3 +657,41 @@ fn a_symbolic_link_in_the_store_is_found_and_not_followed() {
             .any(|p| matches!(p, Problem::MissingObject { .. }))
     );
 }
+
+#[test]
+fn a_history_too_large_to_read_is_damage_and_proves_nothing_about_the_objects() {
+    let scratch = Scratch::new("check-oversized");
+    let workspace = scratch.workspace();
+    workspace
+        .import(Scenario::posted().text().as_bytes(), 1, &LIMITS)
+        .expect("imported");
+    // Grown past what is read, without writing the bytes.
+    let log = std::fs::OpenOptions::new()
+        .write(true)
+        .open(workspace.directory().join("imports.log"))
+        .expect("open");
+    log.set_len(64 * 1024 * 1024 + 1).expect("extend");
+
+    assert!(matches!(
+        workspace.history(),
+        Err(Error::HistoryTooLarge { .. })
+    ));
+    let check = workspace.check(&LIMITS).expect("checked");
+    assert!(check.has_damage());
+    assert_eq!(check.objects, 1);
+    assert!(
+        matches!(
+            check.problems.as_slice(),
+            [Problem::UnreadableHistory { .. }]
+        ),
+        "{:?}",
+        check.problems
+    );
+    // In particular the stored object is not called unrecorded.
+    assert!(
+        !check
+            .problems
+            .iter()
+            .any(|p| matches!(p, Problem::Unrecorded { .. }))
+    );
+}

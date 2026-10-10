@@ -16,7 +16,8 @@ use crate::cli::Trace;
 use crate::exit::Exit;
 use crate::render::{Mode, Output, Row, Tone};
 use crate::verify::{
-    decision_json, decision_rows, failed, issuer_json, issuer_row, not_examined, refused, registry,
+    decision_json, decision_rows, digest_json, failed, issuer_json, issuer_row, not_examined,
+    refused, registry,
 };
 use crate::workspace::load;
 
@@ -27,7 +28,7 @@ const CHECKED: &str = "checked: the package verified completely under the suppli
 
 /// The facts the contract set aside, when a `wvp-0.2` decision was
 /// reproduced. A fact is named `e-` followed by its statement's identifier.
-fn ignored(inspection: &Inspection) -> Option<&[String]> {
+fn ignored_facts(inspection: &Inspection) -> Option<&[String]> {
     match &inspection.report.decision {
         DecisionFinding::Reproduced(Reproduced {
             evaluation: Evaluation::WorkContract { ignored, .. },
@@ -35,6 +36,13 @@ fn ignored(inspection: &Inspection) -> Option<&[String]> {
         }) => Some(ignored),
         _ => None,
     }
+}
+
+/// Whether the contract ignored this statement's record: `None` when no
+/// evaluation was reproduced, so nothing is known either way.
+fn ignored(inspection: &Inspection, statement: &str) -> Option<bool> {
+    let fact = format!("e-{statement}");
+    ignored_facts(inspection).map(|facts| facts.contains(&fact))
 }
 
 pub(crate) fn run(command: &Trace, out: &mut Output) -> Exit {
@@ -81,7 +89,6 @@ pub(crate) fn run(command: &Trace, out: &mut Output) -> Exit {
 
 fn trace_json(package: &str, inspection: &Inspection, checked: bool) -> serde_json::Value {
     let report = &inspection.report;
-    let ignored = ignored(inspection);
     json!({
         "outcome": "traced",
         "package": package,
@@ -98,7 +105,7 @@ fn trace_json(package: &str, inspection: &Inspection, checked: bool) -> serde_js
         "contract": report.contract.as_ref().map(|contract| json!({
             "id": contract.id,
             "version": contract.version,
-            "digest": format!("sha-256:{}", contract.digest),
+            "digest": digest_json(&contract.digest),
         })),
         "evidence": inspection.statements.iter().map(|s| json!({
             "statement": s.id,
@@ -109,7 +116,7 @@ fn trace_json(package: &str, inspection: &Inspection, checked: bool) -> serde_js
             "observedAt": s.observed_at,
             "commitsTo": s.body,
             "listedByClaim": s.claimed,
-            "ignoredByContract": ignored.map(|ids| ids.contains(&format!("e-{}", s.id))),
+            "ignoredByContract": ignored(inspection, &s.id),
         })).collect::<Vec<_>>(),
         "decision": {
             "recorded": inspection.recorded_decision,
@@ -122,7 +129,6 @@ fn trace_json(package: &str, inspection: &Inspection, checked: bool) -> serde_js
 
 fn human(out: &mut Output, commitment: &str, inspection: &Inspection, checked: bool) {
     let report = &inspection.report;
-    let ignored = ignored(inspection);
     out.heading(&format!(
         "Trace of wvp:sha-256:{} ({}, draft)",
         out.short(commitment),
@@ -190,7 +196,7 @@ fn human(out: &mut Output, commitment: &str, inspection: &Inspection, checked: b
                 "carried, but the claim does not list it",
             ));
         }
-        if ignored.is_some_and(|ids| ids.contains(&format!("e-{}", statement.id))) {
+        if ignored(inspection, &statement.id) == Some(true) {
             rows.push(Row::new(
                 "    note",
                 Tone::Unknown,

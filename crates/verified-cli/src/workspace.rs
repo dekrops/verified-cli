@@ -404,6 +404,10 @@ fn describe(problem: &Problem) -> (&'static str, String) {
             "history",
             format!("{lines} line(s) of the import history cannot be read"),
         ),
+        Problem::UnreadableHistory { detail } => (
+            "history",
+            format!("{detail}; it was not compared with the stored packages"),
+        ),
         Problem::MissingObject { record } => (
             "missing",
             format!(

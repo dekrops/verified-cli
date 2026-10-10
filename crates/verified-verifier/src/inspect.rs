@@ -101,6 +101,14 @@ impl Inspection {
     }
 }
 
+fn stated_claim(claim: &Value, inputs: Option<Value>) -> StatedClaim {
+    StatedClaim {
+        id: member_text(claim, &["id", "value"]),
+        claimant: member_text(claim, &["claimant", "value"]),
+        inputs,
+    }
+}
+
 fn member_text(value: &Value, path: &[&str]) -> String {
     path.iter()
         .try_fold(value, |value, name| value.as_object()?.get(name))
@@ -151,7 +159,7 @@ pub fn inspect(package: &[u8], options: &Options<'_>) -> Result<Inspection, Reje
     let malformed = |error: verified_protocol::ShapeError| {
         Rejection::Refused(refusal(RefusalCode::MalformedComponent, error.to_string()))
     };
-    let (decision, statements, contract_reference, claimed_but_absent, inputs, claim_value) =
+    let (decision, statements, contract_reference, claimed_but_absent, claim) =
         match checked.protocol {
             ProtocolVersion::V0_1 => {
                 let components = v01::Components::read(checked.files).map_err(malformed)?;
@@ -170,8 +178,7 @@ pub fn inspect(package: &[u8], options: &Options<'_>) -> Result<Inspection, Reje
                     summaries(&components.evidence, &claim.evidence, case),
                     claim.contract_id.to_owned(),
                     absent(&claim.evidence, &components.evidence),
-                    None,
-                    claim.value,
+                    stated_claim(claim.value, None),
                 )
             }
             ProtocolVersion::V0_2 => {
@@ -188,16 +195,10 @@ pub fn inspect(package: &[u8], options: &Options<'_>) -> Result<Inspection, Reje
                     summaries(&components.evidence, &claim.evidence, describe),
                     format!("{}:{}", claim.contract.algorithm, claim.contract.hex),
                     absent(&claim.evidence, &components.evidence),
-                    Some(claim.inputs.clone()),
-                    claim.value,
+                    stated_claim(claim.value, Some(claim.inputs.clone())),
                 )
             }
         };
-    let claim = StatedClaim {
-        id: member_text(claim_value, &["id", "value"]),
-        claimant: member_text(claim_value, &["claimant", "value"]),
-        inputs,
-    };
     Ok(Inspection {
         report,
         claim,

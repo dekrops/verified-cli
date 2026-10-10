@@ -35,6 +35,12 @@ pub enum Problem {
         /// How many.
         lines: usize,
     },
+    /// The import history is too large to read. What it records is unknown,
+    /// so it was not compared with the stored objects.
+    UnreadableHistory {
+        /// Why it was not read.
+        detail: String,
+    },
     /// The history records an import of something that is not stored.
     MissingObject {
         /// The record.
@@ -169,51 +175,70 @@ impl Workspace {
             match self.read(object, limits) {
                 Ok(_) => {}
                 Err(error @ Error::Io { .. }) => return Err(error),
+                // Something other than a regular file where the walk just
+                // saw one: the store changed underneath the check.
+                Err(Error::Unsafe { path, .. }) => problems.push(Problem::Foreign {
+                    path: path
+                        .strip_prefix(&self.dir)
+                        .map(Path::to_owned)
+                        .unwrap_or(path),
+                }),
                 Err(error) => problems.push(Problem::Damaged {
                     stored: *object,
                     detail: error.to_string(),
                 }),
             }
         }
-        // A history that is not a regular file was reported by the scan.
+        // `None`: the history could not be read, so nothing may be concluded
+        // from it, least of all that objects are unrecorded.
         let history = match self.history() {
-            Ok(history) => history,
-            Err(Error::Unsafe { .. }) => crate::History::default(),
+            Ok(history) => Some(history),
+            // Not a regular file: the scan reported it as foreign.
+            Err(Error::Unsafe { .. }) => None,
+            Err(error @ Error::HistoryTooLarge { .. }) => {
+                problems.push(Problem::UnreadableHistory {
+                    detail: error.to_string(),
+                });
+                None
+            }
             Err(error) => return Err(error),
         };
-        if history.damaged > 0 {
-            problems.push(Problem::DamagedHistory {
-                lines: history.damaged,
-            });
-        }
-        // One finding per missing object, however often it was imported.
-        let mut missing: Vec<ImportRecord> = Vec::new();
-        for record in &history.records {
-            let known = stored.contains(&record.stored)
-                || missing
-                    .iter()
-                    .any(|earlier| earlier.stored == record.stored);
-            if !known {
-                missing.push(*record);
+        let records = history.as_ref().map_or(0, |history| history.records.len());
+        if let Some(history) = &history {
+            if history.damaged > 0 {
+                problems.push(Problem::DamagedHistory {
+                    lines: history.damaged,
+                });
             }
+            // One finding per missing object, however often it was imported.
+            let mut missing: Vec<ImportRecord> = Vec::new();
+            for record in &history.records {
+                let known = stored.contains(&record.stored)
+                    || missing
+                        .iter()
+                        .any(|earlier| earlier.stored == record.stored);
+                if !known {
+                    missing.push(*record);
+                }
+            }
+            problems.extend(
+                missing
+                    .into_iter()
+                    .map(|record| Problem::MissingObject { record }),
+            );
+            let unrecorded = stored.iter().filter(|object| {
+                !history
+                    .records
+                    .iter()
+                    .any(|record| record.stored == **object)
+            });
+            problems.extend(unrecorded.map(|object| Problem::Unrecorded { stored: *object }));
         }
-        problems.extend(
-            missing
-                .into_iter()
-                .map(|record| Problem::MissingObject { record }),
-        );
-        let unrecorded = stored.iter().filter(|object| {
-            !history
-                .records
-                .iter()
-                .any(|record| record.stored == **object)
-        });
-        problems.extend(unrecorded.map(|object| Problem::Unrecorded { stored: *object }));
 
         problems.sort_by_key(|problem| !problem.is_damage());
         Ok(Check {
             objects: stored.len(),
-            records: history.records.len(),
+            records,
             problems,
         })
     }
