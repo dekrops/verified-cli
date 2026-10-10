@@ -47,6 +47,13 @@ static rules, and evaluates a checked contract against an environment of
 source-named records under strong Kleene logic. A `Contract` can only be
 obtained by passing those checks.
 
+**`verified-work-unit`** owns work-unit identity v1: given a scope the parties
+declared, a tenant and a claim's inputs, the identity of the unit of work the
+claim is about, and its keyed nullifier. It stands beside the verifier and
+depends only on the canonical encoding. It answers "are these two claims about
+the same unit?" and nothing else: it holds no state, so it cannot say whether
+a unit was already billed, and no command uses it.
+
 **`verified-verifier`** owns order and trust. The protocol requires that
 every verifier report the same first failure, so the checks run top to bottom
 in specification order: the container (shared), then one module per protocol

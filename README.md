@@ -297,6 +297,7 @@ verified-cli        the `verified` binary: arguments, files, terminal
 verified-workspace  the local store of imported packages
 verified-verifier   pure verification: bytes in, report or refusal out
 verified-contract   Work Contract Language 1: read, check, evaluate
+verified-work-unit  work-unit identity v1: which unit a claim is about (library only)
 verified-protocol   typed protocol structures and refusal codes
 verified-canonical  canonical encoding, SHA-256 commitments, signing input
 ```

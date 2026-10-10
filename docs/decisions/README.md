@@ -11,6 +11,7 @@
 | [0007](0007-sdk-boundaries.md) | SDK boundaries | Proposed |
 | [0008](0008-portability-guarantees.md) | Portability guarantees | Accepted in part |
 | [0009](0009-signature-verification.md) | Signatures are verified by `ed25519-dalek`, strictly | Accepted; implemented |
+| [0010](0010-work-unit-identity.md) | Work-unit identity is a library without state, keys or a command | Accepted; implemented |
 
 "Proposed" means the design is a starting point for the pull request that
 builds it, not a commitment.

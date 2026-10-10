@@ -20,8 +20,10 @@ states exactly how much of it this implementation performs.
 | Work Contract Language 1 (`kleene-1`) | n/a | yes |
 | Work record comparison (`RECORD_MISMATCH`) | n/a | **no** |
 | Chains of statements (evidence statement v1) | **no** | **no** |
+| Work-unit identity v1: identity, nullifier, key commitment | n/a (claims have no inputs) | yes, as a library (`verified-work-unit`) |
+| Work-unit registry ("was this unit already billed?") | **no**, by design | **no**, by design |
 
-Neither missing item is one of the thirteen checks. A package's statements
+Neither missing verification item is one of the thirteen checks. A package's statements
 may carry chain links; their shape is checked and their continuity is not,
 which is also what the two upstream verifiers do for packages.
 
@@ -39,6 +41,7 @@ expectation is compared in full, never by refusal code alone.
 | `wvp/v0.2/expectations.json`, 7 cases | 7 reproduced. |
 | The two worked examples beside the specifications | Both verify completely as `SUPPORTED` under their registries. |
 | `work-contract/v1`, 82 case files and 5 differential batches | 641 cases reproduced, from 81 case files and the 5 batches. 1 case file cannot be represented (below). |
+| `work-unit/v1/vectors.json` | 3 of 3 key commitments and 10 of 10 identities and nullifiers reproduced. |
 | `evidence-statement/v1` | **Not run.** Its statement and admission rules are exercised through the package vectors; its chain vectors need chain verification, which does not exist here. |
 
 One case is not reproduced because it cannot reach the evaluator:
@@ -100,6 +103,29 @@ to be resolved there rather than here.
     and refuses on a mismatch; the report remains incomplete.
 12. **Expectations for `wvp-0.1`.** Not defined by the protocol. Giving them
     is an error (exit 2), as in the upstream CLI, never a silent no-op.
+
+## Work-unit identity
+
+Work-unit identity v1 is a draft, separate from WVP, and nothing in a package
+refers to it. `verified-work-unit` computes identities, nullifiers and key
+commitments; it is not part of `verify` and has no command.
+
+Readings taken where the specification leaves room:
+
+13. **Identifying values are text or booleans.** The specification says one
+    value per input the scope names. Claim inputs in Work Contract Language 1
+    are never anything else (numbers are written as text), so any other JSON
+    value is refused rather than encoded.
+14. **A scope's digest is not computed.** The specification says an approval
+    covers the scope's digest and calls the scope a versioned object, without
+    fixing the digest's input or a version member. Until it does, this
+    implementation reads a scope and does not commit to one.
+15. **Names are not validated.** Tenant, scope and operation are any text, as
+    in the vectors.
+
+The registry the specification proposes (who holds a unit, first write wins)
+is stateful, is marked there as not implemented, and is not built here: it
+belongs to whoever settles.
 
 ## Files and packages
 
