@@ -1,7 +1,8 @@
 # 0012. Claim registration is verified here, in stages, and no registry is run
 
-Status: accepted. The first stage, verifying a registration, is implemented
-in `verified_verifier::registration`.
+Status: accepted. The first two stages are implemented in
+`verified_verifier::registration`: verifying a registration, and checking a
+segment of a registry's log with an entry held against it.
 
 ## Context
 
@@ -42,6 +43,13 @@ cases in six files.
   `docs/protocol/compatibility.md`.
 - The registration takes the three objects as text, because the protocol's
   first check is that the text is canonical.
+
+- **A log file is one signed entry per line.** The protocol defines entries,
+  not a file of them, and a command needs one. An entry's canonical text has
+  no line end, so lines need no escaping. It is this tool's convention.
+- **`NOT_COVERED` is exit code 3.** The log was not refused and does not
+  contradict the held entry; it does not reach it. That is "not everything
+  could be concluded", which is what 3 already means for `verify`.
 
 ## Consequences
 

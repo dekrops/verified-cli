@@ -25,9 +25,11 @@ states exactly how much of it this implementation performs.
 
 Claim registration v1 is a separate draft protocol, not a part of either WVP
 version. Of it, this project verifies a registration (agreement, claim and
-receipt), as a library: `verified_verifier::registration`. Log segments,
-responses, closures, notices, disputes, audits and the unit check are not
-implemented.
+receipt) and a segment of a registry's log, with an entry held against it:
+`verified registration verify` and `verified registration log`, and the
+library `verified_verifier::registration`. Responses, notices, disputes, the
+audit of a whole log and the unit check are not implemented. Closures and
+dispute records are checked as entries of a log, not for what they rest on.
 
 Chain verification is not one of the thirteen checks. A package's statements
 may carry chain links; their shape is checked and their continuity is not,
@@ -53,7 +55,8 @@ expectation is compared in full, never by refusal code alone.
 | `work-contract/v1`, 82 case files and 5 differential batches | 641 cases reproduced, from 81 case files and the 5 batches. 1 case file cannot be represented (below). |
 | `work-unit/v1/vectors.json` | 3 of 3 key commitments and 10 of 10 identities and nullifiers reproduced. |
 | `claim-registration/v1/vectors.json`, 28 cases | 28 reproduced: the refusal code of the 26 refused, and every stated fact of the 2 accepted registrations. |
-| `claim-registration/v1`, the other 95 cases in 5 files (`log`, `audit`, `notice`, `dispute`, `unit`) | **Not run.** Those parts of claim registration are not implemented here. |
+| `claim-registration/v1/log.json`, 20 cases | 20 reproduced: the refusal code, the whole segment summary, or the inclusion outcome with both digests. |
+| `claim-registration/v1`, the other 75 cases in 4 files (`audit`, `notice`, `dispute`, `unit`) | **Not run.** Those parts of claim registration are not implemented here. |
 | `evidence-statement/v1`, 39 vectors | 39 reproduced: 17 statement, 13 chain and 9 admission. Refusals by code; accepted statements by key, canonical text, digest and signing input; accepted chains by their whole summary; accepted admissions by their evidence manifest. **Not compared:** the `verificationResultSha256` and `verificationStatus` of the 3 accepted admissions, which are the platform's verification result and are not computed here. |
 
 One case is not reproduced because it cannot reach the evaluator:
@@ -209,6 +212,22 @@ specification and vectors alone.
 31. **A trust configuration's `validUntil` and `revokedAt` may be absent**, as
     in a trust registry, and a key identifier or a public key occurs once
     among the parties' keys and once among the registries' keys.
+
+32. **In a segment, each entry is checked completely before the next**
+    (text, structure, protocol, commitments, position, signature), the
+    entries in order and then the anchor. The specification makes these one
+    step and does not order entries against each other within it.
+33. **The anchor counts where the specification names it** (one registry, the
+    step from it to the first entry, time, duplicate claims) and not for
+    "two different entries at one position", which is stated for the
+    segment's entries.
+34. **A held entry is checked after the segment.** A segment that is refused
+    says nothing about a held entry. An entry held at the anchor's position
+    is compared with the anchor; one before it is `NOT_COVERED`.
+35. **A log file is one signed entry per line.** That is this tool's
+    convention for `verified registration log`, not part of the protocol,
+    which defines entries and not a file of them. An entry's canonical text
+    contains no line end.
 
 ## Versions are never interchanged
 

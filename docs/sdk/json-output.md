@@ -71,6 +71,16 @@ pass `--require-decision` and require exit code 0.
 | `diff` | `identical`, `different` (exit 1) | `samePackageIdentifier`, `components[]` (`path`, `same`), `stated[]` (`what`, `a`, `b`), `statementsOnlyInA`, `statementsOnlyInB` |
 | `replay` | `replayed`, `failed` (exit 1), `decision_not_required` (exit 4) | `packages[]` (`package`, `object`, `status`: `reproduced`, `refused` or `damaged`; `detail`), `requiredDecision` |
 
+## Claim registration commands
+
+| Command | `outcome` | Notable members |
+| --- | --- | --- |
+| `registration verify` | `registered`, `refused` (exit 1) | `claim`, `claimDigest`, `agreement`, `receipt` (digests), `claimant`, `respondent`, `registry`, `sequence`, `receivedAt`, `respondBy`. Refused: `refusal.code` (a claim registration code, stable), `refusal.detail`. |
+| `registration log` | `verified`, `not_covered` (exit 3), `equivocation` (exit 1), `refused` (exit 1) | `registry`, `first`, `last`, `head`, `inclusion` (`null` without `--held`, else `INCLUDED`, `NOT_COVERED` or `EQUIVOCATION`); for `equivocation` also `held` and `logged` (digests) |
+
+`registered` says a claim was made and received. It never says the claim is
+true. `verified` says a run of a log is intact, not that it is complete.
+
 `show`, `trace` without `--trust`, `diff`, `import` and `export` establish
 nothing beyond package integrity, and their output says so in a member, not
 only in prose.

@@ -12,12 +12,14 @@ pub(crate) enum Exit {
     /// A reproduced `CONTRADICTED` or `UNDETERMINED` decision also ends here.
     Complete = 0,
     /// The package failed a protocol check, or `fsck` found damage in the
-    /// workspace.
+    /// workspace. Also: a registration or a registry's log was refused, or a
+    /// log contradicts an entry held against it.
     Refused = 1,
     /// The command could not run: bad usage, an unreadable file, or input
     /// beyond a resource limit. Nothing was concluded about the package.
     Failed = 2,
-    /// The package was not refused, but not every check ran.
+    /// The package was not refused, but not every check ran. Also: a
+    /// registry's log does not reach an entry held against it.
     Incomplete = 3,
     /// Every check ran and the package was not refused, but the decision it
     /// reproduced is not the one `--require-decision` asked for.

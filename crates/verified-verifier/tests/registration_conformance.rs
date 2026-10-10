@@ -11,15 +11,17 @@
 //! Each case's whole expectation is compared: the refusal code, or every
 //! fact of the registration.
 //!
-//! Only `vectors.json` is run. The corpus's other files (log segments,
-//! audits, notices, disputes and unit checks) are for parts of the protocol
-//! this project does not implement yet.
+//! `vectors.json` (registrations) and `log.json` (log segments and held
+//! entries) are run. The corpus's other files (audits, notices, disputes
+//! and unit checks) are for parts of the protocol this project does not
+//! implement yet.
 
 #![allow(clippy::print_stderr)] // progress notes for whoever runs the corpus
 
 use std::path::PathBuf;
 
 use verified_canonical::{Limits, Object, Sha256Digest, Value, parse};
+use verified_verifier::registration::log::{Inclusion, LogCheck, check_log};
 use verified_verifier::registration::{Registration, RegistrationTrust, verify_registration};
 
 fn corpus() -> Option<PathBuf> {
@@ -128,4 +130,94 @@ fn every_registration_case_is_reproduced() {
         "claim-registration-1: {} registration cases reproduced ({accepted} accepted, {refused} refused)",
         cases.len()
     );
+}
+
+fn optional_text<'a>(case: &'a Value, name: &str, at: &str) -> Option<&'a [u8]> {
+    match member(case, name, at) {
+        Value::Null => None,
+        text => Some(
+            text.as_str()
+                .unwrap_or_else(|| panic!("{at}: {name} is not text"))
+                .as_bytes(),
+        ),
+    }
+}
+
+fn log_facts(check: &LogCheck) -> Value {
+    match check.inclusion {
+        None => object([
+            ("accept", Value::Bool(true)),
+            ("first", Value::Integer(check.segment.first.into())),
+            ("head", digest(&check.segment.head)),
+            ("last", Value::Integer(check.segment.last.into())),
+            ("registry", string(&check.segment.registry)),
+        ]),
+        Some(Inclusion::Included) => object([
+            ("accept", Value::Bool(true)),
+            ("inclusion", string("INCLUDED")),
+        ]),
+        Some(Inclusion::NotCovered) => object([
+            ("accept", Value::Bool(true)),
+            ("inclusion", string("NOT_COVERED")),
+        ]),
+        Some(Inclusion::Equivocation { held, logged }) => object([
+            ("accept", Value::Bool(true)),
+            ("held", digest(&held)),
+            ("inclusion", string("EQUIVOCATION")),
+            ("logged", digest(&logged)),
+        ]),
+    }
+}
+
+#[test]
+fn every_log_case_is_reproduced() {
+    let Some(corpus) = corpus() else { return };
+    let read = |name: &str| {
+        let path = corpus.join(name);
+        let at = path.display().to_string();
+        let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{at}: {e}"));
+        (
+            parse(&bytes, &Limits::DEFAULT).unwrap_or_else(|e| panic!("{at}: {e}")),
+            at,
+        )
+    };
+    // The log cases are stated under the keys of the registration vectors.
+    let (vectors, at) = read("vectors.json");
+    let trust = RegistrationTrust::from_value(member(&vectors, "trust", &at))
+        .unwrap_or_else(|e| panic!("{at}: {e}"));
+
+    let (log, at) = read("log.json");
+    let cases = member(&log, "cases", &at)
+        .as_array()
+        .unwrap_or_else(|| panic!("{at}: cases is not a list"));
+    assert!(!cases.is_empty(), "{at}: no cases");
+    for case in cases {
+        let at = format!("{at}: {}", text(case, "name", &at));
+        let entries: Vec<&[u8]> = member(case, "receiptsJson", &at)
+            .as_array()
+            .unwrap_or_else(|| panic!("{at}: receiptsJson is not a list"))
+            .iter()
+            .map(|entry| {
+                entry
+                    .as_str()
+                    .unwrap_or_else(|| panic!("{at}: an entry is not text"))
+                    .as_bytes()
+            })
+            .collect();
+        let outcome = check_log(
+            &entries,
+            optional_text(case, "anchorJson", &at),
+            optional_text(case, "heldJson", &at),
+            &trust,
+        );
+        let actual = match &outcome {
+            Ok(check) => log_facts(check),
+            Err(refusal) => object([
+                ("accept", Value::Bool(false)),
+                ("error", string(refusal.code.as_str())),
+            ]),
+        };
+        assert_eq!(&actual, member(case, "expected", &at), "{at}: {outcome:?}");
+    }
+    eprintln!("claim-registration-1: {} log cases reproduced", cases.len());
 }

@@ -104,7 +104,11 @@ pub(crate) fn package_text(bytes: &[u8]) -> &[u8] {
 
 /// Reads a JSON file the relying party supplies. It is configuration, so it
 /// need not be canonical text.
-fn json_file(path: &std::path::Path, what: &str, limits: &Limits) -> Result<Value, String> {
+pub(crate) fn json_file(
+    path: &std::path::Path,
+    what: &str,
+    limits: &Limits,
+) -> Result<Value, String> {
     let name = path.display();
     let bytes = match input::read(path, limits.max_bytes) {
         Ok(bytes) => bytes,
