@@ -66,7 +66,10 @@ jobs:
       - run: cargo build --workspace --tests --locked --offline
       # A fresh network namespace has no interfaces but loopback: any attempt
       # by the tool or its tests to reach the network fails.
+      # sudo looks commands up on its own secure path, so the user's PATH is
+      # handed to env instead.
       - run: >
           sudo unshare --net --
-          sudo -u "$(id -un)" --preserve-env=PATH,HOME,CARGO_HOME,RUSTUP_HOME
+          sudo -u "$(id -un)"
+          env "PATH=$PATH" "HOME=$HOME"
           cargo test --workspace --locked --offline
