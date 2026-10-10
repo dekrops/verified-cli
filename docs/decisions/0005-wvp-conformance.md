@@ -21,5 +21,6 @@ Status: accepted.
 
 The corpus was published in `dekrops/wvp` on 2026-10-10 (see the publication
 review), so anyone can demonstrate conformance from a checkout of it. Public
-CI does not run the corpus yet: it still runs only the synthetic tests, and
-checking out the corpus at a pinned commit is the remaining step.
+CI does: its `conformance` job checks the corpus out at a pinned commit and
+fails if a vector is not reproduced or the corpus is missing. The corpus is
+still not copied into this repository.

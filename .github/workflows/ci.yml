@@ -39,10 +39,35 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      # The conformance corpus is not in this repository until its publication
-      # is approved, so the corpus tests skip here. See conformance/README.md.
+      # The corpus tests skip here; the conformance job runs them.
       - run: cargo test --workspace --locked
       - run: cargo doc --workspace --no-deps --locked
+
+  conformance:
+    name: reproduces the published conformance corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The corpus is public and is not copied into this repository. It is
+      # pinned to a commit so that a change upstream cannot change this
+      # result unseen; moving the pin is a reviewed change, made together
+      # with docs/protocol/compatibility.md.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: dekrops/wvp
+          ref: c7c9de2a7e8ad67e7dcee46d5c5f7fc2edccb797
+          path: wvp
+          persist-credentials: false
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # REQUIRED turns a missing corpus into a failure, so this job cannot
+      # pass by skipping.
+      - run: cargo test --workspace --locked -- --nocapture
+        env:
+          VERIFIED_CONFORMANCE_DIR: ${{ github.workspace }}/wvp/test-vectors
+          VERIFIED_CONFORMANCE_REQUIRED: "1"
 
   supply-chain:
     name: advisories, licenses, bans, sources

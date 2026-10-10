@@ -4,7 +4,8 @@ Six `wvp-0.2` packages and the trust registry to verify them under. They are
 **synthetic**: the tenant, systems, records and keys name nothing real.
 
 They are **not the protocol's conformance corpus.** That corpus is maintained
-with the protocol and is published only after its own review. These files show
+with the protocol and published in
+[`dekrops/wvp`](https://github.com/dekrops/wvp). These files show
 the tool working and give a consumer something to test an integration against;
 agreeing with them shows nothing about conformance.
 

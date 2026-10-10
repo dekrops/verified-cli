@@ -290,6 +290,7 @@ decision was reached. It is not an acceptance.
 Every command of the original plan exists. What is not built:
 
 - Verifying chains of evidence statements.
+- Claim registration v1, a newer draft published beside WVP.
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - Coverage-guided fuzzing, and Windows in CI.
@@ -356,7 +357,9 @@ they are published in [`dekrops/wvp`](https://github.com/dekrops/wvp), under
 CC BY 4.0 for the specifications and Apache-2.0 for the vectors and examples.
 Nothing from it is copied here: the conformance
 tests that need the corpus skip unless `VERIFIED_CONFORMANCE_DIR` points to it,
-and everything else runs on synthetic data built in this repository.
+and everything else runs on synthetic data built in this repository. CI runs
+them against the published corpus at a pinned commit
+([what is measured](docs/protocol/compatibility.md)).
 
 ## License
 
