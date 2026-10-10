@@ -39,6 +39,14 @@ applied to an agreement and a claim. For it the crate depends on
 `verified-protocol`, which reads those objects. It still does not depend on
 the verifier, verifies no signature, and keeps no state or key.
 
+That check has a command, `verified registration unit`, which the decision
+above ruled out for nullifiers in general. The difference is who runs it: a
+party to the agreement, which already holds the key and needs the answer to
+decide whether to refuse a claim. The key is read from a file the caller
+names, never from an argument or the environment, and is never printed,
+logged or stored. There is still no command that computes or prints a
+nullifier.
+
 ## Consequences
 
 - One more small crate and one more dependency (`hmac`, MIT or Apache-2.0).
