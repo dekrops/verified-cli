@@ -8,6 +8,7 @@
 mod cli;
 mod exit;
 mod input;
+mod portable;
 mod render;
 mod trace;
 mod verify;
@@ -28,6 +29,9 @@ fn main() -> ExitCode {
         cli::Command::Log(_) => workspace::log(&mut out),
         cli::Command::Trace(command) => trace::run(command, &mut out),
         cli::Command::Fsck(_) => workspace::fsck(&mut out),
+        cli::Command::Export(command) => portable::export(command, &mut out),
+        cli::Command::Diff(command) => portable::diff(command, &mut out),
+        cli::Command::Replay(command) => portable::replay(command, &mut out),
     };
     code.into()
 }

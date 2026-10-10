@@ -2,7 +2,7 @@
 
 //! What a verification established.
 
-use verified_canonical::Sha256Digest;
+use verified_canonical::{Sha256Digest, Value};
 use verified_contract::{Conflict, RequirementValue};
 use verified_protocol::{ComponentPath, Decision, PackageId, ProtocolVersion};
 
@@ -191,6 +191,17 @@ pub struct Report {
     pub decision: DecisionFinding,
     /// Issuer signatures over the decision.
     pub issuer_signature: IssuerSignature,
+    /// `wvp-0.2`: what a work record of this package states. Every member is
+    /// a function of the package, so two verifiers compute the same record,
+    /// and a record someone else holds can be compared with it.
+    ///
+    /// It describes the package's own decision. It records a *verification*
+    /// only when this report is complete; by itself it is the package's
+    /// statement, like the decision it carries.
+    pub work_record: Option<Value>,
+    /// Whether a work record the relying party supplied was compared with
+    /// the package. It matched: a record that differs is a refusal.
+    pub record_matched: bool,
     /// The expectations that were given. All of them were met: an unmet one
     /// is a refusal.
     pub expectations_met: Expectations,

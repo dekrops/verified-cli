@@ -37,6 +37,9 @@ relying party's own trust registry.
 | A misconfigured registry silently trusting more | Registry files are closed: an unknown or misspelt member, a duplicate key identifier or duplicate key material is an error. |
 | A package steering the file system | Stored objects are named only by digests this tool computed. No name from a package or from the command line is joined to a path; symbolic links in a workspace are refused ([decision 0004](../decisions/0004-content-addressed-object-storage.md)). |
 | A trace that implies more than a package holds | `trace` draws one package only, states that it links to nothing else, and labels its links as the package's own statements unless the package verified completely under a supplied registry in the same run. |
+| A stale result presented as current | Nothing is cached. `replay` recomputes every result in the current run under the registry given to it. |
+| A record passed off with another package | A supplied work record must match the package in every member, or the package is refused with the differing members named. |
+| An export that vouches for something | `export` writes the imported bytes and adds nothing. |
 | Damage that goes unnoticed | `fsck` reads and re-checks every stored object, compares the history with the objects and reports foreign files and symbolic links. It never repairs. |
 | A stored package altered after import | Every read re-checks the bytes against the object name and the package identifier; damage is reported and nothing is shown. |
 | Import mistaken for acceptance | `import` checks integrity only and says so; it reports no decision. `show` labels everything as stated by the package. Only `verify` under a supplied registry reports a decision. |

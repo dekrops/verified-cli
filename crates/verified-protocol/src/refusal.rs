@@ -9,9 +9,6 @@ use std::fmt;
 /// Codes are part of the protocol: every conforming verifier reports the same
 /// first failure for the same package. The strings are stable and safe to
 /// match on in scripts.
-///
-/// `RECORD_MISMATCH` (comparing a package with a work record) is not defined
-/// here: this workspace does not implement that comparison yet.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum RefusalCode {
@@ -83,11 +80,15 @@ pub enum RefusalCode {
     /// Expectations (`wvp-0.2`): the claim is not the one the relying party
     /// expected.
     ClaimNotExpected,
+    /// Work record (`wvp-0.2`): a record the relying party supplied is not
+    /// about this package: at least one member differs from the value
+    /// computed from the package.
+    RecordMismatch,
 }
 
 impl RefusalCode {
     /// Every code this crate defines, in the order the checks run.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::NotCanonical,
         Self::UnsupportedVersion,
         Self::MalformedComponent,
@@ -116,6 +117,7 @@ impl RefusalCode {
         Self::TenantNotExpected,
         Self::ContractNotExpected,
         Self::ClaimNotExpected,
+        Self::RecordMismatch,
     ];
 
     /// The code as the protocol spells it.
@@ -150,6 +152,7 @@ impl RefusalCode {
             Self::TenantNotExpected => "TENANT_NOT_EXPECTED",
             Self::ContractNotExpected => "CONTRACT_NOT_EXPECTED",
             Self::ClaimNotExpected => "CLAIM_NOT_EXPECTED",
+            Self::RecordMismatch => "RECORD_MISMATCH",
         }
     }
 }

@@ -13,7 +13,9 @@ Apache-2.0. Nothing is published to crates.io without explicit authorization.
 ## Python and TypeScript
 
 Not started, deliberately: bindings to an unfinished core would freeze its
-mistakes. When they start:
+mistakes. The contract a first SDK would wrap is the command-line JSON
+output, described in [`docs/sdk/json-output.md`](../sdk/json-output.md). When
+they start:
 
 - They expose domain operations (construct a claim, attach evidence
   references, assemble a package, verify, read a report), not hashing

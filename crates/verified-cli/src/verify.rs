@@ -3,7 +3,7 @@
 //! `verified verify`.
 
 use serde_json::json;
-use verified_canonical::{LimitExceeded, Limits, Sha256Digest, parse};
+use verified_canonical::{LimitExceeded, Limits, Sha256Digest, Value, parse};
 use verified_protocol::Decision;
 use verified_verifier::{
     DecisionFinding, Evaluation, Expectations, Finding, IssuerSignature, NotChecked, Options,
@@ -35,8 +35,18 @@ pub(crate) fn run(command: &Verify, out: &mut Output) -> Exit {
         Some(Ok(trust)) => Some(trust),
         Some(Err(message)) => return failed(out, "TRUST_REGISTRY", &message),
     };
+    let record = match command
+        .record
+        .as_deref()
+        .map(|path| json_file(path, "work record", &limits))
+    {
+        None => None,
+        Some(Ok(record)) => Some(record),
+        Some(Err(message)) => return failed(out, "WORK_RECORD", &message),
+    };
     let options = Options {
         limits,
+        record: record.as_ref(),
         protocol: command
             .protocol
             .map_or(ProtocolSelection::Detect, ProtocolSelection::Require),
@@ -71,6 +81,9 @@ pub(crate) fn run(command: &Verify, out: &mut Output) -> Exit {
         Err(error @ Rejection::ExpectationsUndefined(_)) => {
             failed(out, "EXPECTATIONS_UNDEFINED", &error.to_string())
         }
+        Err(error @ Rejection::RecordUndefined(_)) => {
+            failed(out, "RECORD_UNDEFINED", &error.to_string())
+        }
     }
 }
 
@@ -89,19 +102,28 @@ pub(crate) fn package_text(bytes: &[u8]) -> &[u8] {
     }
 }
 
-/// Reads the relying party's registry. It is configuration, so it need not
-/// be canonical text, but it must be exactly a registry.
-pub(crate) fn registry(path: &std::path::Path, limits: &Limits) -> Result<Trust, String> {
+/// Reads a JSON file the relying party supplies. It is configuration, so it
+/// need not be canonical text.
+fn json_file(path: &std::path::Path, what: &str, limits: &Limits) -> Result<Value, String> {
     let name = path.display();
     let bytes = match input::read(path, limits.max_bytes) {
         Ok(bytes) => bytes,
         Err(InputError::Io(error)) => return Err(format!("{error:#}")),
-        Err(InputError::TooLarge(limit)) => {
-            return Err(format!("trust registry {name}: {limit}"));
-        }
+        Err(InputError::TooLarge(limit)) => return Err(format!("{what} {name}: {limit}")),
     };
-    let value = parse(&bytes, limits).map_err(|error| format!("trust registry {name}: {error}"))?;
-    Trust::from_value(&value).map_err(|error| format!("trust registry {name}: {error}"))
+    parse(&bytes, limits).map_err(|error| format!("{what} {name}: {error}"))
+}
+
+/// Reads the relying party's registry. It must be exactly a registry.
+pub(crate) fn registry(path: &std::path::Path, limits: &Limits) -> Result<Trust, String> {
+    let value = json_file(path, "trust registry", limits)?;
+    Trust::from_value(&value).map_err(|error| format!("trust registry {}: {error}", path.display()))
+}
+
+/// A canonical value as `serde_json` has it, for output.
+pub(crate) fn output_json(value: &Value) -> serde_json::Value {
+    // Canonical text is JSON; this cannot fail.
+    serde_json::from_str(&value.to_canonical_string()).unwrap_or(serde_json::Value::Null)
 }
 
 /// The command could not run. Nothing is said about the package.
@@ -244,6 +266,10 @@ fn report_json(report: &Report, complete: bool) -> serde_json::Value {
             "version": contract.version,
             "digest": digest_json(&contract.digest),
         });
+    }
+    if let Some(record) = &report.work_record {
+        result["workRecord"] = output_json(record);
+        result["recordMatched"] = json!(report.record_matched);
     }
     if !complete {
         result["note"] = json!(NO_REGISTRY);
@@ -405,6 +431,36 @@ fn reported(out: &mut Output, report: &Report, required: Option<Decision>) -> Ex
     }
 }
 
+/// What the relying party supplied from outside the package, and that it
+/// was met: a work record, expectations.
+fn binding_rows(report: &Report) -> Vec<Row> {
+    let mut rows = Vec::new();
+    if report.record_matched {
+        rows.push(Row::new(
+            "work record",
+            Tone::Established,
+            "the supplied record is about this package",
+        ));
+    }
+    if !report.expectations_met.is_empty() {
+        let met = &report.expectations_met;
+        let given: Vec<&str> = [
+            met.tenant.as_ref().map(|_| "tenant"),
+            met.contract.as_ref().map(|_| "contract"),
+            met.claim.as_ref().map(|_| "claim"),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        rows.push(Row::new(
+            "expectations",
+            Tone::Established,
+            format!("met ({})", given.join(", ")),
+        ));
+    }
+    rows
+}
+
 fn human(out: &mut Output, report: &Report, complete: bool) {
     let statements = report.statements;
     out.heading(&format!("{TITLE} ({}, draft)", report.protocol));
@@ -468,22 +524,7 @@ fn human(out: &mut Output, report: &Report, complete: bool) {
             format!("NOT established: {NO_TRUTH}"),
         ),
     ]);
-    if !report.expectations_met.is_empty() {
-        let met = &report.expectations_met;
-        let given: Vec<&str> = [
-            met.tenant.as_ref().map(|_| "tenant"),
-            met.contract.as_ref().map(|_| "contract"),
-            met.claim.as_ref().map(|_| "claim"),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-        out.rows(&[Row::new(
-            "expectations",
-            Tone::Established,
-            format!("met ({})", given.join(", ")),
-        )]);
-    }
+    out.rows(&binding_rows(report));
     out.line("");
     match (&report.decision, complete) {
         (

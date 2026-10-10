@@ -18,12 +18,12 @@ states exactly how much of it this implementation performs.
 | Step 13: issuer signatures (`ISSUER_SIGNATURE_INVALID`) | yes | yes |
 | Relying-party expectations | not defined by the protocol | yes |
 | Work Contract Language 1 (`kleene-1`) | n/a | yes |
-| Work record comparison (`RECORD_MISMATCH`) | n/a | **no** |
+| Work record: computed from the package, and compared with one supplied (`RECORD_MISMATCH`) | not defined by the protocol | yes |
 | Chains of statements (evidence statement v1) | **no** | **no** |
 | Work-unit identity v1: identity, nullifier, key commitment | n/a (claims have no inputs) | yes, as a library (`verified-work-unit`) |
 | Work-unit registry ("was this unit already billed?") | **no**, by design | **no**, by design |
 
-Neither missing verification item is one of the thirteen checks. A package's statements
+The missing verification item is not one of the thirteen checks. A package's statements
 may carry chain links; their shape is checked and their continuity is not,
 which is also what the two upstream verifiers do for packages.
 
@@ -103,6 +103,24 @@ to be resolved there rather than here.
     and refuses on a mismatch; the report remains incomplete.
 12. **Expectations for `wvp-0.1`.** Not defined by the protocol. Giving them
     is an error (exit 2), as in the upstream CLI, never a silent no-op.
+
+## Work records
+
+No published vector covers work records, so agreement here rests on the
+specification and on reading the two upstream verifiers, not on a corpus.
+
+16. **Compared last.** A supplied record is compared after the package
+    verified and after expectations, as the upstream CLI orders it. Without a
+    registry it is still compared, like an expectation; the report stays
+    incomplete.
+17. **`claimId` is the claim's identifier object** (`{ "value": … }`), as the
+    JavaScript verifier computes it; `contractId` and `contractVersion` are
+    text.
+18. **A record for `wvp-0.1`** is not defined by the protocol. Giving one is an
+    error, not ignored.
+19. **The computed record is available without a registry.** It is a function
+    of the package. It records a verification only when the report beside it
+    is complete; the library and the JSON output say so.
 
 ## Work-unit identity
 

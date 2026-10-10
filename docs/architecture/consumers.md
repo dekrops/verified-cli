@@ -63,7 +63,7 @@ None is built.
 | **A library compatibility policy and tagged revisions** | A consumer pins a commit today and absorbs every API change. | Policy written ([compatibility policy](../development/compatibility-policy.md)); no tag yet. |
 | **Work-unit identity** (a stable identity for "the same unit of work" across contract versions, and its nullifier) | It is a protocol rule. A consumer inventing its own key cannot interoperate. | Built as a library, `verified-work-unit`: scope, identity, nullifier, key commitment. The consumer supplies the scope and holds the tenant key; this project stores neither. |
 | **A work-unit registry** (has this unit been billed?) | It does not belong here. It is state with a first-write-wins rule, and it is the settling party's. | Not built, deliberately. |
-| **Work record comparison** (`RECORD_MISMATCH`) | It is the protocol's way of binding a recorded verification to a package. | Not implemented. |
+| **Work record comparison** (`RECORD_MISMATCH`) | It is the protocol's way of binding a recorded verification to a package. | Built: `Report::work_record` and `Options::record`. A consumer storing a verification can store the record and later check a package against it. |
 | **Statement chains** | Continuity of an issuer's stream is a protocol check. | Shapes are checked; continuity is not. |
 | **Freshness or revocation status at verification time** | Whether a key is still good now is a trust input with protocol consequences. | The protocol has no such input. This would be a protocol change, not a feature to add here on its own. |
 

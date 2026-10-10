@@ -37,6 +37,10 @@ pub struct Options<'a> {
     pub trust: Option<&'a Trust>,
     /// What the relying party expects the package to be about.
     pub expectations: Expectations,
+    /// A work record the relying party holds (`wvp-0.2`): a record of one
+    /// verification, as JSON. If given, the package must be the one the
+    /// record is about, member for member, or it is refused.
+    pub record: Option<&'a Value>,
 }
 
 /// A protocol refusal: the first check the package failed.
@@ -65,6 +69,10 @@ pub enum Rejection {
     /// is reported.
     #[error("not examined: {0} does not define relying-party expectations")]
     ExpectationsUndefined(ProtocolVersion),
+    /// A work record was given for a protocol version that does not define
+    /// one. Ignoring it would report more than was checked.
+    #[error("not examined: {0} does not define work records")]
+    RecordUndefined(ProtocolVersion),
 }
 
 pub(crate) fn refusal(code: RefusalCode, detail: impl Into<String>) -> Refusal {

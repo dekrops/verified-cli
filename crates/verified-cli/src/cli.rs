@@ -15,11 +15,13 @@ Exit codes:
      --require-decision was given
   1  the package was refused; the refusal code is printed
      fsck: damage was found in the workspace
+     diff: the two packages differ
+     replay: a package was refused or is damaged
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
-  4  verify --require-decision: every check ran, but the reproduced decision
-     is not the required one
+  4  --require-decision: every check ran, but a reproduced decision is not
+     the required one
 
 The Work Verification Protocol is a draft. No check establishes that a
 source told the truth.";
@@ -111,6 +113,55 @@ pub(crate) enum Command {
     /// workspace this tool did not write. Nothing is repaired or changed.
     /// Exits 1 if damage is found.
     Fsck(Fsck),
+    /// Write a stored package out, byte for byte
+    ///
+    /// The output is exactly the text that was imported. Nothing is added:
+    /// no signature, no verification result, no claim of this tool's own.
+    /// Whoever receives it verifies it as they would the original.
+    Export(Export),
+    /// Compare two packages
+    ///
+    /// Shows which components differ and what the two packages state
+    /// differently. Both must have integrity; nothing else is checked, so
+    /// every difference shown is between what two packages say. Exits 0 if
+    /// the two texts are identical, 1 if they differ.
+    Diff(Diff),
+    /// Verify stored packages again, now, under your registry
+    ///
+    /// Nothing from an earlier run is reused: every result is computed in
+    /// this run, under the registry given to this run. Without package
+    /// names, every stored package is verified. Exits 1 if any package is
+    /// refused or damaged.
+    Replay(Replay),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Export {
+    /// A package identifier, an object identifier, or a prefix of one
+    pub(crate) package: String,
+    /// Write to this file, which must not exist (default: standard output)
+    #[arg(long, short, value_name = "FILE")]
+    pub(crate) output: Option<PathBuf>,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Diff {
+    /// The first package: a file, or the identifier of a stored package
+    pub(crate) a: String,
+    /// The second package
+    pub(crate) b: String,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Replay {
+    /// Your trust registry
+    #[arg(long, value_name = "REGISTRY")]
+    pub(crate) trust: PathBuf,
+    /// Exit 4 unless every package reproduces this decision
+    #[arg(long, value_name = "DECISION", value_parser = decision)]
+    pub(crate) require_decision: Option<Decision>,
+    /// The packages to verify (default: every stored package)
+    pub(crate) packages: Vec<String>,
 }
 
 #[derive(Debug, ClapArgs)]
@@ -163,6 +214,10 @@ pub(crate) struct Verify {
     /// or UNDETERMINED. Another reproduced decision exits 4
     #[arg(long, value_name = "DECISION", value_parser = decision)]
     pub(crate) require_decision: Option<Decision>,
+    /// A work record you hold, as a JSON file: refuse a package the record
+    /// is not about (wvp-0.2)
+    #[arg(long, value_name = "RECORD")]
+    pub(crate) record: Option<PathBuf>,
     /// Refuse a package evaluated for another tenant (wvp-0.2)
     #[arg(long, value_name = "TENANT")]
     pub(crate) expect_tenant: Option<String>,
