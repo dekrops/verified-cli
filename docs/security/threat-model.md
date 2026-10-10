@@ -55,9 +55,11 @@ relying party's own trust registry.
   themselves only as honest as the source that signs them.
 - **A wrong registry.** The tool cannot tell a relying party whom to trust.
   Revocation is only as fresh as the registry file supplied.
-- **Exit code 0 read as "supported".** Exit 0 means every check ran. The
-  reproduced decision can be `CONTRADICTED` or `UNDETERMINED`; a script must
-  read it (`--json`, `properties.decisionReproduced.decision`).
+- **Exit code 0 read as "supported" by a script that did not ask.** Without
+  `--require-decision`, exit 0 means every check ran, and the reproduced
+  decision can be `CONTRADICTED` or `UNDETERMINED`. A script that gates on
+  the exit code must pass `--require-decision SUPPORTED`, or read the
+  decision from `--json`.
 - **Chains of statements** are not verified: a package's statements are
   checked individually.
 - **A local attacker on the workspace directory.** The workspace refuses

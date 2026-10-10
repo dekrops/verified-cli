@@ -96,6 +96,7 @@ first is a statement about the package.
 | 1 | Refused by a protocol check. |
 | 2 | The command could not run: usage, unreadable input, unusable registry, resource limit. |
 | 3 | Not refused, but not every check ran. |
+| 4 | `verify --require-decision`: every check ran, but the reproduced decision is not the required one. |
 
 Code 3 is where upstream's CLI and this one differ on purpose: upstream exits
 0 for integrity-only verification without a registry. Here, "not everything
@@ -103,9 +104,12 @@ was checked" is never spelled the same as "everything passed".
 
 Code 0 follows the protocol: a reproduced `CONTRADICTED` or `UNDETERMINED` is
 a successful verification of a package whose claim is not supported. That
-makes exit 0 unsafe as a gate on its own; the decision is printed, is in the
-JSON, and the help text says so. Whether to add an option that requires a
-particular decision is an open question for the command-line interface.
+makes a bare exit 0 unsafe as a gate. `--require-decision <DECISION>` is the
+opt-in answer: with it, exit 0 also means that decision was reproduced, and
+any other reproduced decision is exit 4. The default is unchanged so that the
+tool keeps the protocol's meaning of success. Only a decision this run
+reproduced can meet the requirement; without a registry the exit code stays
+3.
 
 ## Not built yet
 

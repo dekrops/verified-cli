@@ -6,16 +6,19 @@ use std::path::PathBuf;
 
 use clap::{Args as ClapArgs, Parser, Subcommand};
 use verified_canonical::Sha256Digest;
-use verified_protocol::ProtocolVersion;
+use verified_protocol::{Decision, ProtocolVersion};
 
 const AFTER_HELP: &str = "\
 Exit codes:
   0  every protocol check ran and the package was not refused; the decision
-     it reproduced may still be CONTRADICTED or UNDETERMINED
+     it reproduced may still be CONTRADICTED or UNDETERMINED, unless
+     --require-decision was given
   1  the package was refused; the refusal code is printed
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
+  4  verify --require-decision: every check ran, but the reproduced decision
+     is not the required one
 
 The Work Verification Protocol is a draft. No check establishes that a
 source told the truth.";
@@ -63,7 +66,8 @@ pub(crate) enum Command {
     /// trusted.
     ///
     /// Exit code 0 means every check ran, not that the claim is supported:
-    /// read the decision.
+    /// read the decision, or give --require-decision SUPPORTED so that any
+    /// other outcome is a non-zero exit code.
     Verify(Verify),
     /// Create a local workspace for inspecting packages
     ///
@@ -124,6 +128,10 @@ pub(crate) struct Verify {
     /// Require this protocol version instead of detecting it
     #[arg(long, value_name = "VERSION", value_parser = protocol)]
     pub(crate) protocol: Option<ProtocolVersion>,
+    /// Exit 0 only if this decision was reproduced: SUPPORTED, CONTRADICTED
+    /// or UNDETERMINED. Another reproduced decision exits 4
+    #[arg(long, value_name = "DECISION", value_parser = decision)]
+    pub(crate) require_decision: Option<Decision>,
     /// Refuse a package evaluated for another tenant (wvp-0.2)
     #[arg(long, value_name = "TENANT")]
     pub(crate) expect_tenant: Option<String>,
@@ -142,6 +150,12 @@ fn digest(text: &str) -> Result<Sha256Digest, String> {
         .unwrap_or(text)
         .parse()
         .map_err(|e: verified_canonical::DigestParseError| e.to_string())
+}
+
+fn decision(name: &str) -> Result<Decision, String> {
+    name.parse().map_err(|()| {
+        format!("unknown decision {name:?}; one of SUPPORTED, CONTRADICTED, UNDETERMINED")
+    })
 }
 
 fn protocol(identifier: &str) -> Result<ProtocolVersion, String> {

@@ -65,7 +65,7 @@ pub(crate) fn run(command: &Verify, out: &mut Output) -> Exit {
         },
     };
     match verified_verifier::verify(package_text(&bytes), &options) {
-        Ok(report) => reported(out, &report),
+        Ok(report) => reported(out, &report, command.require_decision),
         Err(Rejection::Refused(refusal)) => refused(out, &refusal),
         Err(Rejection::Limit(limit)) => not_examined(out, limit),
         Err(error @ Rejection::ExpectationsUndefined(_)) => {
@@ -362,17 +362,46 @@ fn issuer_row(issuer: IssuerSignature) -> Row {
 
 /// The package was not refused. Whether every check ran is the report's to
 /// say, and decides the exit code.
-fn reported(out: &mut Output, report: &Report) -> Exit {
+fn reported(out: &mut Output, report: &Report, required: Option<Decision>) -> Exit {
     let complete = report.is_complete();
+    // A requirement is met only by a decision this run reproduced. The
+    // decision a package carries never meets one.
+    let reproduced = match &report.decision {
+        DecisionFinding::Reproduced(reproduced) => Some(reproduced.decision),
+        _ => None,
+    };
+    let met = required.map(|required| reproduced == Some(required));
     match out.mode {
         Mode::Quiet => {}
-        Mode::Json => out.json(&report_json(report, complete)),
-        Mode::Human => human(out, report, complete),
+        Mode::Json => {
+            let mut result = report_json(report, complete);
+            if let (Some(required), Some(met)) = (required, met) {
+                result["requiredDecision"] = json!({ "decision": required.as_str(), "met": met });
+            }
+            out.json(&result);
+        }
+        Mode::Human => {
+            human(out, report, complete);
+            match (required, met, reproduced) {
+                (Some(required), Some(false), Some(reproduced)) => out.line(&format!(
+                    "required decision {required} not met: the reproduced decision is {reproduced}"
+                )),
+                (Some(required), Some(false), None) => out.line(&format!(
+                    "required decision {required} not met: no decision was reproduced"
+                )),
+                (Some(required), Some(true), _) => {
+                    out.line(&format!("required decision {required} met"));
+                }
+                _ => {}
+            }
+        }
     }
-    if complete {
-        Exit::Complete
-    } else {
-        Exit::Incomplete
+    match (complete, met) {
+        // Incomplete stays incomplete: without a reproduced decision there
+        // is nothing a requirement could be measured against.
+        (false, _) => Exit::Incomplete,
+        (true, Some(false)) => Exit::DecisionNotRequired,
+        (true, _) => Exit::Complete,
     }
 }
 

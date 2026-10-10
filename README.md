@@ -98,6 +98,7 @@ $ echo $?
 | --- | --- |
 | `--trust <REGISTRY>` | Your trust registry: the keys you accept, for which issuer, tenant, sources and period. Keys inside a package are never trusted. |
 | `--expect-tenant`, `--expect-contract`, `--expect-claim` | Refuse a `wvp-0.2` package that verifies but is about another tenant, contract (by digest) or claim than you meant. |
+| `--require-decision <DECISION>` | Exit 0 only if this decision (`SUPPORTED`, `CONTRADICTED` or `UNDETERMINED`) was reproduced; otherwise exit 4. Use it in scripts. |
 | `--protocol <VERSION>` | Require a protocol version instead of detecting it. |
 | `--json` | The same result as structured data, with full identifiers. |
 | `--quiet` | Print nothing; rely on the exit code. |
@@ -105,10 +106,29 @@ $ echo $?
 
 | Exit | Meaning |
 | --- | --- |
-| 0 | Every protocol check ran and the package was not refused. **The reproduced decision may still be `CONTRADICTED` or `UNDETERMINED`: read it.** |
+| 0 | Every protocol check ran and the package was not refused. **Without `--require-decision`, the reproduced decision may still be `CONTRADICTED` or `UNDETERMINED`.** |
 | 1 | Refused by a protocol check. |
 | 2 | The command could not run (usage, unreadable input, unusable registry, resource limit). |
 | 3 | `verify`: not refused, but not every check ran (no registry). |
+| 4 | `verify --require-decision`: every check ran, but the reproduced decision is not the required one. |
+
+### Gating a script on the decision
+
+Exit code 0 follows the protocol: a reproduced `CONTRADICTED` or
+`UNDETERMINED` is a successful verification of a claim that is not supported.
+A script that acts on the exit code alone must therefore say which decision
+it needs:
+
+```sh
+verified verify invoice.json --trust trust.json --require-decision SUPPORTED \
+  && pay_invoice
+```
+
+With `--require-decision`, exit 0 means every check ran **and** that decision
+was reproduced on this machine. Any other reproduced decision exits 4. The
+decision a package merely carries never satisfies the requirement: without a
+registry nothing is reproduced and the exit code is 3. The flag is opt-in;
+without it the behaviour is unchanged.
 
 A trust registry is a JSON file:
 
