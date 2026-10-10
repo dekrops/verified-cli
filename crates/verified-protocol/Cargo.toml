@@ -1,0 +1,15 @@
+[package]
+name = "verified-protocol"
+description = "Typed, versioned representations of Work Verification Protocol structures."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+verified-canonical.workspace = true
+
+[lints]
+workspace = true
