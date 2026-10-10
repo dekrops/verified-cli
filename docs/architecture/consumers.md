@@ -59,7 +59,7 @@ None is built.
 
 | Likely need | Why it belongs here | State |
 | --- | --- | --- |
-| **Public availability** of the library crates, with a pinned revision or release | A consumer cannot ship a build that needs private access. | Blocked on the owner's authorization to make the repository public. Tracked in issue 6. |
+| **Public availability** of the library crates, with a pinned revision or release | A consumer cannot ship a build that needs private access. | The repository is public (issue 6, closed), so a consumer can pin a commit without credentials. No tag or published crate yet. |
 | **A library compatibility policy and tagged revisions** | A consumer pins a commit today and absorbs every API change. | Policy written ([compatibility policy](../development/compatibility-policy.md)); no tag yet. |
 | **Work-unit identity** (a stable identity for "the same unit of work" across contract versions, and its nullifier) | It is a protocol rule. A consumer inventing its own key cannot interoperate. | Built as a library, `verified-work-unit`: scope, identity, nullifier, key commitment. The consumer supplies the scope and holds the tenant key; this project stores neither. |
 | **A work-unit registry** (has this unit been billed?) | It does not belong here. It is state with a first-write-wins rule, and it is the settling party's. | Not built, deliberately. |

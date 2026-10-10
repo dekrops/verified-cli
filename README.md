@@ -5,14 +5,14 @@
 Inspect work claims, trace evidence, verify outcomes, and exchange portable
 work records, without trusting the system that produced them.
 
-> **Status: early, private, pre-release.** `verify` runs all thirteen of the
+> **Status: early, pre-release.** `verify` runs all thirteen of the
 > protocol's checks; `init`, `import`, `show`, `log`, `trace`, `fsck`, `export`,
 > `diff` and `replay` keep, inspect and move packages in a local workspace.
 > The protocol is a draft.
 > Nothing here is audited, certified or production-hardened.
 >
 > **Open source under the [Apache License 2.0](LICENSE).** The repository is
-> not public yet and no package has been published.
+> public; no revision is tagged and no package has been published.
 
 ## What it is
 

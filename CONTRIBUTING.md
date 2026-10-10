@@ -1,7 +1,7 @@
 # Contributing
 
 Verified CLI is open source under the [Apache License 2.0](LICENSE). The
-repository is pre-release and not public yet.
+repository is public and pre-release: nothing is tagged or published yet.
 
 ## Licensing of contributions
 
