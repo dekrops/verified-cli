@@ -29,7 +29,9 @@ which is also what the two upstream verifiers do for packages.
 
 ## Measured against the corpus
 
-Run on 2026-10-10 against `dekrops/verified` at `3d6f022a`
+Run on 2026-10-10 against the published corpus,
+[`dekrops/wvp`](https://github.com/dekrops/wvp) at `c7c9de2`, and on every
+change since by the `conformance` job of CI at the commit it pins
 (see [`conformance/README.md`](../../conformance/README.md) for how). Every
 expectation is compared in full, never by refusal code alone.
 
@@ -42,6 +44,7 @@ expectation is compared in full, never by refusal code alone.
 | The two worked examples beside the specifications | Both verify completely as `SUPPORTED` under their registries. |
 | `work-contract/v1`, 82 case files and 5 differential batches | 641 cases reproduced, from 81 case files and the 5 batches. 1 case file cannot be represented (below). |
 | `work-unit/v1/vectors.json` | 3 of 3 key commitments and 10 of 10 identities and nullifiers reproduced. |
+| `claim-registration/v1`, 123 cases in 6 files | **Not run.** Claim registration is not implemented here. |
 | `evidence-statement/v1` | **Not run.** Its statement and admission rules are exercised through the package vectors; its chain vectors need chain verification, which does not exist here. |
 
 One case is not reproduced because it cannot reach the evaluator:

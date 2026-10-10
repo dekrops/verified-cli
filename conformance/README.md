@@ -38,6 +38,18 @@ Four test files use it:
 | `verified-work-unit/tests/work_unit.rs` | `work-unit/v1/vectors.json` | Every key commitment, canonical identity and nullifier. |
 | `verified-verifier/tests/conformance.rs` | `wvp/v0.1`, `wvp/v0.2`, `expectations.json`, the worked examples | The whole expected report or refusal of every vector, under the registry the vector supplies. |
 
+## In CI
+
+The `conformance` job of [`ci.yml`](../.github/workflows/ci.yml) runs exactly
+the command above on every pull request, against `dekrops/wvp` at the commit
+the workflow names. To follow a new publication of the corpus, change that
+commit and the results in
+[`docs/protocol/compatibility.md`](../docs/protocol/compatibility.md) in one
+pull request.
+
+Two parts of the corpus have no test here yet and are not counted:
+`evidence-statement/v1` and `claim-registration/v1`.
+
 ## Synthetic examples are something else
 
 [`examples/`](../examples/) holds checked-in synthetic packages for trying the
