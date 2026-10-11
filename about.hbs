@@ -1,0 +1,31 @@
+# Third-party licenses
+
+The `verified` binary and the library crates of this repository link the
+third-party crates below. Their licenses require these notices and texts to
+accompany a binary distribution. This file is generated from `Cargo.lock` by
+[cargo-about](https://github.com/EmbarkStudios/cargo-about) (see
+`about.toml`); do not edit it by hand.
+
+This project's own license is in [`LICENSE`](LICENSE), and its notices are in
+[`NOTICE`](NOTICE).
+
+## Overview
+
+{{#each overview}}
+- {{{name}}}: {{count}} crate{{#if (gt count 1)}}s{{/if}}
+{{/each}}
+
+## Licenses
+{{#each licenses}}
+
+### {{{name}}}
+
+Used by:
+{{#each used_by}}
+- [{{crate.name}} {{crate.version}}]({{#if crate.repository}}{{crate.repository}}{{else}}https://crates.io/crates/{{crate.name}}{{/if}})
+{{/each}}
+
+```text
+{{{text}}}
+```
+{{/each}}

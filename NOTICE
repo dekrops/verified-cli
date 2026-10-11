@@ -11,13 +11,11 @@ review prompt used in CI and is not part of any binary.
 
 The compiled binaries link third-party Rust crates under the Apache-2.0, MIT, BSD-3-Clause and
 Unicode-3.0 licenses; a binary distribution must reproduce their notices.
-The BSD-3-Clause crates are:
-
-  ed25519-dalek
-    Copyright (c) 2017-2019 isis agora lovecruft. All rights reserved.
-  curve25519-dalek
-    Copyright (c) 2016-2021 isis agora lovecruft. All rights reserved.
-    Copyright (c) 2016-2021 Henry de Valence. All rights reserved.
+THIRD-PARTY-LICENSES.md holds each of those licenses with the crates under
+it, generated from Cargo.lock and checked in CI. A binary distribution
+carries it beside LICENSE and this file. Which crates are under which
+license, the BSD-3-Clause ones among them, is stated there and only there,
+so that it cannot fall behind the dependencies.
 
 The Work Verification Protocol specifications and conformance vectors are not
 part of this repository. This implementation was written independently from
