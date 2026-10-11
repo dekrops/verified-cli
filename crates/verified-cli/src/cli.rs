@@ -8,7 +8,20 @@ use clap::{Args as ClapArgs, Parser, Subcommand};
 use verified_canonical::Sha256Digest;
 use verified_protocol::{Decision, ProtocolVersion};
 
+/// The top of `verified --help`: name and version, then what it is.
+const HELP_TEMPLATE: &str = "\
+{name} {version}
+{about-with-newline}
+{usage-heading} {usage}
+
+{all-args}{after-help}";
+
 const AFTER_HELP: &str = "\
+Start here:
+  verified verify package.json --trust registry.json
+  verified --json verify package.json --trust registry.json
+  verified init && verified import package.json && verified log
+
 Exit codes:
   0  every protocol check ran and the package was not refused; the decision
      it reproduced may still be CONTRADICTED or UNDETERMINED, unless
@@ -28,7 +41,9 @@ Exit codes:
      the required one
 
 The Work Verification Protocol is a draft. No check establishes that a
-source told the truth.";
+source told the truth.
+
+Documentation, source and issues: https://github.com/dekrops/verified-cli";
 
 /// Git-like tools for verifiable work.
 ///
@@ -36,7 +51,13 @@ source told the truth.";
 /// system that produced them. Everything runs locally: no account, no
 /// server, no network.
 #[derive(Debug, Parser)]
-#[command(name = "verified", version, propagate_version = true, after_help = AFTER_HELP)]
+#[command(
+    name = "verified",
+    version,
+    propagate_version = true,
+    help_template = HELP_TEMPLATE,
+    after_help = AFTER_HELP
+)]
 pub(crate) struct Args {
     #[command(flatten)]
     pub(crate) global: Global,

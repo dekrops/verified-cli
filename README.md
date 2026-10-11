@@ -1,18 +1,53 @@
-# Verified CLI
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/wordmark-dark.svg">
+    <img src="docs/assets/wordmark-light.svg" alt="Verified CLI" width="320">
+  </picture>
+</h1>
 
-**Git-like tools for verifiable work.**
+<p align="center">
+  <strong>Git-like tools for verifiable work.</strong><br>
+  Inspect work claims, trace evidence, verify outcomes, and exchange portable
+  work records, without trusting the system that produced them.
+</p>
 
-Inspect work claims, trace evidence, verify outcomes, and exchange portable
-work records, without trusting the system that produced them.
+<p align="center">
+  <a href="https://github.com/dekrops/verified-cli/actions/workflows/ci.yml"><img src="https://github.com/dekrops/verified-cli/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/dekrops/verified-cli/tags"><img src="https://img.shields.io/github/v/tag/dekrops/verified-cli?label=tag&amp;sort=semver" alt="Latest tag"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache-2.0"></a>
+  <a href="rust-toolchain.toml"><img src="https://img.shields.io/badge/rust-1.99-orange" alt="Rust 1.99"></a>
+  <a href="https://github.com/dekrops/wvp"><img src="https://img.shields.io/badge/protocol-WVP%20draft-lightgrey" alt="Protocol: WVP, draft"></a>
+</p>
+
+```console
+$ verified verify examples/invoice-posting/supported.json \
+    --trust examples/invoice-posting/trust.json
+Work Verification Protocol package (wvp-0.2, draft)
+package               wvp:sha-256:d0982b73f310…
+tenant                tenant-test
+claim                 00000000-0000-4000-8000-000000000500
+package integrity     established
+contract              posting-test 1.0.0, sha-256:6a2c3b0bf581…
+evidence signatures   established (1 of 1)
+signer authority      established under the supplied registry
+decision reproduced   SUPPORTED, matches the package
+                        POSTED                      TRUE
+issuer signature      absent
+source truthfulness   NOT established: no check can establish it
+
+complete: every protocol check ran; the decision SUPPORTED was reproduced
+```
 
 > **Status: early, pre-release.** `verify` runs all thirteen of the
 > protocol's checks; `init`, `import`, `show`, `log`, `trace`, `fsck`, `export`,
-> `diff` and `replay` keep, inspect and move packages in a local workspace.
-> The protocol is a draft.
+> `diff` and `replay` keep, inspect and move packages in a local workspace;
+> `registration` and `evidence` check claim registrations and statement
+> chains. The protocols are drafts.
 > Nothing here is audited, certified or production-hardened.
 >
-> **Open source under the [Apache License 2.0](LICENSE).** The repository is
-> public; no revision is tagged and no package has been published.
+> **Open source under the [Apache License 2.0](LICENSE).** Tagged revisions
+> are on the [tags page](https://github.com/dekrops/verified-cli/tags); no
+> package has been published to a registry.
 
 ## What it is
 

@@ -770,10 +770,13 @@ fn usage_errors_exit_2_and_help_and_version_exit_0() {
     assert_eq!(help.status.code(), Some(0));
     let text = stdout(&help);
     for expected in [
+        &format!("verified {}\n", env!("CARGO_PKG_VERSION")),
         "Git-like tools for verifiable work.",
         "verify",
+        "Start here:",
         "Exit codes:",
         "draft",
+        "https://github.com/dekrops/verified-cli",
     ] {
         assert!(text.contains(expected), "{expected}");
     }
@@ -837,4 +840,27 @@ fn the_checked_in_examples_exit_as_their_readme_says() {
             "{file} without a registry"
         );
     }
+}
+
+/// The output shown at the top of the README is what the command prints.
+#[test]
+fn the_readme_shows_what_verify_prints() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    // Git may check the file out with Windows line ends.
+    let readme = std::fs::read_to_string(root.join("README.md"))
+        .expect("README.md")
+        .replace("\r\n", "\n");
+    let start = readme.find("```console\n").expect("a console block") + "```console\n".len();
+    let block = &readme[start..start + readme[start..].find("```").expect("its end")];
+    // The command spans its first lines, continued with a backslash.
+    let (command, shown) = block.split_once("trust.json\n").expect("the command");
+    assert!(command.starts_with("$ verified verify "), "{command}");
+    let output = verified()
+        .current_dir(&root)
+        .args(["verify", "examples/invoice-posting/supported.json"])
+        .args(["--trust", "examples/invoice-posting/trust.json"])
+        .output()
+        .expect("run verified");
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(stdout(&output), shown);
 }
