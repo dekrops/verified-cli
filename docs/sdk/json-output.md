@@ -106,6 +106,7 @@ only in prose.
 
 | Command | `outcome` | Notable members |
 | --- | --- | --- |
+| `evidence sign` | `signed`, `refused` (exit 1), `signing_input` | `output`, `id`, `statementDigest`, `chain` (`null`, or `stream` and `sequence`). Refused: `refusal.code` (a statement code such as `UNKNOWN_KEY` or `SOURCE_NOT_AUTHORIZED`, or a chain code); nothing was written. |
 | `evidence chain` | `verified`, `refused` (exit 1) | `fromGenesis`, `first`, `last`, `head`: the last step as an anchor, `{ tenant: { value }, issuer: { value }, stream, sequence, digest }`, which `--anchor` reads back. Refused: `refusal.code` (an evidence code: `MALFORMED`, a `CHAIN_…` code, or a statement code packages share), `refusal.detail`, which names the statement's line when one statement is at fault. |
 
 `verified` says the steps from `first` to `last` are one unbroken run. It

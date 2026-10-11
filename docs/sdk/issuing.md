@@ -8,6 +8,42 @@ and write nothing.
 Issuing is not verifying. A package you issue states *your* claim. Whoever
 receives it verifies it under *their* registry.
 
+## Making the evidence
+
+Evidence is signed by its source, where the observation is made: an ERP
+gateway, a payment processor's webhook, a sensor. `verified evidence sign`
+makes such a statement from a statement draft:
+
+```json
+{
+  "id": { "value": "00000000-0000-4000-8000-000000000001" },
+  "tenant": { "value": "acme" },
+  "issuer": { "value": "00000000-0000-4000-8000-000000000101" },
+  "kind": { "Event": {} },
+  "observedAt": { "value": "2026-03-01T10:00:00Z" },
+  "source": { "system": "erp", "observationId": "obs-1" },
+  "subject": { "system": "erp", "kind": "order", "key": "SO-1" },
+  "body": { "record": { "kind": "posting", "fields": { "invoice": "INV-1", "document": "D-1" } } }
+}
+```
+
+```sh
+verified evidence sign posting.json --key-id erp-gateway --key erp.key \
+    --trust trust.json -o statement.json
+# A stream: start one, then continue from its last statement.
+verified evidence sign first.json  … --stream erp/postings -o s0.json
+verified evidence sign second.json … --after s0.json      -o s1.json
+```
+
+The statement commits to the body by its digest. It is written only if it
+is authentic under the registry given (the key, its tenant, issuer, source
+and validity) and, when chained, follows the statement before it. As with
+`verified sign`, `--signing-input-out` and `--signature-file` keep the key
+elsewhere.
+
+In an issue draft, each evidence item is `{ "statement": <the signed
+statement>, "body": <its body> }`.
+
 ## The draft
 
 One JSON object with exactly these members. Spelling and order do not

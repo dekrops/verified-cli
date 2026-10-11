@@ -35,6 +35,7 @@ Exit codes:
      evidence chain: the statements are refused, or are not one run
      trust show: the registry cannot be used
      issue, sign: a verifier would refuse the package; nothing is written
+     evidence sign: the statement would be refused; nothing is written
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
@@ -345,6 +346,60 @@ pub(crate) enum Evidence {
     /// Steps after the last can always be left off unnoticed. To continue
     /// later, keep the head that --json prints and pass it as --anchor.
     Chain(EvidenceChain),
+    /// Make a signed evidence statement: what a source observed
+    ///
+    /// The draft is a JSON file: the statement's stated members (id,
+    /// issuer, kind, observedAt, source, subject, tenant) and the evidence
+    /// body it commits to. Sign with a local key (--key), or keep the key
+    /// elsewhere: write the bytes to sign with --signing-input-out and give
+    /// the signature with --signature-file. --stream starts a chained
+    /// stream; --after continues one from its last statement.
+    ///
+    /// The statement is written only if it is authentic under your
+    /// registry and, if chained, follows the statement before it. A signed
+    /// statement shows who said something, not that it is true.
+    Sign(EvidenceSign),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct EvidenceSign {
+    /// The draft: the stated members and the body, as JSON
+    pub(crate) draft: PathBuf,
+    /// Start a stream of this name: the statement is its first step
+    #[arg(long, value_name = "NAME", conflicts_with = "after")]
+    pub(crate) stream: Option<String>,
+    /// Continue a stream: the signed statement this one follows
+    #[arg(long, value_name = "FILE")]
+    pub(crate) after: Option<PathBuf>,
+    /// Write only the bytes to sign, for a signer elsewhere, and stop
+    #[arg(long, value_name = "FILE", conflicts_with_all = ["key", "signature_file", "key_id", "trust", "output"])]
+    pub(crate) signing_input_out: Option<PathBuf>,
+    /// A PEM file holding the Ed25519 private key to sign with
+    #[arg(long, value_name = "FILE", conflicts_with = "signature_file")]
+    pub(crate) key: Option<PathBuf>,
+    /// A file holding a signature made elsewhere over the bytes
+    /// --signing-input-out wrote: standard base64 of 64 bytes
+    #[arg(long, value_name = "FILE")]
+    pub(crate) signature_file: Option<PathBuf>,
+    /// The key's identifier in the registry
+    #[arg(long, value_name = "ID", required_unless_present = "signing_input_out")]
+    pub(crate) key_id: Option<String>,
+    /// The registry the statement must be authentic under
+    #[arg(
+        long,
+        value_name = "REGISTRY",
+        required_unless_present = "signing_input_out"
+    )]
+    pub(crate) trust: Option<PathBuf>,
+    /// Where to write the signed statement. An existing file is not
+    /// overwritten
+    #[arg(
+        long,
+        short,
+        value_name = "FILE",
+        required_unless_present = "signing_input_out"
+    )]
+    pub(crate) output: Option<PathBuf>,
 }
 
 #[derive(Debug, ClapArgs)]
