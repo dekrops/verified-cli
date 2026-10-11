@@ -161,120 +161,24 @@ pub(crate) fn refused(out: &mut Output, refusal: &Refusal) -> Exit {
     Exit::Refused
 }
 
-fn reason_code(reason: NotChecked) -> &'static str {
-    match reason {
-        NotChecked::NoTrustRegistry => "no_trust_registry",
-        // `NotChecked` is non-exhaustive: an unknown case claims nothing.
-        _ => "unknown",
-    }
-}
-
 pub(crate) fn digest_json(digest: &Sha256Digest) -> serde_json::Value {
     json!({ "algorithm": Sha256Digest::ALGORITHM, "hex": digest.to_hex() })
 }
 
-fn finding_json(finding: Finding) -> serde_json::Value {
-    match finding {
-        Finding::Established => json!({ "status": "established" }),
-        Finding::NotChecked(reason) => {
-            json!({ "status": "not_checked", "reason": reason_code(reason) })
-        }
-        _ => json!({ "status": "not_checked", "reason": "unknown" }),
-    }
-}
-
+/// The JSON of a decision finding, as the library defines it.
 pub(crate) fn decision_json(finding: &DecisionFinding) -> serde_json::Value {
-    let DecisionFinding::Reproduced(Reproduced {
-        decision,
-        evaluation,
-    }) = finding
-    else {
-        let reason = match finding {
-            DecisionFinding::NotChecked(reason) => reason_code(*reason),
-            _ => "unknown",
-        };
-        return json!({ "status": "not_checked", "reason": reason });
-    };
-    let mut reproduced = json!({ "status": "established", "decision": decision.as_str() });
-    match evaluation {
-        Evaluation::OrderTransition { conditions } => {
-            reproduced["conditions"] = conditions
-                .iter()
-                .map(|c| json!({ "id": c.id, "holds": c.holds, "evidence": c.evidence }))
-                .collect();
-        }
-        Evaluation::WorkContract {
-            requirements,
-            ignored,
-            conflicts,
-        } => {
-            reproduced["requirements"] = requirements
-                .iter()
-                .map(|r| json!({ "id": r.id, "value": r.value.as_str() }))
-                .collect();
-            reproduced["ignored"] = json!(ignored);
-            reproduced["conflicts"] = conflicts
-                .iter()
-                .map(|c| json!({ "kind": c.kind, "facts": c.facts, "resolvedTo": c.resolved_to }))
-                .collect();
-        }
-        _ => {}
-    }
-    reproduced
+    output_json(&finding.to_value())
 }
 
+/// The JSON of an issuer-signature finding, as the library defines it.
 pub(crate) fn issuer_json(issuer: IssuerSignature) -> serde_json::Value {
-    match issuer {
-        IssuerSignature::Established { count } => {
-            json!({ "status": "established", "count": count })
-        }
-        IssuerSignature::Absent => json!({ "status": "absent" }),
-        IssuerSignature::NotChecked { carried, reason } => {
-            json!({ "status": "not_checked", "reason": reason_code(reason), "carried": carried })
-        }
-        _ => json!({ "status": "not_checked", "reason": "unknown" }),
-    }
+    output_json(&issuer.to_value())
 }
 
+/// The `verify` JSON: the library's form of the report, and the note the
+/// command line adds to an incomplete one.
 fn report_json(report: &Report, complete: bool) -> serde_json::Value {
-    let met = &report.expectations_met;
-    let mut result = json!({
-        "outcome": if complete { "complete" } else { "incomplete" },
-        "protocol": report.protocol.identifier(),
-        "protocolStatus": "draft",
-        "packageId": report.package_id.to_string(),
-        "tenant": report.tenant,
-        "claim": report.claim,
-        "statements": report.statements,
-        "components": report.components.iter().map(|c| json!({
-            "path": c.path.as_str(),
-            "digest": digest_json(&c.digest),
-        })).collect::<Vec<_>>(),
-        "properties": {
-            "packageIntegrity": finding_json(report.integrity),
-            "evidenceSignatures": finding_json(report.evidence_signatures),
-            "signerAuthority": finding_json(report.signer_authority),
-            "decisionReproduced": decision_json(&report.decision),
-            "issuerSignature": issuer_json(report.issuer_signature),
-            "sourceTruthfulness": { "status": "not_established", "reason": "no_check_can_establish_it" },
-        },
-        "expectationsMet": {
-            "tenant": met.tenant,
-            "contract": met.contract.as_ref().map(digest_json),
-            "claim": met.claim,
-        },
-    });
-    if let Some(contract) = &report.contract {
-        result["contract"] = json!({
-            "id": contract.id,
-            "version": contract.version,
-            "digest": digest_json(&contract.digest),
-        });
-    }
-    if let Some(record) = &report.work_record {
-        result["workRecord"] = output_json(record);
-        result["recordMatched"] = json!(report.record_matched);
-    }
+    let mut result = output_json(&report.to_value());
     if !complete {
         result["note"] = json!(NO_REGISTRY);
     }

@@ -37,6 +37,13 @@ added, and existing members keep their names and shapes.
 `outcome` is `complete` (exit 0, or 4 if a required decision was not met) or
 `incomplete` (exit 3).
 
+A program linking the library gets the same members without the command:
+`Report::to_value` in `verified-verifier` returns them, and the command prints
+what it returns plus `note` and `requiredDecision`. `Finding`,
+`DecisionFinding` and `IssuerSignature` each have a `to_value` for their part,
+which `trace` uses too. A binding should call these and not restate the
+mapping.
+
 | Member | Meaning |
 | --- | --- |
 | `protocol`, `protocolStatus` | `wvp-0.1` or `wvp-0.2`; always `draft` |

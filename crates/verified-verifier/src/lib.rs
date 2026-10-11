@@ -75,6 +75,7 @@ mod json;
 mod order_transition;
 pub mod registration;
 mod report;
+mod report_value;
 mod statement;
 mod trust;
 mod verify;
