@@ -35,6 +35,7 @@ Exit codes:
      evidence chain: the statements are refused, or are not one run
      trust show: the registry cannot be used
      issue, sign: a verifier would refuse the package; nothing is written
+     evidence sign: the statement would be refused; nothing is written
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
