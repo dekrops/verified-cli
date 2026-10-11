@@ -15,6 +15,7 @@
 | [0011](0011-statement-chains.md) | Statement chains are verified outside packages, by the library | Accepted; implemented |
 | [0012](0012-claim-registration.md) | Claim registration is verified here, in stages, and no registry is run | Accepted; implemented |
 | [0013](0013-issuing-packages.md) | `wvp-0.2` packages are issued by the library that verifies them | Accepted; implemented |
+| [0014](0014-fuzzing.md) | Fuzz targets live outside the workspace, on a pinned nightly | Accepted; implemented |
 
 "Proposed" means the design is a starting point for the pull request that
 builds it, not a commitment.

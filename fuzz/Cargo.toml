@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Fuzz targets. This package is its own workspace on purpose: it needs a
+# nightly toolchain and libFuzzer, and neither belongs in the workspace the
+# tool is built from. See docs/decisions/0014-fuzzing.md.
+
+[package]
+name = "verified-fuzz"
+description = "Fuzz targets for the untrusted inputs the Verified CLI reads."
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4.12"
+verified-canonical = { path = "../crates/verified-canonical" }
+verified-contract = { path = "../crates/verified-contract" }
+verified-verifier = { path = "../crates/verified-verifier" }
+verified-work-unit = { path = "../crates/verified-work-unit" }
+
+[[bin]]
+name = "canonical"
+path = "fuzz_targets/canonical.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "package"
+path = "fuzz_targets/package.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "contract"
+path = "fuzz_targets/contract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "statement"
+path = "fuzz_targets/statement.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "registration"
+path = "fuzz_targets/registration.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "registry_log"
+path = "fuzz_targets/registry_log.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "registry_audit"
+path = "fuzz_targets/registry_audit.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "registered_unit"
+path = "fuzz_targets/registered_unit.rs"
+test = false
+doc = false
+bench = false

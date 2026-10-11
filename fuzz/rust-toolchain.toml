@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# libFuzzer's instrumentation needs a nightly compiler. It is pinned to a
+# date so that a fuzz run is reproducible; the tool itself is built with the
+# stable toolchain pinned one directory up.
+[toolchain]
+channel = "nightly-2026-10-11"
+profile = "minimal"

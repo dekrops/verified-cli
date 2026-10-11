@@ -34,6 +34,11 @@ The toolchain is pinned in `rust-toolchain.toml`. With access to the
 conformance corpus, also run the tests as described in
 [`conformance/README.md`](conformance/README.md).
 
+A change to code that reads untrusted input should also be run through its
+fuzz target for a while; [`fuzz/README.md`](fuzz/README.md) says how. The
+fuzz targets are a separate workspace with their own toolchain, and are not
+part of the gate above.
+
 ## Rules that are not negotiable
 
 - **Protocol behavior follows the specification and its vectors.** Never edit
