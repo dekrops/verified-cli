@@ -330,7 +330,7 @@ checksum = "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954"
 
 [[package]]
 name = "verified-canonical"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "sha2",
  "thiserror",
@@ -338,7 +338,7 @@ dependencies = [
 
 [[package]]
 name = "verified-contract"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "verified-canonical",
 ]
@@ -359,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "verified-protocol"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "thiserror",
  "verified-canonical",
@@ -367,7 +367,7 @@ dependencies = [
 
 [[package]]
 name = "verified-verifier"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "verified-work-unit"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "hmac",
  "sha2",
