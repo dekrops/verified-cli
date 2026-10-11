@@ -5,7 +5,7 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.99"
 repository = "https://github.com/dekrops/verified-cli"
@@ -35,12 +35,12 @@ codegen-units = 1
 strip = "symbols"
 
 [workspace.dependencies]
-verified-canonical = { path = "crates/verified-canonical", version = "0.1.0" }
-verified-contract = { path = "crates/verified-contract", version = "0.1.0" }
-verified-protocol = { path = "crates/verified-protocol", version = "0.1.0" }
-verified-verifier = { path = "crates/verified-verifier", version = "0.1.0" }
-verified-work-unit = { path = "crates/verified-work-unit", version = "0.1.0" }
-verified-workspace = { path = "crates/verified-workspace", version = "0.1.0" }
+verified-canonical = { path = "crates/verified-canonical", version = "0.1.1" }
+verified-contract = { path = "crates/verified-contract", version = "0.1.1" }
+verified-protocol = { path = "crates/verified-protocol", version = "0.1.1" }
+verified-verifier = { path = "crates/verified-verifier", version = "0.1.1" }
+verified-work-unit = { path = "crates/verified-work-unit", version = "0.1.1" }
+verified-workspace = { path = "crates/verified-workspace", version = "0.1.1" }
 
 anstream = "1.0.0"
 anstyle = "1.0.14"
