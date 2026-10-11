@@ -41,8 +41,8 @@ library; there is no command for it yet.
 
 ## Measured against the corpus
 
-Run on 2026-10-10 against the published corpus,
-[`dekrops/wvp`](https://github.com/dekrops/wvp) at `c7c9de2`, and on every
+Run on 2026-10-11 against the published corpus,
+[`dekrops/wvp`](https://github.com/dekrops/wvp) at `0f00ea2`, and on every
 change since by the `conformance` job of CI at the commit it pins
 (see [`conformance/README.md`](../../conformance/README.md) for how). Every
 expectation is compared in full, never by refusal code alone.
@@ -59,7 +59,8 @@ expectation is compared in full, never by refusal code alone.
 | `claim-registration/v1/vectors.json`, 28 cases | 28 reproduced: the refusal code of the 26 refused, and every stated fact of the 2 accepted registrations. |
 | `claim-registration/v1/log.json`, 20 cases | 20 reproduced: the refusal code, the whole segment summary, or the inclusion outcome with both digests. |
 | `claim-registration/v1/unit.json`, 7 cases | 7 reproduced: accepted, or the refusal code. |
-| `claim-registration/v1/audit.json`, `notice.json`, `dispute.json`, 68 cases | 68 reproduced (22, 15 and 31): the refusal code, or every claim's digest, identifier, position, deadline, state and dispute state. |
+| `claim-registration/v1/audit.json`, `notice.json`, `dispute.json`, 69 cases | 69 reproduced (22, 15 and 32): the refusal code, or every claim's digest, identifier, position, deadline, state and dispute state. |
+| `work-relation/v1/vectors.json`, 37 cases | 37 reproduced: every record's reference or why it is not held, every relation's standing, every derived same-claim result and every stream's completeness. A draft specification; this is its second implementation. |
 | `evidence-statement/v1`, 39 vectors | 39 reproduced: 17 statement, 13 chain and 9 admission. Refusals by code; accepted statements by key, canonical text, digest and signing input; accepted chains by their whole summary; accepted admissions by their evidence manifest. **Not compared:** the `verificationResultSha256` and `verificationStatus` of the 3 accepted admissions, which are the platform's verification result and are not computed here. |
 
 One case is not reproduced because it cannot reach the evaluator:
