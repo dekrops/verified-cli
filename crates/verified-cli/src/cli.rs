@@ -33,6 +33,7 @@ Exit codes:
      registration: the registration, the log, the audit or the unit check
      was refused, or the log contradicts the entry you hold
      evidence chain: the statements are refused, or are not one run
+     trust show: the registry cannot be used
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
@@ -168,6 +169,103 @@ pub(crate) enum Command {
     /// Check evidence statements held outside a package (draft protocol)
     #[command(subcommand)]
     Evidence(Evidence),
+    /// Write and check the trust registry that --trust reads
+    ///
+    /// A registry is the list of keys you accept: for each, whose it is,
+    /// which tenant, which source systems it may speak for, and when it is
+    /// valid. It is yours, never a package's. Every change is checked as
+    /// `verify` reads a registry, so a registry written here is one `verify`
+    /// accepts.
+    #[command(subcommand)]
+    Trust(TrustCommand),
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum TrustCommand {
+    /// Create an empty registry
+    ///
+    /// Refuses to overwrite an existing file.
+    Init(TrustInit),
+    /// Add a key you accept
+    ///
+    /// The key is trusted for one issuer and one tenant, only for the
+    /// source systems listed, from --valid-from. A key that may sign
+    /// decisions as an issuer lists the source `wvp-decision`. Give the key
+    /// as a PEM public key file (what `openssl pkey -pubout` writes) or as
+    /// the registry's base64 form.
+    Add(TrustAdd),
+    /// Record that a key was revoked
+    ///
+    /// The key stays in the registry: statements it signed before the
+    /// revocation still verify, and those after it are refused. The time a
+    /// statement asserts is chosen by its signer, so a holder of the key can
+    /// backdate one; revoke as early as you know.
+    Revoke(TrustRevoke),
+    /// Check a registry and explain each key
+    ///
+    /// Reads the registry as `verify` does. Exits 1 if `verify` could not
+    /// use it.
+    Show(TrustShow),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct TrustInit {
+    /// The registry file to create
+    pub(crate) registry: PathBuf,
+}
+
+#[derive(Debug, ClapArgs)]
+#[allow(clippy::doc_markdown)] // help text, not Markdown
+pub(crate) struct TrustAdd {
+    /// The registry file
+    pub(crate) registry: PathBuf,
+    /// A name for this key, unique in the registry
+    #[arg(long, value_name = "ID")]
+    pub(crate) key_id: String,
+    /// A PEM file holding the Ed25519 public key
+    #[arg(
+        long,
+        value_name = "FILE",
+        conflicts_with = "public_key",
+        required_unless_present = "public_key"
+    )]
+    pub(crate) public_key_file: Option<PathBuf>,
+    /// The public key as the registry writes it: base64 of its DER
+    /// SubjectPublicKeyInfo
+    #[arg(long, value_name = "BASE64")]
+    pub(crate) public_key: Option<String>,
+    /// The actor the key belongs to (a UUID)
+    #[arg(long, value_name = "UUID")]
+    pub(crate) issuer: String,
+    /// The tenant the key is trusted for
+    #[arg(long, value_name = "TENANT")]
+    pub(crate) tenant: String,
+    /// A source system the key may speak for; repeat for several
+    #[arg(long = "source", value_name = "SOURCE", required = true)]
+    pub(crate) sources: Vec<String>,
+    /// The first instant the key is valid at, e.g. 2026-01-01T00:00:00Z
+    #[arg(long, value_name = "TIME")]
+    pub(crate) valid_from: String,
+    /// The first instant it is no longer valid at
+    #[arg(long, value_name = "TIME")]
+    pub(crate) valid_until: Option<String>,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct TrustRevoke {
+    /// The registry file
+    pub(crate) registry: PathBuf,
+    /// The key to revoke
+    pub(crate) key_id: String,
+    /// When it was revoked, e.g. 2026-06-01T00:00:00Z
+    #[arg(long, value_name = "TIME")]
+    pub(crate) at: String,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct TrustShow {
+    /// The registry file
+    pub(crate) registry: PathBuf,
 }
 
 #[derive(Debug, Subcommand)]

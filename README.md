@@ -165,6 +165,27 @@ A trust registry is a JSON file:
 
 A key that may sign decisions as an issuer lists the source `wvp-decision`.
 
+You don't have to write it by hand. `verified trust` writes it, and checks
+every change exactly as `verify` reads a registry, so it never writes one
+`verify` would refuse:
+
+```sh
+openssl genpkey -algorithm ed25519 -out erp.key    # on the source's side
+openssl pkey -in erp.key -pubout -out erp.pub      # what you are given
+
+verified trust init trust.json
+verified trust add trust.json --key-id erp-gateway --public-key-file erp.pub \
+    --issuer 00000000-0000-4000-8000-000000000101 --tenant acme \
+    --source erp --valid-from 2026-01-01T00:00:00Z
+verified trust show trust.json       # is it usable, and what does each key allow?
+verified trust revoke trust.json erp-gateway --at 2026-06-01T00:00:00Z
+```
+
+A revoked key stays in the registry: what it signed before the revocation
+still verifies. A statement's time is chosen by its signer, so revoke as
+early as you know. `trust add` refuses a second name for a key already
+present, and refuses a private key file without printing it.
+
 ### Try it
 
 ```sh
