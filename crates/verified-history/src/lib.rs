@@ -241,7 +241,6 @@ fn same_claims(held: &[(Reference, Held)]) -> Vec<SameClaim> {
         }
     }
     found.sort_by_key(|same| (same.package.to_hex(), same.claim.to_hex()));
-    found.dedup();
     found
 }
 
