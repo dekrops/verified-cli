@@ -54,6 +54,15 @@ depends only on the canonical encoding. It answers "are these two claims about
 the same unit?" and nothing else: it holds no state, so it cannot say whether
 a unit was already billed, and no command uses it.
 
+**`verified-history`** reads work relations (work relation v1, a draft):
+signed statements by which a ledger or an application says how the records of
+one unit of work are related. It stands above the verifier and uses it only to
+authenticate a statement. It resolves references and compares what records
+state; it verifies no record, and a record that was not given makes a relation
+*stated*, never refused. It is a library without a command, and outside the
+compatibility promise while the specification is a draft
+([ADR 0015](../decisions/0015-work-relations.md)).
+
 **`verified-verifier`** owns order and trust. The protocol requires that
 every verifier report the same first failure, so the checks run top to bottom
 in specification order: the container (shared), then one module per protocol
@@ -123,9 +132,7 @@ reproduced can meet the requirement; without a registry the exit code stays
 
 ## Not built yet
 
-`verified-history` (graph and provenance across imported artifacts) does not
-exist as a crate, because there is nothing for it to hold yet. A package
-names no other package, so `trace` is a view of one package, built in the CLI
-from the verifier's inspection, and `log` shows import history only. A graph
-across artifacts needs artifacts that link to each other, which arrive with
-exported histories.
+`verified-history` reads relations it is given; nothing stores them. The
+workspace still holds packages only, `trace` is still a view of one package,
+and `log` still shows import history only. No command reads a history, and
+there is no container for one: the specification defines none.

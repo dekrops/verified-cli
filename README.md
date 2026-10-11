@@ -454,6 +454,7 @@ corpus: [`docs/protocol/compatibility.md`](docs/protocol/compatibility.md).
 ```text
 verified-cli        the `verified` binary: arguments, files, terminal
 verified-workspace  the local store of imported packages
+verified-history    work relation v1 (draft): what authorities say about records (library only)
 verified-verifier   pure verification: bytes in, report or refusal out
 verified-contract   Work Contract Language 1: read, check, evaluate
 verified-work-unit  work-unit identity v1: which unit a claim is about (library only)

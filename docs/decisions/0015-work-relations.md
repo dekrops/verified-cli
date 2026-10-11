@@ -1,0 +1,72 @@
+# 0015. Work relations are read by a crate of their own, which verifies no record
+
+Status: accepted and implemented in `verified-history` (the library). There
+is no command yet.
+
+## Context
+
+Work relation v1 is a draft published beside WVP. One unit of work leaves
+several records: a package, a work record in a ledger, a registration at a
+claim registry. A work relation is a signed statement by which an authority
+says how records it knows are related, carried by an ordinary evidence
+statement. Its relying parties want to take several records and establish,
+offline, which belong together and who says so.
+
+The architecture has named a `verified-history` crate since the start and
+left it unbuilt, "because there is nothing for it to hold yet": a package
+names no other package. Relations are the artifacts that link to each other.
+
+Until now the specification had one implementation, the Scala reference that
+generates its vectors. Nothing in it had been checked by two implementations
+agreeing.
+
+## Decision
+
+- **Read relations here, in a crate of their own: `verified-history`.** It
+  stands above the verifier and depends on it for one thing, authenticating
+  a statement under the relying party's registry.
+- **The reader verifies no record.** It parses each record as the kind it is
+  offered as, names it by that kind's own digest, and compares what records
+  state with what relations state. Whether a package verifies, or a
+  registration, stays with `verified-verifier`. `CHECKED` therefore means
+  "consistent with the records in hand", and the API says so. A caller that
+  wants both runs both and reports both.
+- **No single result.** `read` returns one standing per relation, one result
+  per derived same-claim pair and one per stream. Nothing folds them into a
+  flag, as nothing folds a package report into `valid`.
+- **A record that was not given is never an error.** The relation to it is
+  `STATED`. This is the same line `trace` draws inside a package between
+  `checked` and `stated_not_checked`.
+- **Shapes stay in `verified-protocol`.** The relation body, a standalone
+  reader for `claim.json` and a reader for a work record are added there,
+  beside the other typed structures. All three are additions.
+- **Outside the compatibility promise.** The specification is a draft. The
+  five library crates keep their promise; `verified-history`, and the
+  `relation` module of `verified-protocol`, make none until the
+  specification leaves draft.
+- **Import history stays what it was.** The workspace's log of what was
+  imported, and when, is not merged with what authorities signed (ADR 0003).
+  This crate reads values it is given and touches no workspace.
+
+## Consequences
+
+- The published corpus, `work-relation/v1`, is reproduced in full: every
+  record, every relation's standing, every derived relation and every
+  stream of every case. The specification now has two implementations that
+  agree.
+- Writing this one from the published text found a gap in it: the
+  completeness of a stream was defined by reference to a computation the
+  evidence statement specification does not contain. The specification was
+  corrected upstream.
+- The conformance pin moves to a commit of `dekrops/wvp` that contains the
+  corpus. The rest of the suite was run against that commit and passes.
+
+## Not decided here
+
+- **A command.** Reading a history from files, and what it prints, is a
+  later change.
+- **A container.** The specification defines none; neither does this crate.
+- **Storing anything but packages.** The workspace still holds packages only
+  (ADR 0004).
+- **Heads of a registry's log**, which this implementation does not check
+  yet, and which the relation specification leaves to claim registration.

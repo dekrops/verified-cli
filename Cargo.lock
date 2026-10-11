@@ -712,6 +712,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "verified-history"
+version = "0.1.2"
+dependencies = [
+ "verified-canonical",
+ "verified-protocol",
+ "verified-verifier",
+]
+
+[[package]]
 name = "verified-protocol"
 version = "0.1.2"
 dependencies = [

@@ -36,6 +36,91 @@ pub struct Claim<'a> {
     pub submitted_at: Instant,
 }
 
+impl<'a> Claim<'a> {
+    /// Reads a `claim.json` component alone, refusing any missing, extra or
+    /// mistyped member.
+    pub fn from_value(claim: &'a Value) -> Result<Self, crate::ShapeError> {
+        read_claim(claim, &At::root("claim.json"))
+    }
+
+    /// The actor that makes the claim (a UUID).
+    #[must_use]
+    pub fn claimant(&self) -> &'a str {
+        let wrapped = self.value.as_object().and_then(|o| o.get("claimant"));
+        let text = wrapped
+            .and_then(Value::as_object)
+            .and_then(|o| o.get("value"));
+        text.and_then(Value::as_str).unwrap_or_default()
+    }
+}
+
+/// A work record (section 7), of the right structure: what one verification
+/// of a package states. Nothing about it has been compared with a package.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WorkRecord<'a> {
+    /// The record, whole: its digest names it.
+    pub value: &'a Value,
+    /// The claim the record is of (a UUID).
+    pub claim_id: &'a str,
+    /// The stated digest of the contract.
+    pub contract: WireDigest<'a>,
+    /// The stated commitment of the package.
+    pub package_commitment: WireDigest<'a>,
+}
+
+impl<'a> WorkRecord<'a> {
+    /// Reads a work record, refusing any missing, extra or mistyped member.
+    pub fn from_value(record: &'a Value) -> Result<Self, crate::ShapeError> {
+        let at = At::root("work record");
+        let o = shape::object(
+            record,
+            &at,
+            &[
+                "claim",
+                "claimId",
+                "contract",
+                "contractId",
+                "contractVersion",
+                "decision",
+                "decisionDigest",
+                "evaluator",
+                "evidence",
+                "inputs",
+                "language",
+                "packageCommitment",
+                "protocol",
+                "semantics",
+                "specification",
+            ],
+        )?;
+        let member = |name| shape::get(o, name);
+        for name in ["claim", "decisionDigest", "evidence", "inputs"] {
+            shape::digest(member(name), &at.member(name))?;
+        }
+        for name in [
+            "contractId",
+            "contractVersion",
+            "decision",
+            "evaluator",
+            "language",
+            "protocol",
+            "semantics",
+            "specification",
+        ] {
+            shape::text(member(name), &at.member(name))?;
+        }
+        Ok(Self {
+            value: record,
+            claim_id: shape::uuid(member("claimId"), &at.member("claimId"))?,
+            contract: shape::digest(member("contract"), &at.member("contract"))?,
+            package_commitment: shape::digest(
+                member("packageCommitment"),
+                &at.member("packageCommitment"),
+            )?,
+        })
+    }
+}
+
 /// What a statement's payload commits to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Body<'a> {
