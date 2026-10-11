@@ -18,6 +18,9 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
+  # No debug information in CI builds: nothing here reads it, and writing
+  # and linking it into some twenty test binaries is most of the build.
+  CARGO_PROFILE_DEV_DEBUG: "0"
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
 
@@ -196,14 +199,18 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo fetch --locked
       - run: cargo build --workspace --tests --locked --offline
       # A fresh network namespace has no interfaces but loopback: any attempt
       # by the tool or its tests to reach the network fails.
       # sudo looks commands up on its own secure path, so the user's PATH is
-      # handed to env instead.
+      # handed to env instead. The build's settings are handed on too, or
+      # cargo would see different flags and build everything again.
       - run: >
           sudo unshare --net --
           sudo -u "$(id -un)"
           env "PATH=$PATH" "HOME=$HOME"
+          "RUSTFLAGS=$RUSTFLAGS" "CARGO_INCREMENTAL=$CARGO_INCREMENTAL"
+          "CARGO_PROFILE_DEV_DEBUG=$CARGO_PROFILE_DEV_DEBUG" "CARGO_TERM_COLOR=$CARGO_TERM_COLOR"
           cargo test --workspace --locked --offline

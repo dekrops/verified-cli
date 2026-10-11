@@ -77,14 +77,26 @@ jobs:
               exit 1
             }
           done
+      - name: Build every target
+        working-directory: fuzz
+        run: cargo fuzz build
+      # One libFuzzer process per core: each target still runs 30 seconds,
+      # four at a time instead of one. Each target's output is kept and
+      # shown; any failure fails the step.
       - name: Run every target for 30 seconds
         working-directory: fuzz
         run: |
-          for target in $(cargo fuzz list); do
-            echo "::group::$target"
-            cargo fuzz run "$target" -- -max_total_time=30 -max_len=65536
+          mkdir -p logs
+          cargo fuzz list | xargs -P "$(nproc)" -I{} sh -c \
+            'cargo fuzz run {} -- -max_total_time=30 -max_len=65536 > logs/{}.log 2>&1 \
+               && echo "ok {}" || { echo "FAILED {}"; exit 1; }' \
+            && result=0 || result=$?
+          for log in logs/*.log; do
+            echo "::group::$(basename "$log" .log)"
+            tail -n 40 "$log"
             echo "::endgroup::"
           done
+          exit "$result"
 
   # Every target at length, each from the corpus the last campaign left,
   # kept in the Actions cache. A failing input is uploaded as an artifact;
