@@ -20,6 +20,8 @@ toolchain. Building, testing or installing the tool needs none of it.
 | `registry_log` | a trust configuration, an anchor, a held entry, log entries | the check is repeatable; a held entry only adds checks |
 | `registry_audit` | a trust configuration, log entries, documents | the audit is repeatable; an audited log is a segment from the start of the log |
 | `registered_unit` | a unit key, an agreement, a claim, the claim's inputs | the check is repeatable |
+| `issue` | a trust registry and a draft: a contract, a claim, signed evidence | issuing is repeatable; an issued package is canonical and a verifier with the same registry accepts it with the same complete report |
+| `countersign` | a trust registry, countersignatures and a package | a verified package has a signing input; a countersigned package keeps its identifier and verifies with an issuer signature that counts |
 
 A target that takes several texts takes them one per line; each target's
 source states its format. Trust configuration is part of the input so that a
