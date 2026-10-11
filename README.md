@@ -345,7 +345,8 @@ Every command of the original plan exists. What is not built:
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - Coverage-guided fuzzing, and Windows in CI.
-- A first release: the repository is public, but untagged and unpublished.
+- Published crates. The first tagged revision is `v0.1.0`; nothing is on a
+  package registry.
 
 ## Relationship to WVP
 

@@ -59,8 +59,8 @@ None is built.
 
 | Likely need | Why it belongs here | State |
 | --- | --- | --- |
-| **Public availability** of the library crates, with a pinned revision or release | A consumer cannot ship a build that needs private access. | The repository is public (issue 6, closed), so a consumer can pin a commit without credentials. No tag or published crate yet. |
-| **A library compatibility policy and tagged revisions** | A consumer pins a commit today and absorbs every API change. | Policy written ([compatibility policy](../development/compatibility-policy.md)); no tag yet. |
+| **Public availability** of the library crates, with a pinned revision or release | A consumer cannot ship a build that needs private access. | The repository is public (issue 6, closed), so a consumer can pin without credentials. Tagged `v0.1.0`; no published crate yet. |
+| **A library compatibility policy and tagged revisions** | A consumer pins a commit today and absorbs every API change. | Policy written ([compatibility policy](../development/compatibility-policy.md)); first tag `v0.1.0`, which the known consumers pin together. |
 | **Work-unit identity** (a stable identity for "the same unit of work" across contract versions, and its nullifier) | It is a protocol rule. A consumer inventing its own key cannot interoperate. | Built as a library, `verified-work-unit`: scope, identity, nullifier, key commitment. The consumer supplies the scope and holds the tenant key; this project stores neither. |
 | **A work-unit registry** (has this unit been billed?) | It does not belong here. It is state with a first-write-wins rule, and it is the settling party's. | Not built, deliberately. |
 | **Work record comparison** (`RECORD_MISMATCH`) | It is the protocol's way of binding a recorded verification to a package. | Built: `Report::work_record` and `Options::record`. A consumer storing a verification can store the record and later check a package against it. |
