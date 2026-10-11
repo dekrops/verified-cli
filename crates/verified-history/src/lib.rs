@@ -27,6 +27,7 @@
 //! This crate does no I/O. The specification is a draft, and the crate is
 //! outside the workspace's compatibility promise until it is not.
 
+mod produce;
 mod records;
 mod streams;
 mod value;
@@ -38,6 +39,7 @@ use verified_protocol::relation::{
 use verified_verifier::Trust;
 use verified_verifier::evidence::{Authenticated, authenticate};
 
+pub use produce::{PreparedRelation, RelationDraft, prepare_relation};
 use records::Held;
 pub use streams::StreamRead;
 

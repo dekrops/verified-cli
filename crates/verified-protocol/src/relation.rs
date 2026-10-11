@@ -12,7 +12,7 @@
 
 use std::cmp::Ordering;
 
-use verified_canonical::{Sha256Digest, Value};
+use verified_canonical::{Object, Sha256Digest, Value};
 
 use crate::shape::{self, At};
 
@@ -166,7 +166,81 @@ fn reference(value: &Value, at: &At<'_>, allowed: &[RecordKind]) -> Option<Refer
     (stated.algorithm == Sha256Digest::ALGORITHM).then_some(Reference { kind, digest })
 }
 
+fn text(value: &str) -> Value {
+    Value::String(value.to_owned())
+}
+
+fn object<const N: usize>(members: [(&str, Value); N]) -> Value {
+    Value::Object(
+        members
+            .into_iter()
+            .map(|(name, value)| (name.to_owned(), value))
+            .collect::<Object>(),
+    )
+}
+
+impl Reference {
+    /// The reference as a relation body carries it.
+    #[must_use]
+    pub fn to_value(&self) -> Value {
+        object([
+            (
+                "digest",
+                object([
+                    ("algorithm", text(Sha256Digest::ALGORITHM)),
+                    ("hex", text(&self.digest.to_hex())),
+                ]),
+            ),
+            ("kind", text(self.kind.as_str())),
+        ])
+    }
+}
+
 impl<'a> Relation<'a> {
+    /// The relation's body: what a carrying statement's payload commits to.
+    ///
+    /// Nothing is checked here. A value built by hand can state what
+    /// [`Relation::from_value`] refuses, for example a group whose members
+    /// are out of order; read the body back before signing over it.
+    #[must_use]
+    pub fn to_value(&self) -> Value {
+        let wrapped = |id: &str| object([("value", text(id))]);
+        let content = match self {
+            Self::Recorded { record, claim_id } => object([
+                ("claimId", wrapped(claim_id)),
+                ("record", record.to_value()),
+            ]),
+            Self::Linked {
+                record,
+                agreement,
+                claim,
+                receipt,
+                claim_id,
+                registry,
+                sequence,
+            } => object([
+                ("agreement", agreement.to_value()),
+                ("claim", claim.to_value()),
+                ("claimId", wrapped(claim_id)),
+                ("receipt", receipt.to_value()),
+                ("record", record.to_value()),
+                ("registry", text(registry)),
+                ("sequence", Value::Integer((*sequence).into())),
+            ]),
+            Self::Groups { group, members } => object([
+                ("group", text(group)),
+                (
+                    "members",
+                    Value::Array(members.iter().map(Reference::to_value).collect()),
+                ),
+            ]),
+        };
+        object([
+            ("protocol", text(RELATION_PROTOCOL)),
+            (self.name(), content),
+        ])
+    }
+
     /// The relation's name on the wire.
     #[must_use]
     pub const fn name(&self) -> &'static str {

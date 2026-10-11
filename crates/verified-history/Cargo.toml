@@ -15,5 +15,9 @@ verified-canonical.workspace = true
 verified-protocol.workspace = true
 verified-verifier.workspace = true
 
+[dev-dependencies]
+base64.workspace = true
+ed25519-dalek.workspace = true
+
 [lints]
 workspace = true

@@ -1,7 +1,7 @@
 # 0015. Work relations are read by a crate of their own, which verifies no record
 
 Status: accepted and implemented in `verified-history`; amended with a
-command, `verified history read` (below).
+command, `verified history read`, and with a producer (both below).
 
 ## Context
 
@@ -84,6 +84,28 @@ prints the reading.
   reading, never fold into it.
 - **Bounded.** At most 1024 relations and 1024 records are read; the reader
   compares each relation with each record.
+
+## Amendment: a producer
+
+`verified_history::prepare_relation` lays out the statement that carries a
+relation, and `Relation::to_value` writes a relation's body.
+
+- **The producer is here because the reader is.** Three consumers need to
+  issue relations: both SDKs and the compliance application. A body written
+  in each of them is three places for the encoding to drift. Every relation
+  laid out here is read back with `Relation::from_value` first, and the
+  statement with the statement reader, so nothing is produced that the
+  reader refuses. The conformance test also checks that the producer writes
+  every accepted body of the corpus byte for byte.
+- **The statement's `kind` and `subject` are not the caller's to state.**
+  They follow from the relation and the source, as the specification's
+  carrier rules say; a draft that states them is refused.
+- **No key is held**, as for statements and packages: the caller signs over
+  `statement_signing_input` and attaches the signature.
+- **Producing is not being believed.** Whether a relying party accepts the
+  relation is its registry's decision. `read` shows what one would see.
+
+There is no command for it yet.
 
 ## Not decided here
 

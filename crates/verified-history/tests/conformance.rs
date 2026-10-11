@@ -17,6 +17,7 @@ use std::path::PathBuf;
 
 use verified_canonical::{Limits, Value, parse};
 use verified_history::{Carried, Offered, read};
+use verified_protocol::relation::Relation;
 use verified_verifier::Trust;
 
 fn corpus() -> Option<PathBuf> {
@@ -85,6 +86,13 @@ fn every_case_yields_its_expected_reading() {
                 text: text(offered, "text", name),
             })
             .collect();
+        // A body the reader accepts is the body the producer writes: the
+        // two cannot disagree about a relation's encoding.
+        for carried in &relations {
+            if let Ok(relation) = Relation::from_value(carried.body) {
+                assert_eq!(&relation.to_value(), carried.body, "{name}: body");
+            }
+        }
         let reading = read(&relations, &records, &trust).to_value();
         let expected = member(case, "expected", name);
         if &reading != expected {
