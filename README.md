@@ -77,29 +77,10 @@ supported, not an invalid package.
 
 ## What works today
 
-`verified verify` checks a package against a trust registry *you* supply:
-
-```console
-$ verified verify package.json --trust trust.json
-Work Verification Protocol package (wvp-0.2, draft)
-package               wvp:sha-256:d0982b73f310…
-tenant                tenant-test
-claim                 00000000-0000-4000-8000-000000000500
-package integrity     established
-contract              posting-test 1.0.0, sha-256:6a2c3b0bf581…
-evidence signatures   established (1 of 1)
-signer authority      established under the supplied registry
-decision reproduced   SUPPORTED, matches the package
-                        POSTED                      TRUE
-issuer signature      absent
-source truthfulness   NOT established: no check can establish it
-
-complete: every protocol check ran; the decision SUPPORTED was reproduced
-$ echo $?
-0
-```
-
-(The package above is synthetic test data.)
+`verified verify` checks a package against a trust registry *you* supply.
+The output at the top of this page is one such check, of a synthetic
+example package: every check ran, the decision was reproduced, and the
+command exits with 0.
 
 Without a registry only integrity can be established, and the tool says so
 instead of reporting the decision the package carries:
