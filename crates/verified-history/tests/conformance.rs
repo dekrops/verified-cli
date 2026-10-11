@@ -61,7 +61,10 @@ fn every_case_yields_its_expected_reading() {
         "verified-work-relation-v1"
     );
     let cases = list(&vectors, "cases", "vectors");
-    assert!(cases.len() >= 37, "the corpus has at least its first cases");
+    assert!(
+        cases.len() >= 41,
+        "the corpus has at least the cases measured so far"
+    );
 
     let mut wrong = Vec::new();
     for case in cases {
