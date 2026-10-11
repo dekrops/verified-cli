@@ -39,12 +39,18 @@ fn read(path: &Path) -> Result<(Json, Trust), String> {
     Ok((output_json(&value), trust))
 }
 
-/// Checks `registry` as `verify` would and writes it to `path`, whole or
-/// not at all.
-fn write(path: &Path, registry: &Json) -> Result<Trust, String> {
+/// The registry's text, after checking it as `verify` would.
+fn checked(registry: &Json) -> Result<(String, Trust), String> {
     let text = serde_json::to_string_pretty(registry).map_err(|error| error.to_string())? + "\n";
     let value = parse(text.as_bytes(), &Limits::DEFAULT).map_err(|error| error.to_string())?;
     let trust = Trust::from_value(&value).map_err(|error| error.to_string())?;
+    Ok((text, trust))
+}
+
+/// Checks `registry` as `verify` would and replaces the file at `path` with
+/// it, whole or not at all, keeping the file's permissions.
+fn write(path: &Path, registry: &Json) -> Result<Trust, String> {
+    let (text, trust) = checked(registry)?;
     let file_name = path.file_name().map_or_else(
         || "registry".to_owned(),
         |name| name.to_string_lossy().into_owned(),
@@ -57,6 +63,9 @@ fn write(path: &Path, registry: &Json) -> Result<Trust, String> {
             .open(&temporary)?;
         file.write_all(text.as_bytes())?;
         file.sync_all()?;
+        if let Ok(metadata) = std::fs::metadata(path) {
+            std::fs::set_permissions(&temporary, metadata.permissions())?;
+        }
         std::fs::rename(&temporary, path)
     })();
     if let Err(error) = written {
@@ -141,14 +150,24 @@ fn keys(registry: &mut Json) -> &mut Vec<Json> {
 
 pub(crate) fn init(command: &TrustInit, out: &mut Output) -> Exit {
     let path = &command.registry;
-    if path.exists() {
-        return failed(
-            out,
-            "INPUT",
-            &format!("{} exists; nothing was changed", path.display()),
-        );
-    }
-    if let Err(message) = write(path, &json!({ "keys": [] })) {
+    // Created exclusively: a file that exists, or appears meanwhile, is
+    // never overwritten.
+    let created = checked(&json!({ "keys": [] })).and_then(|(text, _)| {
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+            .map_err(|error| match error.kind() {
+                std::io::ErrorKind::AlreadyExists => {
+                    format!("{} exists; nothing was changed", path.display())
+                }
+                _ => format!("cannot create {}: {error}", path.display()),
+            })?;
+        file.write_all(text.as_bytes())
+            .and_then(|()| file.sync_all())
+            .map_err(|error| format!("cannot write {}: {error}", path.display()))
+    });
+    if let Err(message) = created {
         return failed(out, "INPUT", &message);
     }
     match out.mode {

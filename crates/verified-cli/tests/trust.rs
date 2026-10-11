@@ -254,3 +254,26 @@ fn nothing_verify_would_refuse_is_written() {
     assert_eq!(exit(&shown), 1);
     assert_eq!(json(&shown)["outcome"], "unusable");
 }
+
+#[cfg(unix)]
+#[test]
+fn a_change_keeps_the_registry_s_permissions() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let scratch = Scratch::new("mode");
+    scratch.run(&["trust", "init", "trust.json"]);
+    let path = scratch.path("trust.json");
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).expect("chmod");
+    let output = add(&scratch, "trust.json", &example_keys()[0]);
+    assert_eq!(
+        exit(&output),
+        0,
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let mode = std::fs::metadata(&path)
+        .expect("metadata")
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o600);
+}
