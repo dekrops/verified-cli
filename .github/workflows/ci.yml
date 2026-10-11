@@ -40,7 +40,7 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       # The corpus tests skip here; the conformance job runs them.
-      - run: cargo test --workspace --locked
+      - run: cargo test --workspace --locked --no-fail-fast
       - run: cargo doc --workspace --no-deps --locked
 
   conformance:
