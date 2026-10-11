@@ -118,8 +118,8 @@ never says the run is complete, or that a statement is true.
 A `key` is `keyId`, `issuer`, `tenant`, `sources`, `maySignDecisions`
 (whether `sources` holds `wvp-decision`), and `validFrom`, `validUntil` and
 `revokedAt`, spelled as the registry spells them (`null` when absent). A
-change that would make the registry unusable is an error (exit 2) and leaves
-the file as it was.
+change that would make the registry unusable is an error (exit 2,
+`error.code` `TRUST_REGISTRY`) and leaves the file as it was.
 
 ## What a wrapper must not do
 

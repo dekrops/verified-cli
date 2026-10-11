@@ -170,7 +170,7 @@ pub(crate) fn init(command: &TrustInit, out: &mut Output) -> Exit {
             .map_err(|error| format!("cannot write {}: {error}", path.display()))
     });
     if let Err(message) = created {
-        return failed(out, "INPUT", &message);
+        return failed(out, "TRUST_REGISTRY", &message);
     }
     match out.mode {
         Mode::Quiet => {}
@@ -207,7 +207,7 @@ pub(crate) fn add(command: &TrustAdd, out: &mut Output) -> Exit {
             }
             Exit::Complete
         }
-        Err(message) => failed(out, "INPUT", &message),
+        Err(message) => failed(out, "TRUST_REGISTRY", &message),
     }
 }
 
@@ -269,7 +269,7 @@ pub(crate) fn revoke(command: &TrustRevoke, out: &mut Output) -> Exit {
             }
             Exit::Complete
         }
-        Err(message) => failed(out, "INPUT", &message),
+        Err(message) => failed(out, "TRUST_REGISTRY", &message),
     }
 }
 

@@ -250,6 +250,13 @@ fn nothing_verify_would_refuse_is_written() {
         "{\"keys\":[{\"keyId\":\"x\"}]}",
     )
     .expect("write");
+    let mut alias = keys[0].clone();
+    alias[1] = "alias-again".to_owned();
+    let mut json_args = vec!["--json", "trust", "add", "trust.json"];
+    json_args.extend(alias.iter().map(String::as_str));
+    let output = scratch.run(&json_args);
+    assert_eq!(json(&output)["error"]["code"], "TRUST_REGISTRY");
+
     let shown = scratch.run(&["--json", "trust", "show", "broken.json"]);
     assert_eq!(exit(&shown), 1);
     assert_eq!(json(&shown)["outcome"], "unusable");
