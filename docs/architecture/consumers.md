@@ -10,7 +10,7 @@ and what that consumer is likely to need next.
 | --- | --- | --- |
 | **Verified CLI** (this repository, Apache-2.0) | Reading and verifying WVP packages: canonical bytes, commitments, signatures, signer authority under a supplied registry, contract evaluation, refusal order, per-property reports. A local cache for inspecting packages. | Acceptance, payment, pricing, settlement, identity of customers or vendors, a ledger of work, evidence collection, whom to trust. |
 | **Agent Billing Center** (`dekrops/agent-billing-center`, Apache-2.0) | Billing agreements, customer acceptance, eligibility, pricing, invoices, credits, settlement uniqueness in its own store, financial history. | A second verifier, canonicalizer or contract evaluator; a general ledger or graph of work. |
-| **Verified platform** (`dekrops/verified`, proprietary) | Producing packages, operating evidence collection and retention, work records and their governance, enterprise identity. | Being a required trust anchor: a relying party chooses its own. |
+| **Verified platform** (`dekrops/verified`, proprietary) | Operating evidence collection and retention, work records and their governance, enterprise identity. | Being a required trust anchor: a relying party chooses its own. |
 
 The dependency runs one way: Agent Billing Center depends on this project's
 library crates. This project depends on neither of the others, at build time
@@ -65,6 +65,7 @@ None is built.
 | **A work-unit registry** (has this unit been billed?) | It does not belong here. It is state with a first-write-wins rule, and it is the settling party's. | Not built, deliberately. |
 | **Work record comparison** (`RECORD_MISMATCH`) | It is the protocol's way of binding a recorded verification to a package. | Built: `Report::work_record` and `Options::record`. A consumer storing a verification can store the record and later check a package against it. |
 | **Statement chains** | Continuity of an issuer's stream is a protocol check. | Built as a library, `verified_verifier::evidence`: authenticate statements, verify a run from its first step or from an anchor, admit. No command, and not applied to a package's statements. |
+| **Issuing packages** | Laying out a package repeats what verifying one computes. A producer anywhere else is a second copy. | Built as a library, `verified_verifier::issue` (ADR 0013): `wvp-0.2` only, no keys, and nothing is returned that the verifier would refuse. |
 | **Freshness or revocation status at verification time** | Whether a key is still good now is a trust input with protocol consequences. | The protocol has no such input. This would be a protocol change, not a feature to add here on its own. |
 
 ## Keeping the boundary

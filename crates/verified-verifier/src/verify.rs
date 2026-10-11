@@ -76,6 +76,34 @@ pub(crate) fn decision_document(
     checked: &Checked<'_>,
     evidence: &Sha256Digest,
 ) -> Value {
+    decision_over(
+        protocol,
+        outcome,
+        &Commitments {
+            claim: component(checked, ComponentPath::Claim),
+            contract: component(checked, ComponentPath::Contract),
+            evidence: *evidence,
+            inputs: component(checked, ComponentPath::Inputs),
+        },
+    )
+}
+
+/// What a decision commits to: the digests of the claim, the contract and
+/// the inputs, and the digest of the list of statement digests.
+pub(crate) struct Commitments {
+    pub(crate) claim: Sha256Digest,
+    pub(crate) contract: Sha256Digest,
+    pub(crate) evidence: Sha256Digest,
+    pub(crate) inputs: Sha256Digest,
+}
+
+/// The decision document over the given commitments. The one place its
+/// layout is written: a verifier compares against it and an issuer emits it.
+pub(crate) fn decision_over(
+    protocol: ProtocolVersion,
+    outcome: Value,
+    commitments: &Commitments,
+) -> Value {
     let evaluator = protocol.evaluator();
     let mut document = match outcome {
         Value::Object(members) => members,
@@ -92,13 +120,10 @@ pub(crate) fn decision_document(
     document.insert(
         "commitments",
         object([
-            ("claim", digest(&component(checked, ComponentPath::Claim))),
-            (
-                "contract",
-                digest(&component(checked, ComponentPath::Contract)),
-            ),
-            ("evidence", digest(evidence)),
-            ("inputs", digest(&component(checked, ComponentPath::Inputs))),
+            ("claim", digest(&commitments.claim)),
+            ("contract", digest(&commitments.contract)),
+            ("evidence", digest(&commitments.evidence)),
+            ("inputs", digest(&commitments.inputs)),
         ]),
     );
     Value::Object(document)

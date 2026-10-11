@@ -4,8 +4,8 @@
 
 use std::collections::BTreeMap;
 
-use verified_canonical::{Value, cmp_keys};
-use verified_contract::Contract;
+use verified_canonical::{Sha256Digest, Value, cmp_keys};
+use verified_contract::{Contract, Outcome};
 use verified_protocol::v02::{Body, Claim, Components};
 use verified_protocol::{ComponentPath, Decision, Evidence, Inputs, ProtocolVersion, RefusalCode};
 
@@ -152,6 +152,52 @@ fn work_record(checked: &Checked<'_>, components: &Components<'_>, contract: &Co
     ])
 }
 
+/// Step 11 and the evaluation of step 12: the input conditions, then the
+/// contract evaluated against the environment of the package's evidence.
+/// Returns the outcome and the commitment to the evidence it was computed
+/// from: the digest of the list of statement digests.
+///
+/// It is what a verifier recomputes and what an issuer computes, so the two
+/// cannot disagree about either.
+pub(crate) fn evaluate(
+    components: &Components<'_>,
+    contract: &Contract,
+    contract_digest: &Sha256Digest,
+) -> Result<(Outcome, Sha256Digest), Refusal> {
+    let Components {
+        claim,
+        inputs,
+        evidence,
+        ..
+    } = components;
+    let mismatch = |what: &str| refusal(RefusalCode::InputMismatch, what.to_owned());
+    if claim.tenant != inputs.tenant {
+        return Err(mismatch(
+            "the claim's tenant is not the evaluation's tenant",
+        ));
+    }
+    if !claim.contract.states(contract_digest) {
+        return Err(mismatch(
+            "the claim names another contract than the one in the package",
+        ));
+    }
+    if !times_in_order(claim, inputs, evidence) {
+        return Err(mismatch(
+            "the observation, ingestion, assembly, submission and evaluation times are out of order",
+        ));
+    }
+    let environment = environment(claim, evidence)?;
+    let outcome = contract.evaluate(&environment).map_err(|error| {
+        refusal(
+            RefusalCode::InputMismatch,
+            format!("the contract cannot be evaluated against this evidence ({error})"),
+        )
+    })?;
+    let statement_digests = evidence.iter().map(|e| digest(&e.statement.digest()));
+    let evidence_commitment = Value::Array(statement_digests.collect()).digest();
+    Ok((outcome, evidence_commitment))
+}
+
 pub(crate) fn verify(checked: &Checked<'_>, trust: Option<&Trust>) -> Result<Parts, Refusal> {
     // Step 7. The contract must be a well-formed contract; its text is
     // canonical because the package's is.
@@ -195,42 +241,14 @@ pub(crate) fn verify(checked: &Checked<'_>, trust: Option<&Trust>) -> Result<Par
     }
 
     // Step 10.
-    let Components {
-        claim,
-        inputs,
-        evidence,
-        ..
-    } = &components;
-    admit(inputs.tenant, &claim.evidence, evidence)?;
+    admit(
+        components.inputs.tenant,
+        &components.claim.evidence,
+        &components.evidence,
+    )?;
 
-    // Step 11.
-    let mismatch = |what: &str| refusal(RefusalCode::InputMismatch, what.to_owned());
-    if claim.tenant != inputs.tenant {
-        return Err(mismatch(
-            "the claim's tenant is not the evaluation's tenant",
-        ));
-    }
-    if !claim.contract.states(&contract_digest) {
-        return Err(mismatch(
-            "the claim names another contract than the one in the package",
-        ));
-    }
-    if !times_in_order(claim, inputs, evidence) {
-        return Err(mismatch(
-            "the observation, ingestion, assembly, submission and evaluation times are out of order",
-        ));
-    }
-    let environment = environment(claim, evidence)?;
-    let outcome = contract.evaluate(&environment).map_err(|error| {
-        refusal(
-            RefusalCode::InputMismatch,
-            format!("the contract cannot be evaluated against this evidence ({error})"),
-        )
-    })?;
-
-    // Step 12.
-    let statement_digests = evidence.iter().map(|e| digest(&e.statement.digest()));
-    let evidence_commitment = Value::Array(statement_digests.collect()).digest();
+    // Steps 11 and 12.
+    let (outcome, evidence_commitment) = evaluate(&components, &contract, &contract_digest)?;
     let reproduced = decision_document(PROTOCOL, outcome.to_value(), checked, &evidence_commitment);
     if reproduced != *recorded.value {
         return Err(refusal(
@@ -241,6 +259,7 @@ pub(crate) fn verify(checked: &Checked<'_>, trust: Option<&Trust>) -> Result<Par
             ),
         ));
     }
+    let inputs = &components.inputs;
 
     // Step 13.
     parts.issuer_signature = issuer_signatures(checked, PROTOCOL, recorded.value, inputs, trust)?;
