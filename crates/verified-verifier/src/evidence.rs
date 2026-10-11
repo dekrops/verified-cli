@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Evidence statements on their own, outside a package: authenticating one,
-//! verifying that a list of them is a run of an issuer's stream, and
-//! admitting them as the evidence of a claim.
+//! Evidence statements on their own, outside a package: producing one,
+//! authenticating one, verifying that a list of them is a run of an issuer's
+//! stream, and admitting them as the evidence of a claim.
 //!
 //! These are the rules of Evidence Statement v1 (a **draft**). Inside a
 //! package, [`crate::verify`] applies authentication and admission itself;
@@ -11,6 +11,8 @@
 //! Each step takes what the step before it produced: only an
 //! [`Authenticated`] statement can be chained or admitted, and the only way
 //! to obtain one is [`authenticate`].
+
+mod produce;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -22,6 +24,10 @@ use crate::container::Refusal;
 use crate::json::{digest, object, text, wrapped};
 use crate::statement;
 use crate::trust::Trust;
+
+pub use produce::{
+    StatementDraft, Step, prepare_statement, signed_statement, statement_signing_input,
+};
 
 /// The code of a refused statement, chain or admission. Stable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
