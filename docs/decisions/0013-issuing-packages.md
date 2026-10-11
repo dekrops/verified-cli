@@ -70,6 +70,11 @@ consumer against. Two commands now call the library:
     test keys and simple setups. The key is read into memory that is wiped
     when dropped, and nothing read from the file is ever printed.
 
+`verified evidence sign` makes a source's statement the same way, through
+`verified_verifier::evidence::prepare_statement`: the library lays it out,
+the command signs it (locally or elsewhere) and writes it only if
+`authenticate`, and for a chained statement `verify_chain`, accept it.
+
 What does not change: the library still holds no key and takes none; a
 draft still has no member for a decision; and neither command writes a
 package that a verifier holding the given registry would refuse. Both

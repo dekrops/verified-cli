@@ -48,7 +48,7 @@ const DRAFT_MEMBERS: [&str; 11] = [
     "tenant",
 ];
 
-fn read(path: &Path, max: usize) -> Result<Vec<u8>, String> {
+pub(crate) fn read(path: &Path, max: usize) -> Result<Vec<u8>, String> {
     match input::read(path, max) {
         Ok(bytes) => Ok(bytes),
         Err(InputError::Io(error)) => Err(format!("{error:#}")),
@@ -58,7 +58,7 @@ fn read(path: &Path, max: usize) -> Result<Vec<u8>, String> {
 
 /// Writes `bytes` to a new file at `path`. An existing file is never
 /// overwritten.
-fn create(path: &Path, bytes: &[u8]) -> Result<(), String> {
+pub(crate) fn create(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -164,7 +164,7 @@ fn not_issued(out: &mut Output, error: IssueError, checked: Checked) -> Exit {
 }
 
 /// The registry a command checks its result under.
-fn trust(path: &Path) -> Result<verified_verifier::Trust, (&'static str, String)> {
+pub(crate) fn trust(path: &Path) -> Result<verified_verifier::Trust, (&'static str, String)> {
     registry(path, &Limits::DEFAULT).map_err(|message| ("TRUST_REGISTRY", message))
 }
 
@@ -222,7 +222,7 @@ pub(crate) fn issue(command: &Issue, out: &mut Output) -> Exit {
 }
 
 /// The signing key in a PEM PKCS #8 file. Nothing read from it is printed.
-fn private_key(path: &Path) -> Result<SigningKey, String> {
+pub(crate) fn private_key(path: &Path) -> Result<SigningKey, String> {
     let name = path.display();
     let bytes = Zeroizing::new(read(path, 64 * 1024)?);
     // Borrowed, never copied: every copy of the key would need wiping.

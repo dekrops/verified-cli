@@ -350,3 +350,182 @@ fn a_refusal_says_what_it_was_reached_under() {
     let result: serde_json::Value = serde_json::from_slice(&output.stdout).expect("JSON");
     assert_eq!(result["error"]["code"], "TRUST_REGISTRY");
 }
+
+/// The example's evidence statement, split into what `evidence sign` takes:
+/// the stated members and the body.
+fn statement_draft() -> (serde_json::Value, serde_json::Value) {
+    let draft = draft_of("supported.json");
+    let evidence = &draft["evidence"][0];
+    let mut stated = evidence["statement"]["statement"].clone();
+    let stated_object = stated.as_object_mut().expect("a statement");
+    for member in ["chain", "payload", "protocol"] {
+        stated_object.remove(member);
+    }
+    stated_object.insert("body".to_owned(), evidence["body"].clone());
+    (stated, evidence["statement"].clone())
+}
+
+#[test]
+fn the_example_package_is_made_from_scratch_with_the_command_line_alone() {
+    let scratch = Scratch::new("scratch");
+    let (statement_draft, original) = statement_draft();
+    scratch.write("statement-draft.json", statement_draft.to_string());
+    scratch.write("erp.pem", pem(EVIDENCE_SEED));
+
+    // The source states what it observed.
+    let output = scratch.run(&[
+        "evidence",
+        "sign",
+        "statement-draft.json",
+        "--key-id",
+        "test-erp-gateway",
+        "--key",
+        "erp.pem",
+        "--trust",
+        "trust.json",
+        "-o",
+        "statement.json",
+    ]);
+    assert_eq!(exit(&output), 0, "{}", stderr(&output));
+    let made: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(scratch.path("statement.json")).expect("statement"))
+            .expect("JSON");
+    assert_eq!(made, original);
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.contains("not that it is true"), "{text}");
+
+    // The claimant issues a package relying on it.
+    let mut draft = draft_of("supported.json");
+    draft["evidence"][0]["statement"] = made;
+    scratch.write("draft.json", draft.to_string());
+    let output = scratch.run(&[
+        "issue",
+        "draft.json",
+        "--trust",
+        "trust.json",
+        "-o",
+        "out.json",
+    ]);
+    assert_eq!(exit(&output), 0, "{}", stderr(&output));
+    assert_eq!(
+        std::fs::read(scratch.path("out.json")).expect("out"),
+        example("supported.json")
+    );
+}
+
+#[test]
+fn a_stream_made_step_by_step_is_one_unbroken_run() {
+    let scratch = Scratch::new("stream");
+    let (first, _) = statement_draft();
+    let mut second = first.clone();
+    second["id"]["value"] = "00000000-0000-4000-8000-000000000002".into();
+    scratch.write("first.json", first.to_string());
+    scratch.write("second.json", second.to_string());
+    scratch.write("erp.pem", pem(EVIDENCE_SEED));
+    let sign = |draft: &str, place: &[&str], out: &str| {
+        let mut args = vec![
+            "--json",
+            "evidence",
+            "sign",
+            draft,
+            "--key-id",
+            "test-erp-gateway",
+            "--key",
+            "erp.pem",
+            "--trust",
+            "trust.json",
+            "-o",
+            out,
+        ];
+        args.extend_from_slice(place);
+        scratch.run(&args)
+    };
+    let output = sign("first.json", &["--stream", "erp/postings"], "s0.json");
+    assert_eq!(exit(&output), 0, "{}", stderr(&output));
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(result["chain"]["sequence"], 0);
+    let output = sign("second.json", &["--after", "s0.json"], "s1.json");
+    assert_eq!(exit(&output), 0, "{}", stderr(&output));
+
+    let lines = [
+        std::fs::read_to_string(scratch.path("s0.json")).expect("s0"),
+        std::fs::read_to_string(scratch.path("s1.json")).expect("s1"),
+    ]
+    .join("\n");
+    scratch.write("run.jsonl", lines + "\n");
+    let output = scratch.run(&[
+        "--json",
+        "evidence",
+        "chain",
+        "run.jsonl",
+        "--trust",
+        "trust.json",
+    ]);
+    assert_eq!(exit(&output), 0, "{}", stderr(&output));
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(
+        (result["first"].clone(), result["last"].clone()),
+        (0.into(), 1.into())
+    );
+}
+
+#[test]
+fn a_statement_signed_elsewhere_is_the_same_and_one_a_verifier_refuses_is_not_written() {
+    let scratch = Scratch::new("statement-external");
+    let (draft, original) = statement_draft();
+    scratch.write("draft.json", draft.to_string());
+    let output = scratch.run(&[
+        "evidence",
+        "sign",
+        "draft.json",
+        "--signing-input-out",
+        "input.bin",
+    ]);
+    assert_eq!(exit(&output), 0, "{}", stderr(&output));
+    let input = std::fs::read(scratch.path("input.bin")).expect("input");
+    assert!(input.starts_with(b"verified:evidence-statement:v1\n"));
+    let signature = SigningKey::from_bytes(&EVIDENCE_SEED).sign(&input);
+    scratch.write("signature.txt", STANDARD.encode(signature.to_bytes()));
+    let output = scratch.run(&[
+        "evidence",
+        "sign",
+        "draft.json",
+        "--key-id",
+        "test-erp-gateway",
+        "--signature-file",
+        "signature.txt",
+        "--trust",
+        "trust.json",
+        "-o",
+        "statement.json",
+    ]);
+    assert_eq!(exit(&output), 0, "{}", stderr(&output));
+    let made: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(scratch.path("statement.json")).expect("statement"))
+            .expect("JSON");
+    assert_eq!(made, original);
+
+    // A source the key may not speak for: refused, and nothing is written.
+    let mut crm = draft.clone();
+    crm["source"]["system"] = "crm".into();
+    scratch.write("crm.json", crm.to_string());
+    scratch.write("erp.pem", pem(EVIDENCE_SEED));
+    let output = scratch.run(&[
+        "--json",
+        "evidence",
+        "sign",
+        "crm.json",
+        "--key-id",
+        "test-erp-gateway",
+        "--key",
+        "erp.pem",
+        "--trust",
+        "trust.json",
+        "-o",
+        "crm-statement.json",
+    ]);
+    assert_eq!(exit(&output), 1, "{}", stderr(&output));
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(result["refusal"]["code"], "SOURCE_NOT_AUTHORIZED");
+    assert!(!scratch.path("crm-statement.json").exists());
+}

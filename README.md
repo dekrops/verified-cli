@@ -404,6 +404,11 @@ verified --json evidence chain --trust trust.json statements.jsonl  # prints the
 verified evidence chain --trust trust.json --anchor head.json next.jsonl
 ```
 
+A source makes such statements with `verified evidence sign` (a draft with
+the statement's members and its body; `--stream` starts a stream, `--after`
+continues one; [details](docs/sdk/issuing.md#making-the-evidence)). Each is
+written only if it is authentic under the registry given.
+
 A verified run shows that no step between its first and its last was
 inserted, removed or altered. It shows nothing about steps after the last:
 whoever passes statements on can always leave off the end. Each statement is
