@@ -37,7 +37,8 @@ Chain verification is not one of the thirteen checks. A package's statements
 may carry chain links; their shape is checked and their continuity is not,
 which is also what the two upstream verifiers do for packages. A relying
 party that holds an issuer's statements can verify their continuity with the
-library; there is no command for it yet.
+library or with `verified evidence chain`, and a source can make chained
+statements with `verified evidence sign`.
 
 ## Measured against the corpus
 
