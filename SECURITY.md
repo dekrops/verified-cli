@@ -30,4 +30,6 @@ sources told the truth. See [the threat model](docs/security/threat-model.md).
 
 ## Supported versions
 
-None is released. Fixes land on `main`.
+Releases are tags; nothing is on a package registry. Fixes land on `main`
+and in the next tag. Only the latest tag is supported: a fix is not
+backported to an earlier one.

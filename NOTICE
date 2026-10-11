@@ -11,7 +11,9 @@ review prompt used in CI and is not part of any binary.
 
 The compiled binaries link third-party Rust crates under the Apache-2.0, MIT, BSD-3-Clause and
 Unicode-3.0 licenses; a binary distribution must reproduce their notices.
-The BSD-3-Clause crates are:
+THIRD-PARTY-LICENSES.md holds each of those licenses with the crates under
+it, generated from Cargo.lock and checked in CI. A binary distribution
+carries it beside LICENSE and this file. The BSD-3-Clause crates are:
 
   ed25519-dalek
     Copyright (c) 2017-2019 isis agora lovecruft. All rights reserved.

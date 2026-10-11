@@ -61,13 +61,18 @@ No binary is distributed. A binary links third-party crates, and the
 licenses of some require their notices to travel with it (`NOTICE`). Before
 a first distribution:
 
-- Ship `LICENSE` and `NOTICE` with the binary.
-- Reproduce the license texts and copyright notices of every linked crate.
-  `cargo deny list --layout crate` lists each crate with its license. The
-  BSD-3-Clause crates (`ed25519-dalek`, `curve25519-dalek`) require their
-  copyright notices and license text in the documentation that accompanies a
-  binary.
-- Check that the list matches the `Cargo.lock` of the tagged commit.
+- Ship `LICENSE`, `NOTICE` and `THIRD-PARTY-LICENSES.md` with the binary.
+- `THIRD-PARTY-LICENSES.md` holds the license text and copyright lines of
+  every crate a binary links, among them the BSD-3-Clause notices of the
+  dalek crates. It is generated from `Cargo.lock` by `cargo-about`
+  (`about.toml`, `about.hbs`), offline. The CI job *third-party notices
+  match Cargo.lock* fails when it is out of date, so the file at a tagged
+  commit matches that commit's dependencies.
+- A dual-licensed crate is listed under the license chosen for it, the
+  first of `about.toml`'s accepted list it offers.
+- Crates that ship a `NOTICE` file of their own are not covered by the
+  generated file. At `v0.1.1` no dependency ships one; check again before a
+  first distribution if dependencies changed.
 
 ## Before anything is published to crates.io
 
