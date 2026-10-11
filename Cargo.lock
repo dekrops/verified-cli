@@ -716,6 +716,8 @@ dependencies = [
 name = "verified-history"
 version = "0.1.3"
 dependencies = [
+ "base64",
+ "ed25519-dalek",
  "verified-canonical",
  "verified-protocol",
  "verified-verifier",

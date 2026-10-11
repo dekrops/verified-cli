@@ -59,7 +59,9 @@ signed statements by which a ledger or an application says how the records of
 one unit of work are related. It stands above the verifier and uses it only to
 authenticate a statement. It resolves references and compares what records
 state; it verifies no record, and a record that was not given makes a relation
-*stated*, never refused. `verified history read` prints its reading. It is outside the
+*stated*, never refused. `verified history read` prints its reading, and
+`prepare_relation` lays out the statement that carries a relation, for a
+caller to sign. It is outside the
 compatibility promise while the specification is a draft
 ([ADR 0015](../decisions/0015-work-relations.md)).
 
