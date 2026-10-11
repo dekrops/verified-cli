@@ -43,16 +43,21 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+        # Fail closed: everything runs unless the diff was read, is not
+        # empty, and names documentation only. A failing git, an empty
+        # diff or anything unexpected runs the whole pipeline.
         run: |
+          set -u
           code=true
-          if [ "$EVENT" = pull_request ]; then
+          if [ "$EVENT" = pull_request ] && files=$(git diff --name-only "$BASE" "$HEAD") \
+              && [ -n "$files" ]; then
             code=false
-            for file in $(git diff --name-only "$BASE" "$HEAD"); do
+            while IFS= read -r file; do
               case "$file" in
                 docs/*|CONTRIBUTING.md|SECURITY.md|CODE_OF_CONDUCT.md) ;;
                 *) code=true ;;
               esac
-            done
+            done <<< "$files"
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "Anything but documentation changed: $code"
