@@ -24,8 +24,7 @@ use verified_canonical::{CANONICAL_VERSION, Integer, LimitExceeded, Limits, Sha2
 use verified_contract::Contract;
 use verified_protocol::v02::Components;
 use verified_protocol::{
-    ComponentPath, Container, PACKAGE_VERSION, PackageId, ProtocolVersion, RefusalCode,
-    SignedStatement,
+    ComponentPath, PACKAGE_VERSION, PackageId, ProtocolVersion, RefusalCode, SignedStatement,
 };
 
 use crate::container::{self, Options, ProtocolSelection, Refusal, Rejection, refusal};
@@ -326,10 +325,8 @@ pub fn countersign(
 ) -> Result<Issued, IssueError> {
     let value = container::read(package, &Limits::DEFAULT)?;
     let checked_container = container::check(&value, ProtocolSelection::Require(PROTOCOL))?;
-    let carried = Container::from_value(&value)
-        .map_err(|error| IssueError::Draft(error.to_string()))?
-        .signatures;
-    let all = carried
+    let all = checked_container
+        .signatures
         .iter()
         .map(|s| (s.encoded, s.key_id, s.scheme))
         .chain(signatures.iter().map(|s| (s.encoded, s.key_id, "Ed25519")))
@@ -340,13 +337,7 @@ pub fn countersign(
                 ("scheme", text(scheme)),
             ])
         });
-    let files = ComponentPath::ALL
-        .into_iter()
-        .zip(checked_container.files)
-        .collect::<Vec<_>>();
-    let Ok(files) = <[(ComponentPath, &Value); 6]>::try_from(files) else {
-        return Err(IssueError::Draft("fewer than six components".to_owned()));
-    };
+    let files = std::array::from_fn(|i| (ComponentPath::ALL[i], checked_container.files[i]));
     let issued = checked(seal(files, Value::Array(all.collect())), trust)?;
     if !matches!(
         issued.report.issuer_signature,
