@@ -42,6 +42,9 @@ fn verified() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_verified"));
     // A fixed environment: output must not depend on the developer's.
     command.env_clear().env("LANG", "en_US.UTF-8");
+    // Windows needs its system directory to start a process; elsewhere the
+    // variable is absent and nothing is added.
+    command.envs(std::env::var_os("SYSTEMROOT").map(|root| ("SYSTEMROOT", root)));
     command
 }
 
