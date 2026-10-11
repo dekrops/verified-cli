@@ -98,9 +98,13 @@ relying party's own trust registry.
   another process changing the directory while this one runs.
 - **A forged import history.** `imports.log` is a plain local file. It is
   shown as local and unauthenticated, and nothing relies on it.
-- **Fuzzing.** Property tests exercise the reader with arbitrary bytes and
-  the verifier with arbitrary changes to consistently re-signed packages;
-  coverage-guided fuzz targets do not exist.
+- **A fuzzing campaign.** Property tests exercise the reader with arbitrary
+  bytes and the verifier with arbitrary changes to consistently re-signed
+  packages. Coverage-guided fuzz targets exist for every kind of untrusted
+  input (`fuzz/`), and CI runs each for 30 seconds from seeds. That is a
+  regression check, not a campaign: no long run is scheduled, and the
+  fuzzer cannot sign, so it reaches the checks after a signature only
+  through the seeds.
 - **Timing side channels.** Nothing here is constant-time. Every value
   compared or verified is public.
 
