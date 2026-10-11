@@ -6,13 +6,23 @@ on:
   pull_request:
   push:
     branches: [main]
+  # The campaign: every target at length, once a week, and on request.
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: Minutes per target
+        type: number
+        default: 10
 
 # Least privilege: jobs read the repository and nothing else.
 permissions:
   contents: read
 
+# A push to main must not cancel a campaign running on main.
 concurrency:
-  group: fuzz-${{ github.ref }}
+  group: fuzz-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -24,6 +34,7 @@ jobs:
   # a fuzzing campaign and finding nothing here is weak evidence.
   smoke:
     name: fuzz targets build and run briefly
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -53,6 +64,15 @@ jobs:
       - run: ./fuzz/seeds.sh
         env:
           VERIFIED_CONFORMANCE_DIR: ${{ github.workspace }}/wvp/test-vectors
+      - name: Every target is in the campaign
+        working-directory: fuzz
+        run: |
+          for target in $(cargo fuzz list); do
+            grep -qE "^[[:space:]]+- $target[[:space:]]*\$" ../.github/workflows/fuzz.yml || {
+              echo "::error::$target is missing from the campaign matrix in fuzz.yml"
+              exit 1
+            }
+          done
       - name: Run every target for 30 seconds
         working-directory: fuzz
         run: |
@@ -61,6 +81,73 @@ jobs:
             cargo fuzz run "$target" -- -max_total_time=30 -max_len=65536
             echo "::endgroup::"
           done
+
+  # Every target at length, each from the corpus the last campaign left,
+  # kept in the Actions cache. A failing input is uploaded as an artifact;
+  # turn it into an ordinary test (fuzz/README.md). A campaign that finds
+  # nothing has still only run for as long as it ran.
+  campaign:
+    name: fuzz campaign (${{ matrix.target }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - canonical
+          - contract
+          - countersign
+          - issue
+          - package
+          - registered_unit
+          - registration
+          - registry_audit
+          - registry_audit_signed
+          - registry_log
+          - registry_log_signed
+          - statement
+          - statement_signed
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: dekrops/wvp
+          ref: c7c9de2a7e8ad67e7dcee46d5c5f7fc2edccb797
+          path: wvp
+          persist-credentials: false
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: rustup show active-toolchain || rustup toolchain install
+        working-directory: fuzz
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: fuzz
+      - run: cargo install cargo-fuzz --version 0.13.2 --locked
+      - run: ./fuzz/seeds.sh
+        env:
+          VERIFIED_CONFORMANCE_DIR: ${{ github.workspace }}/wvp/test-vectors
+      # The corpus grows from run to run: each campaign saves what it found
+      # under a new key and starts from the newest saved before it.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ matrix.target }}-
+      - name: Run for ${{ inputs.minutes || 10 }} minutes
+        working-directory: fuzz
+        env:
+          MINUTES: ${{ inputs.minutes || 10 }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          cargo fuzz run "$TARGET" -- -max_total_time=$((MINUTES * 60)) -max_len=65536
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-failure-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}
+          if-no-files-found: ignore
 
   supply-chain:
     name: fuzz dependencies (advisories, licenses, bans, sources)
