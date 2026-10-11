@@ -335,13 +335,34 @@ take the unit of another. It checks no signature, so verify the registration
 first. The key is read from a file, 64 lowercase hexadecimal characters, and
 is never printed or accepted as an argument.
 
+## Evidence statements outside a package
+
+An issuer can chain its statements: each names its stream, its step and the
+digest of the step before. Given a file of statements, one per line, in
+order, this checks that they are one unbroken run of one issuer's stream,
+each authentic under your registry:
+
+```sh
+verified evidence chain --trust trust.json statements.jsonl
+verified --json evidence chain --trust trust.json statements.jsonl  # prints the head
+
+# Later: the next statements, continuing from the head you kept.
+verified evidence chain --trust trust.json --anchor head.json next.jsonl
+```
+
+A verified run shows that no step between its first and its last was
+inserted, removed or altered. It shows nothing about steps after the last:
+whoever passes statements on can always leave off the end. Each statement is
+authentic, which is not the same as true. Verifying a package does not
+verify chains; the protocol does not make continuity a package check.
+
 ## Where it is going
 
 Every command of the original plan exists. What is not built:
 
-- A command for chains of evidence statements. The library verifies them
-  (`verified_verifier::evidence`); no command does, and verifying a package
-  does not.
+- A command for admitting evidence statements as a claim's evidence. The
+  library does it (`verified_verifier::evidence::admit`); there is no file
+  format for a claim and its context.
 - Python and TypeScript SDKs. The contract they would be built on is
   [the JSON output](docs/sdk/json-output.md).
 - A fuzzing campaign. [Fuzz targets](fuzz/README.md) exist for every kind of

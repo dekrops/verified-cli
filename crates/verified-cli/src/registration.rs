@@ -32,7 +32,7 @@ fn trust(path: &Path) -> Result<RegistrationTrust, String> {
 
 /// The text of a signed object in a file. As with packages, exactly one
 /// final line end is the file's, not the object's.
-fn object(path: &Path) -> Result<Vec<u8>, String> {
+pub(crate) fn object(path: &Path) -> Result<Vec<u8>, String> {
     match input::read(path, Limits::DEFAULT.max_bytes) {
         Ok(bytes) => Ok(package_text(&bytes).to_vec()),
         Err(InputError::Io(error)) => Err(format!("{error:#}")),
@@ -63,7 +63,7 @@ fn refused_with(out: &mut Output, code: &str, detail: &str) -> Exit {
 }
 
 /// One entry or document per line. Canonical text has no line end.
-fn lines(text: &[u8]) -> Vec<&[u8]> {
+pub(crate) fn lines(text: &[u8]) -> Vec<&[u8]> {
     if text.is_empty() {
         Vec::new()
     } else {

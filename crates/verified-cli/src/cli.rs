@@ -19,6 +19,7 @@ Exit codes:
      replay: a package was refused or is damaged
      registration: the registration, the log, the audit or the unit check
      was refused, or the log contradicts the entry you hold
+     evidence chain: the statements are refused, or are not one run
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
@@ -143,6 +144,38 @@ pub(crate) enum Command {
     /// before any evidence is asked for.
     #[command(subcommand)]
     Registration(Registration),
+    /// Check evidence statements held outside a package (draft protocol)
+    #[command(subcommand)]
+    Evidence(Evidence),
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum Evidence {
+    /// Check that statements are one unbroken run of an issuer's stream
+    ///
+    /// The statements are a file with one signed statement per line, in
+    /// order. Each must be authentic under your registry. Without --anchor
+    /// the run must start at the stream's first step; with it, at the step
+    /// after the anchor. Exits 0 if no step between the first and the last
+    /// was inserted, removed or altered, 1 otherwise.
+    ///
+    /// Steps after the last can always be left off unnoticed. To continue
+    /// later, keep the head that --json prints and pass it as --anchor.
+    Chain(EvidenceChain),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct EvidenceChain {
+    /// The statements: one signed statement per line, in order
+    pub(crate) statements: PathBuf,
+    /// Your trust registry: a JSON file of the keys you accept
+    #[arg(long, value_name = "REGISTRY")]
+    pub(crate) trust: PathBuf,
+    /// A step you verified before, which the statements continue: the
+    /// `head` of an earlier run's --json output. Only its form is checked:
+    /// keep it where only you can change it
+    #[arg(long, value_name = "FILE")]
+    pub(crate) anchor: Option<PathBuf>,
 }
 
 #[derive(Debug, Subcommand)]

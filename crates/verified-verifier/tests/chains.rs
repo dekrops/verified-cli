@@ -108,6 +108,36 @@ fn a_segment_s_head_anchors_the_steps_after_it() {
 }
 
 #[test]
+fn a_head_written_out_and_read_back_anchors_the_same_steps() {
+    let signed = run(&evidence_key(), 4);
+    let head = chain(&signed[..2], None).expect("the first two steps").head;
+    let kept = head.to_value().to_canonical_string();
+    let read = verified_canonical::parse(kept.as_bytes(), &verified_canonical::Limits::DEFAULT)
+        .expect("JSON");
+    let anchor = Anchor::from_value(&read).expect("an anchor");
+    assert_eq!(anchor, head);
+    assert!(chain(&signed[2..], Some(&anchor)).is_ok());
+
+    // Anything but exactly that form is refused, not guessed at.
+    let digest = head.digest.to_hex();
+    for (from, to) in [
+        ("\"sequence\":1", "\"sequence\":-1"),
+        ("\"sequence\":1", "\"sequence\":\"1\""),
+        ("\"algorithm\":\"sha-256\"", "\"algorithm\":\"sha-512\""),
+        (digest.as_str(), &digest.to_uppercase()),
+        (",\"stream\"", ",\"extra\":0,\"stream\""),
+        ("{\"value\":\"tenant", "{\"other\":0,\"value\":\"tenant"),
+    ] {
+        assert!(kept.contains(from), "{from} in {kept}");
+        let altered = kept.replacen(from, to, 1);
+        let value =
+            verified_canonical::parse(altered.as_bytes(), &verified_canonical::Limits::DEFAULT)
+                .expect("JSON");
+        assert!(Anchor::from_value(&value).is_err(), "{altered}");
+    }
+}
+
+#[test]
 fn a_missing_tail_cannot_be_noticed() {
     let signed = run(&evidence_key(), 4);
     let segment = chain(&signed[..3], None).expect("a shorter run is still a run");

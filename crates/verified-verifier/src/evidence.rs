@@ -18,6 +18,7 @@ use verified_canonical::{Sha256Digest, Value};
 use verified_protocol::{ChainLink, Evidence, RefusalCode, SignedStatement};
 
 use crate::container::Refusal;
+use crate::json::{digest, object, text, wrapped};
 use crate::statement;
 use crate::trust::Trust;
 
@@ -146,6 +147,73 @@ pub struct Anchor {
     pub sequence: i64,
     /// The step's statement digest.
     pub digest: Sha256Digest,
+}
+
+/// Why a value is not an anchor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error(
+    "an anchor is exactly {{ tenant: {{ value }}, issuer: {{ value }}, stream, sequence, digest: {{ algorithm: \"sha-256\", hex }} }}, with a sequence number of at least 0"
+)]
+pub struct MalformedAnchor;
+
+impl Anchor {
+    /// Reads an anchor in the form the protocol's corpus writes it, and
+    /// [`Anchor::to_value`] produces: `{ tenant: { value }, issuer:
+    /// { value }, stream, sequence, digest: { algorithm, hex } }`. Any
+    /// missing, extra or mistyped member is refused.
+    ///
+    /// An anchor is the relying party's own record. Reading one checks its
+    /// form only; it authenticates nothing.
+    pub fn from_value(anchor: &Value) -> Result<Self, MalformedAnchor> {
+        let object = anchor
+            .as_object()
+            .filter(|o| o.has_exactly(&["digest", "issuer", "sequence", "stream", "tenant"]))
+            .ok_or(MalformedAnchor)?;
+        let wrapped = |name| {
+            let wrapper = object.get(name)?.as_object()?;
+            wrapper
+                .has_exactly(&["value"])
+                .then(|| wrapper.get("value")?.as_str())
+                .flatten()
+        };
+        let digest = object
+            .get("digest")
+            .and_then(Value::as_object)
+            .filter(|d| d.has_exactly(&["algorithm", "hex"]))
+            .filter(|d| d.get("algorithm").and_then(Value::as_str) == Some(Sha256Digest::ALGORITHM))
+            .and_then(|d| d.get("hex")?.as_str()?.parse().ok())
+            .ok_or(MalformedAnchor)?;
+        let sequence = object
+            .get("sequence")
+            .and_then(Value::as_integer)
+            .and_then(verified_canonical::Integer::to_i64)
+            .filter(|sequence| *sequence >= 0)
+            .ok_or(MalformedAnchor)?;
+        Ok(Self {
+            tenant: wrapped("tenant").ok_or(MalformedAnchor)?.to_owned(),
+            issuer: wrapped("issuer").ok_or(MalformedAnchor)?.to_owned(),
+            stream: object
+                .get("stream")
+                .and_then(Value::as_str)
+                .ok_or(MalformedAnchor)?
+                .to_owned(),
+            sequence,
+            digest,
+        })
+    }
+
+    /// The anchor in the form [`Anchor::from_value`] reads: what to keep to
+    /// continue a stream from this step.
+    #[must_use]
+    pub fn to_value(&self) -> Value {
+        object([
+            ("digest", digest(&self.digest)),
+            ("issuer", wrapped(&self.issuer)),
+            ("sequence", Value::Integer(self.sequence.into())),
+            ("stream", text(&self.stream)),
+            ("tenant", wrapped(&self.tenant)),
+        ])
+    }
 }
 
 /// A verified run of consecutive steps of one stream.

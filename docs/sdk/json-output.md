@@ -77,9 +77,7 @@ pass `--require-decision` and require exit code 0.
 | --- | --- | --- |
 | `registration verify` | `registered`, `refused` (exit 1) | `claim`, `claimDigest`, `agreement`, `receipt` (digests), `claimant`, `respondent`, `registry`, `sequence`, `receivedAt`, `respondBy`. Refused: `refusal.code` (a claim registration code, stable), `refusal.detail`. |
 | `registration log` | `verified`, `not_covered` (exit 3), `equivocation` (exit 1), `refused` (exit 1) | `registry`, `first`, `last`, `head`, `inclusion` (`null` without `--held`, else `INCLUDED`, `NOT_COVERED` or `EQUIVOCATION`); for `equivocation` also `held` and `logged` (digests) |
-
 | `registration audit` | `audited`, `refused` (exit 1) | `claims[]` in log order: `claim` (identifier), `claimDigest`, `position`, `respondBy`, `state` (`OPEN`, `ANSWERED`, `REFUSED`, `EXPIRED`, `WITHDRAWN`, `SUPERSEDED`), `dispute` (`null`, `OPEN`, `UPHELD`, `REJECTED`) |
-
 | `registration unit` | `unit_matches`, `refused` (exit 1) | `signaturesChecked` (always `false`). Refused: `refusal.code` (a unit check code), `refusal.detail`, which never contains the key or an input value. |
 
 A `state` is the log's, not a verification result, and a claim whose
@@ -91,6 +89,15 @@ true. `verified` says a run of a log is intact, not that it is complete.
 `show`, `trace` without `--trust`, `diff`, `import` and `export` establish
 nothing beyond package integrity, and their output says so in a member, not
 only in prose.
+
+## Evidence commands
+
+| Command | `outcome` | Notable members |
+| --- | --- | --- |
+| `evidence chain` | `verified`, `refused` (exit 1) | `fromGenesis`, `first`, `last`, `head`: the last step as an anchor, `{ tenant: { value }, issuer: { value }, stream, sequence, digest }`, which `--anchor` reads back. Refused: `refusal.code` (an evidence code: `MALFORMED`, a `CHAIN_…` code, or a statement code packages share), `refusal.detail`, which names the statement's line when one statement is at fault. |
+
+`verified` says the steps from `first` to `last` are one unbroken run. It
+never says the run is complete, or that a statement is true.
 
 ## What a wrapper must not do
 
