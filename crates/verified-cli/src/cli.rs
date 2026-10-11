@@ -34,6 +34,7 @@ Exit codes:
      was refused, or the log contradicts the entry you hold
      evidence chain: the statements are refused, or are not one run
      trust show: the registry cannot be used
+     issue, sign: a verifier would refuse the package; nothing is written
   2  the command could not run (usage, unreadable file, unusable registry,
      resource limit)
   3  verify: the package was not refused, but not every check ran
@@ -178,6 +179,22 @@ pub(crate) enum Command {
     /// accepts.
     #[command(subcommand)]
     Trust(TrustCommand),
+    /// Issue a package: evaluate a contract against signed evidence
+    ///
+    /// The draft is a JSON file: the contract, the claim, the signed
+    /// evidence with its bodies, and the times. The decision is computed,
+    /// never taken from the draft, and the package is written only if a
+    /// verifier holding your registry reproduces it. Issuing is not
+    /// verifying: a recipient checks the package under their own registry.
+    Issue(Issue),
+    /// Sign a package's decision as its issuer
+    ///
+    /// With --key, signs with a PEM private key (what `openssl genpkey
+    /// -algorithm ed25519` writes); it is never printed. To keep the key
+    /// elsewhere, write the bytes to sign with --signing-input-out, sign
+    /// them there, and give the signature with --signature-file. The signed
+    /// package is written only if the signature counts under your registry.
+    Sign(Sign),
 }
 
 #[derive(Debug, Subcommand)]
@@ -266,6 +283,53 @@ pub(crate) struct TrustRevoke {
 pub(crate) struct TrustShow {
     /// The registry file
     pub(crate) registry: PathBuf,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Issue {
+    /// The draft: a JSON file (see docs/sdk/issuing.md)
+    pub(crate) draft: PathBuf,
+    /// The registry the issuer authenticates its evidence under
+    #[arg(long, value_name = "REGISTRY")]
+    pub(crate) trust: PathBuf,
+    /// Where to write the package. An existing file is not overwritten
+    #[arg(long, short, value_name = "FILE")]
+    pub(crate) output: PathBuf,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct Sign {
+    /// The package whose decision to sign
+    pub(crate) package: PathBuf,
+    /// Write only the bytes to sign, for a signer elsewhere, and stop
+    #[arg(long, value_name = "FILE", conflicts_with_all = ["key", "signature_file", "key_id", "trust", "output"])]
+    pub(crate) signing_input_out: Option<PathBuf>,
+    /// A PEM file holding the Ed25519 private key to sign with
+    #[arg(long, value_name = "FILE", conflicts_with = "signature_file")]
+    pub(crate) key: Option<PathBuf>,
+    /// A file holding a signature made elsewhere over the bytes
+    /// --signing-input-out wrote: standard base64 of 64 bytes
+    #[arg(long, value_name = "FILE")]
+    pub(crate) signature_file: Option<PathBuf>,
+    /// The key's identifier in the registry
+    #[arg(long, value_name = "ID", required_unless_present = "signing_input_out")]
+    pub(crate) key_id: Option<String>,
+    /// The registry the signature must count under
+    #[arg(
+        long,
+        value_name = "REGISTRY",
+        required_unless_present = "signing_input_out"
+    )]
+    pub(crate) trust: Option<PathBuf>,
+    /// Where to write the signed package. An existing file is not
+    /// overwritten
+    #[arg(
+        long,
+        short,
+        value_name = "FILE",
+        required_unless_present = "signing_input_out"
+    )]
+    pub(crate) output: Option<PathBuf>,
 }
 
 #[derive(Debug, Subcommand)]

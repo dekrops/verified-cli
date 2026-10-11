@@ -30,7 +30,12 @@ added, and existing members keep their names and shapes.
 
 `error.code` is one of `IO_ERROR`, `RESOURCE_LIMIT`, `TRUST_REGISTRY`,
 `WORK_RECORD`, `WORKSPACE`, `USAGE`, `EXPECTATIONS_UNDEFINED`,
-`RECORD_UNDEFINED`, `NOT_COMPARABLE`.
+`RECORD_UNDEFINED`, `NOT_COMPARABLE`, `INPUT`.
+
+`INPUT` means a file the command reads cannot be read or is not of the form
+the command takes: a log, a document, a draft, an anchor or a key file. The
+`registration` and `evidence` commands have reported it since they were
+added; it was missing from this list.
 
 ## `verify`
 
@@ -120,6 +125,16 @@ A `key` is `keyId`, `issuer`, `tenant`, `sources`, `maySignDecisions`
 `revokedAt`, spelled as the registry spells them (`null` when absent). A
 change that would make the registry unusable is an error (exit 2,
 `error.code` `TRUST_REGISTRY`) and leaves the file as it was.
+
+## Issuing commands
+
+| Command | `outcome` | Notable members |
+| --- | --- | --- |
+| `issue` | `issued`, `refused` (exit 1) | `output`, `package`, `report` (the `verify` report under the registry given). Refused: `refusal.code`, `refusal.detail`; nothing was written. |
+| `sign` | `signed`, `refused` (exit 1), `signing_input` | As `issue`; with `--signing-input-out`, `output` and `bytes` |
+
+`report` is what the *issuer's* registry establishes. A recipient's
+verification under their own registry is the one that counts for them.
 
 ## What a wrapper must not do
 

@@ -202,6 +202,23 @@ examples are published in [`dekrops/wvp`](https://github.com/dekrops/wvp). To
 run the tests against that corpus, see
 [`conformance/README.md`](conformance/README.md).
 
+## Issuing a package
+
+The tool also produces packages, from evidence that is already signed:
+
+```sh
+verified issue draft.json --trust trust.json -o package.json
+verified sign package.json --key-id my-issuer-key --key issuer.key \
+    --trust trust.json -o signed.json
+```
+
+A draft is the contract, the claim and the signed evidence as one JSON file
+([format](docs/sdk/issuing.md)); it has no member for a decision, which is
+computed. Nothing is written that a verifier holding the given registry
+would refuse. To keep the issuer's key off the machine, `sign` writes the
+bytes to sign (`--signing-input-out`) and takes a signature made elsewhere
+(`--signature-file`).
+
 ## A local workspace
 
 A workspace is a `.verified` directory holding packages you have imported. It
