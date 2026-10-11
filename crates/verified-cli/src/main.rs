@@ -13,6 +13,7 @@ mod portable;
 mod registration;
 mod render;
 mod trace;
+mod trust;
 mod verify;
 mod workspace;
 
@@ -47,6 +48,10 @@ fn main() -> ExitCode {
             registration::unit(command, &mut out)
         }
         cli::Command::Evidence(cli::Evidence::Chain(command)) => evidence::chain(command, &mut out),
+        cli::Command::Trust(cli::TrustCommand::Init(command)) => trust::init(command, &mut out),
+        cli::Command::Trust(cli::TrustCommand::Add(command)) => trust::add(command, &mut out),
+        cli::Command::Trust(cli::TrustCommand::Revoke(command)) => trust::revoke(command, &mut out),
+        cli::Command::Trust(cli::TrustCommand::Show(command)) => trust::show(command, &mut out),
     };
     code.into()
 }
