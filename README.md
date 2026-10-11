@@ -363,8 +363,11 @@ Every command of the original plan exists. What is not built:
 - A command for admitting evidence statements as a claim's evidence. The
   library does it (`verified_verifier::evidence::admit`); there is no file
   format for a claim and its context.
-- Python and TypeScript SDKs. The contract they would be built on is
+- A TypeScript SDK. The contract it would be built on is
   [the JSON output](docs/sdk/json-output.md).
+- Claim registration in the Python SDK. `verified-python` binds verification,
+  evidence, contracts and work-unit identity, but not yet the registration
+  commands' library.
 - A fuzzing campaign. [Fuzz targets](fuzz/README.md) exist for every kind of
   untrusted input and CI runs each briefly; nothing runs them at length.
 - Tests of symbolic-link refusal on Windows. The checks run on Linux, macOS
@@ -407,8 +410,12 @@ no I/O at all. More in
 
 The crates are the Rust SDK and are meant to be depended on directly (not
 through the binary). They are Apache-2.0 and not yet published to crates.io.
-Python and TypeScript SDKs are planned and not started; their boundaries are
-in [decision 0007](docs/decisions/0007-sdk-boundaries.md). What a dependent
+The Python SDK,
+[`verified-python`](https://github.com/dekrops/verified-python), binds these
+crates natively and runs the same conformance corpus; it lives in its own
+repository and is released on its own. A TypeScript SDK is not started. The
+boundaries for both are in
+[decision 0007](docs/decisions/0007-sdk-boundaries.md). What a dependent
 program may rely on is in the
 [compatibility policy](docs/development/compatibility-policy.md), and how a
 release keeps it in [releasing](docs/development/releasing.md); where this
