@@ -56,6 +56,11 @@ From `v0.1.0` the Rust API of the five library crates (`verified-canonical`,
 crate are not libraries for others and are not covered. All crates share one
 version and are tagged together.
 
+CI enforces this for the five library crates: `cargo-semver-checks` compares
+every pull request with the last tag and fails on a breaking change made
+without the version bump it needs. How a version is chosen and a tag cut is
+in [releasing](releasing.md).
+
 ### One pin for consumers that exchange packages
 
 Applications that hand packages to one another should verify with the same

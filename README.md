@@ -410,7 +410,8 @@ through the binary). They are Apache-2.0 and not yet published to crates.io.
 Python and TypeScript SDKs are planned and not started; their boundaries are
 in [decision 0007](docs/decisions/0007-sdk-boundaries.md). What a dependent
 program may rely on is in the
-[compatibility policy](docs/development/compatibility-policy.md); where this
+[compatibility policy](docs/development/compatibility-policy.md), and how a
+release keeps it in [releasing](docs/development/releasing.md); where this
 project's responsibility ends is in
 [consumers and boundaries](docs/architecture/consumers.md).
 
