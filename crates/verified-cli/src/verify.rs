@@ -369,7 +369,7 @@ fn binding_rows(report: &Report) -> Vec<Row> {
     rows
 }
 
-fn human(out: &mut Output, report: &Report, complete: bool) {
+pub(crate) fn human(out: &mut Output, report: &Report, complete: bool) {
     let statements = report.statements;
     out.heading(&format!("{TITLE} ({}, draft)", report.protocol));
     out.rows(&[

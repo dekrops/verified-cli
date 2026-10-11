@@ -41,7 +41,7 @@ repeat all of it.
   contracts as data.
 - **No command.** Issuing needs a signer and a source of evidence, which a
   command-line tool for verification has neither of. It is a library
-  operation for SDKs and applications.
+  operation for SDKs and applications. (Amended below: there are now two.)
 
 ## What this changes in the boundary
 
@@ -50,6 +50,30 @@ packages as the platform's. Operating evidence collection, retention and
 governance still is. Laying out a package from evidence someone already
 holds is protocol work, by that page's own test: a relying party who bills
 nothing wants it done one way.
+
+## Amendment: `verified issue` and `verified sign`
+
+Without a command, the tool could check half of the workflow and produce
+none of it, and a person without an SDK could not make a package to test a
+consumer against. Two commands now call the library:
+
+- `verified issue DRAFT --trust REGISTRY --output FILE` reads a draft, the
+  library's `Draft` as one JSON file (`docs/sdk/issuing.md`), and writes the
+  package `issue` returns. The draft brings its evidence already signed;
+  the command collects nothing.
+- `verified sign PACKAGE …` adds an issuer signature through `countersign`.
+  The signature is made in one of two ways:
+  - **elsewhere**, which keeps the key off the machine: `--signing-input-out`
+    writes the bytes `decision_signing_input` gives, and `--signature-file`
+    takes the signature back. This is the route ADR 0007 prefers;
+  - **here**, with `--key`, a PEM PKCS #8 Ed25519 private key file, for
+    test keys and simple setups. The key is read into memory that is wiped
+    when dropped, and nothing read from the file is ever printed.
+
+What does not change: the library still holds no key and takes none; a
+draft still has no member for a decision; and neither command writes a
+package that a verifier holding the given registry would refuse. Both
+refuse to overwrite an existing file.
 
 ## Limits
 

@@ -9,6 +9,7 @@ mod cli;
 mod evidence;
 mod exit;
 mod input;
+mod issue;
 mod portable;
 mod registration;
 mod render;
@@ -52,6 +53,8 @@ fn main() -> ExitCode {
         cli::Command::Trust(cli::TrustCommand::Add(command)) => trust::add(command, &mut out),
         cli::Command::Trust(cli::TrustCommand::Revoke(command)) => trust::revoke(command, &mut out),
         cli::Command::Trust(cli::TrustCommand::Show(command)) => trust::show(command, &mut out),
+        cli::Command::Issue(command) => issue::issue(command, &mut out),
+        cli::Command::Sign(command) => issue::sign(command, &mut out),
     };
     code.into()
 }

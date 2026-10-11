@@ -121,6 +121,16 @@ A `key` is `keyId`, `issuer`, `tenant`, `sources`, `maySignDecisions`
 change that would make the registry unusable is an error (exit 2,
 `error.code` `TRUST_REGISTRY`) and leaves the file as it was.
 
+## Issuing commands
+
+| Command | `outcome` | Notable members |
+| --- | --- | --- |
+| `issue` | `issued`, `refused` (exit 1) | `output`, `package`, `report` (the `verify` report under the registry given). Refused: `refusal.code`, `refusal.detail`; nothing was written. |
+| `sign` | `signed`, `refused` (exit 1), `signing_input` | As `issue`; with `--signing-input-out`, `output` and `bytes` |
+
+`report` is what the *issuer's* registry establishes. A recipient's
+verification under their own registry is the one that counts for them.
+
 ## What a wrapper must not do
 
 - Turn `incomplete` into success. Exit code 3 exists so that it cannot happen

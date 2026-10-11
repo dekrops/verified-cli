@@ -11,7 +11,7 @@ This project's own license is in [`LICENSE`](LICENSE), and its notices are in
 
 ## Overview
 
-- Apache License 2.0: 45 crates
+- Apache License 2.0: 46 crates
 - BSD 3-Clause "New" or "Revised" License: 3 crates
 - MIT License: 3 crates
 - Unicode License v3: 1 crate
@@ -23,6 +23,7 @@ This project's own license is in [`LICENSE`](LICENSE), and its notices are in
 Used by:
 - [cmov 0.5.4](https://github.com/RustCrypto/utils)
 - [ctutils 0.4.3](https://github.com/RustCrypto/utils)
+- [zeroize 1.9.1](https://github.com/RustCrypto/utils)
 
 ```text
 
