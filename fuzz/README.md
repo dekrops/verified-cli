@@ -15,7 +15,7 @@ toolchain. Building, testing or installing the tool needs none of it.
 | `canonical` | any bytes, as JSON | a value's canonical text reads back as that value; text is accepted as canonical exactly when it is that encoding |
 | `package` | a trust registry and a package | verification is repeatable; inspection refuses what verification refuses, for the same reason, and otherwise carries the same report |
 | `contract` | a contract and an environment | evaluation is repeatable |
-| `statement` | a registry, a relying party's context, signed statements | nothing further |
+| `statement` | a registry, a relying party's context, signed statements | an anchor reads back from the form it is written in |
 | `registration` | a trust configuration, an agreement, a claim, a receipt | verification is repeatable |
 | `registry_log` | a trust configuration, an anchor, a held entry, log entries | the check is repeatable; a held entry only adds checks |
 | `registry_audit` | a trust configuration, log entries, documents | the audit is repeatable; an audited log is a segment from the start of the log |

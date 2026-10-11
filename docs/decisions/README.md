@@ -12,7 +12,7 @@
 | [0008](0008-portability-guarantees.md) | Portability guarantees | Accepted; implemented |
 | [0009](0009-signature-verification.md) | Signatures are verified by `ed25519-dalek`, strictly | Accepted; implemented |
 | [0010](0010-work-unit-identity.md) | Work-unit identity is a library without state, keys or a command | Accepted; implemented |
-| [0011](0011-statement-chains.md) | Statement chains are verified outside packages, by the library | Accepted; implemented |
+| [0011](0011-statement-chains.md) | Statement chains are verified outside packages, by the library | Accepted; implemented; amended (command) |
 | [0012](0012-claim-registration.md) | Claim registration is verified here, in stages, and no registry is run | Accepted; implemented |
 | [0013](0013-issuing-packages.md) | `wvp-0.2` packages are issued by the library that verifies them | Accepted; implemented |
 | [0014](0014-fuzzing.md) | Fuzz targets live outside the workspace, on a pinned nightly | Accepted; implemented |

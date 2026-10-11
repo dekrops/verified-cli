@@ -7,31 +7,19 @@
 //! supplies beside the statements (any member may be missing); then one
 //! signed statement per line.
 //!
-//! Only the absence of panics is asserted.
+//! Beyond not panicking: an anchor that is read reads back from the form it
+//! is written in.
 
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use verified_canonical::{Integer, Value};
+use verified_canonical::Value;
 use verified_fuzz::{head, json, lines, member};
 use verified_verifier::Trust;
 use verified_verifier::evidence::{Anchor, admit, authenticate, verify_chain};
 
 fn anchor(context: &Value) -> Option<Anchor> {
-    let anchor = member(context, "anchor")?;
-    let wrapped = |name| member(member(anchor, name)?, "value")?.as_str();
-    Some(Anchor {
-        tenant: wrapped("tenant")?.to_owned(),
-        issuer: wrapped("issuer")?.to_owned(),
-        stream: member(anchor, "stream")?.as_str()?.to_owned(),
-        sequence: member(anchor, "sequence")?
-            .as_integer()
-            .and_then(Integer::to_i64)?,
-        digest: member(member(anchor, "digest")?, "hex")?
-            .as_str()?
-            .parse()
-            .ok()?,
-    })
+    Anchor::from_value(member(context, "anchor")?).ok()
 }
 
 fn texts<'a>(context: &'a Value, name: &str) -> Vec<&'a str> {
@@ -63,6 +51,7 @@ fuzz_target!(|data: &[u8]| {
     };
     let _ = verify_chain(&authentic, None);
     if let Some(anchor) = anchor(&context) {
+        assert_eq!(Anchor::from_value(&anchor.to_value()).as_ref(), Ok(&anchor));
         let _ = verify_chain(&authentic, Some(&anchor));
     }
     let tenant = member(&context, "tenant")

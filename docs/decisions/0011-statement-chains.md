@@ -1,6 +1,7 @@
 # 0011. Statement chains are verified outside packages, by the library
 
-Status: accepted and implemented in `verified_verifier::evidence`.
+Status: accepted and implemented in `verified_verifier::evidence` and
+`verified evidence chain`.
 
 ## Context
 
@@ -32,9 +33,32 @@ checks, and neither upstream verifier checks it for a package.
   wraps the codes the two protocols share.
 - **No command yet.** A command needs a file format for "these statements,
   this anchor", which the protocol does not define. Inventing one is a
-  separate decision.
+  separate decision. (Made later: see the amendment below.)
 - The platform's verification result, which the corpus states for accepted
   admissions, is not computed: it is not specified in the published material.
+
+## Amendment: a command for chains
+
+`verified evidence chain STATEMENTS --trust REGISTRY [--anchor FILE]`
+verifies a run. The file formats are this tool's, not the protocol's:
+
+- **Statements**: one signed statement per line, in order, as the
+  registration commands read log entries. A line may end in `\r\n`.
+- **An anchor**: the form the protocol's corpus already writes anchors in,
+  `{ tenant: { value }, issuer: { value }, stream, sequence, digest:
+  { algorithm, hex } }`, read strictly by `Anchor::from_value`. The command
+  prints a verified run's head in that form, so that what a run prints is
+  what the next run takes. The conformance test now reads the corpus's
+  anchors with the same function.
+
+An anchor stays the relying party's own record. Reading one checks its form
+and authenticates nothing; the command says so in its help. A malformed
+anchor or registry means the command could not run (exit code 2), not that
+the statements were refused.
+
+The command is under `verified evidence`, which leaves room for admitting
+statements as a claim's evidence. That needs a claim and its context, for
+which there is no file format either.
 
 ## Consequences
 

@@ -67,7 +67,8 @@ relying party's own trust registry.
   decision from `--json`.
 - **Chains of statements** are not verified when a package is: its
   statements are checked individually. The library verifies a chain of
-  statements held outside a package (`verified_verifier::evidence`), and a
+  statements held outside a package (`verified_verifier::evidence`,
+  `verified evidence chain`), and a
   verified chain still says nothing about steps after its last: whoever
   passes statements on can leave off the end.
 - **A registration is not a verified claim.** `verify_registration`
@@ -91,7 +92,9 @@ relying party's own trust registry.
   verification result, and a claim with an open dispute is not ready to be
   acted on, whatever its state.
 - **A chain anchor is trust configuration**, like the registry. One taken
-  from the party whose statements are being checked proves nothing.
+  from the party whose statements are being checked proves nothing. The
+  command reads an anchor from a file and checks only its form: keep the
+  head a run printed where only you can change it.
 - **A local attacker on the workspace directory.** The workspace refuses
   symbolic links and re-checks every object it reads, which covers what a
   package could cause and accidental damage. It does not defend against

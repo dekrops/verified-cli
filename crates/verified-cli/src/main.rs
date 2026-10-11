@@ -6,6 +6,7 @@
 //! lives in the library crates.
 
 mod cli;
+mod evidence;
 mod exit;
 mod input;
 mod portable;
@@ -45,6 +46,7 @@ fn main() -> ExitCode {
         cli::Command::Registration(cli::Registration::Unit(command)) => {
             registration::unit(command, &mut out)
         }
+        cli::Command::Evidence(cli::Evidence::Chain(command)) => evidence::chain(command, &mut out),
     };
     code.into()
 }

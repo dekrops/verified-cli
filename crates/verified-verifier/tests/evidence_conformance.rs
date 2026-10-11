@@ -128,18 +128,9 @@ fn chain_outcome(input: &Value, trust: &Trust, at: &str) -> Value {
         .collect();
     let anchor = match member(input, "anchor", at) {
         Value::Null => None,
-        anchor => Some(Anchor {
-            tenant: wrapped(anchor, "tenant", at).to_owned(),
-            issuer: wrapped(anchor, "issuer", at).to_owned(),
-            stream: text(anchor, "stream", at).to_owned(),
-            sequence: member(anchor, "sequence", at)
-                .as_integer()
-                .and_then(verified_canonical::Integer::to_i64)
-                .unwrap_or_else(|| panic!("{at}: the anchor's sequence is not an integer")),
-            digest: text(member(anchor, "digest", at), "hex", at)
-                .parse()
-                .unwrap_or_else(|_| panic!("{at}: the anchor's digest is not SHA-256")),
-        }),
+        anchor => {
+            Some(Anchor::from_value(anchor).unwrap_or_else(|e| panic!("{at}: the anchor: {e}")))
+        }
     };
     let segment = authenticated(&statements, trust)
         .and_then(|authentic| verify_chain(&authentic, anchor.as_ref()));
