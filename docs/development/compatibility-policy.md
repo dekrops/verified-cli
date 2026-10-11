@@ -1,8 +1,8 @@
 # Compatibility policy
 
 What a script or a program depending on this project may rely on. The project
-is pre-release (`0.1.0`), unpublished and untagged, so this is the policy a
-first release will be held to, and an honest account of the present.
+is pre-1.0 and unpublished. Its first tagged revision is `v0.1.0`; this is
+the policy tags are held to, and an honest account of the present.
 
 ## Stable now
 
@@ -26,10 +26,10 @@ major version.
 
 ## Not stable
 
-- **The Rust API of the library crates.** It has changed in every pull request
-  so far and will keep changing until a first tagged revision. Depend on an
-  exact commit, read the pull requests between two pins, and expect to adapt.
-  Additions are the common case; removals and renames happen.
+- **The Rust API of the library crates, between tags.** It changed in every
+  pull request before `v0.1.0` and `main` keeps moving. Depend on a tag, read
+  the pull requests between two tags, and expect to adapt across a minor
+  version. Additions are the common case; removals and renames happen.
 - **Human-readable output.** It is for people. Parse `--json`.
 - **The `detail` text of a refusal** and every other message.
 - **Resource limits.** They are this tool's own and may be tuned.
@@ -38,13 +38,39 @@ major version.
 
 ## Pinning
 
-Until a tag exists, pin a commit of `main`. Each merge to `main` passed the
-quality gate; a commit on another branch promises nothing.
+Pin a tag, by the commit it names:
 
-A first tagged revision needs the repository owner's decision, as does any
-publication to a package registry. When it exists, the Rust API will follow
-semantic versioning from that tag, and this page will say which crates are
-covered.
+```toml
+verified-verifier = { git = "https://github.com/dekrops/verified-cli", tag = "v0.1.0" }
+```
+
+Cargo records the commit in `Cargo.lock`; build with `--locked`. A commit of
+`main` between tags passed the quality gate and promises nothing about its
+API. A commit on another branch promises nothing at all.
+
+From `v0.1.0` the Rust API of the five library crates (`verified-canonical`,
+`verified-protocol`, `verified-contract`, `verified-verifier`,
+`verified-work-unit`) follows semantic versioning as Cargo reads it before
+1.0: a patch version (`0.1.x`) only adds or fixes, and a minor version
+(`0.2.0`) may remove or rename. `verified-workspace` and the `verified-cli`
+crate are not libraries for others and are not covered. All crates share one
+version and are tagged together.
+
+### One pin for consumers that exchange packages
+
+Applications that hand packages to one another should verify with the same
+revision, or a disagreement between them may be a difference between pins
+and not a finding. The known consumers (Agent Billing Center, Agent
+Compliance Center, the Python SDK) each record their pin where a test reads
+it, in `conformance/upstream.json` or in the SDK's build, and move together
+from tag to tag:
+
+```json
+{ "verifiedCli": "<the tag's commit>", "wvp": "<the corpus commit>" }
+```
+
+A tag, like any publication to a package registry, needs the repository
+owner's decision.
 
 ## The protocol itself
 
