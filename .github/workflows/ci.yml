@@ -69,6 +69,30 @@ jobs:
           VERIFIED_CONFORMANCE_DIR: ${{ github.workspace }}/wvp/test-vectors
           VERIFIED_CONFORMANCE_REQUIRED: "1"
 
+  semver:
+    name: library API is compatible with the last tag
+    runs-on: ubuntu-latest
+    steps:
+      # The whole history, for the tags.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo install cargo-semver-checks --version 0.51.0 --locked
+      # The five library crates follow semantic versioning from v0.1.0
+      # (docs/development/compatibility-policy.md). A breaking change passes
+      # only together with the version bump it needs; see
+      # docs/development/releasing.md.
+      - name: Compare with the last tag
+        run: |
+          baseline=$(git describe --tags --abbrev=0 --match 'v*')
+          echo "Comparing with $baseline"
+          cargo semver-checks --baseline-rev "$baseline" \
+            -p verified-canonical -p verified-protocol -p verified-contract \
+            -p verified-verifier -p verified-work-unit
+
   supply-chain:
     name: advisories, licenses, bans, sources
     runs-on: ubuntu-latest

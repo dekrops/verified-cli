@@ -59,6 +59,13 @@ part of the gate above.
   clock and everything else belong to `verified-cli`.
 - `unsafe` is forbidden workspace-wide.
 
+## Library API changes
+
+The five library crates follow semantic versioning from `v0.1.0`, and CI
+compares their API with the last tag. A change that breaks it bumps the
+workspace version in the same pull request and says what a consumer
+changes. See [releasing](docs/development/releasing.md).
+
 ## Decisions
 
 Architectural decisions are recorded in `docs/decisions/`. Add a record when a
