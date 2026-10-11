@@ -346,7 +346,9 @@ Every command of the original plan exists. What is not built:
   [the JSON output](docs/sdk/json-output.md).
 - A fuzzing campaign. [Fuzz targets](fuzz/README.md) exist for every kind of
   untrusted input and CI runs each briefly; nothing runs them at length.
-- Windows in CI.
+- Tests of symbolic-link refusal on Windows. The checks run on Linux, macOS
+  and Windows, but the tests that plant symbolic links in a workspace run on
+  Linux and macOS only, since creating one on Windows needs a privilege.
 - Published crates. The first tagged revision is `v0.1.0`; nothing is on a
   package registry.
 

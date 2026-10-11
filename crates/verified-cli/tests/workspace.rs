@@ -21,8 +21,14 @@ impl Scratch {
             std::env::temp_dir().join(format!("verified-cli-ws-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("create scratch directory");
-        // Compare paths as the tool prints them.
-        Self(dir.canonicalize().expect("canonical scratch path"))
+        // Compare paths as the tool prints them: with symbolic links
+        // resolved, as macOS's /var is. On Windows, canonical paths take the
+        // verbatim form (\\?\C:\…), which the working directory does not.
+        if cfg!(windows) {
+            Self(dir)
+        } else {
+            Self(dir.canonicalize().expect("canonical scratch path"))
+        }
     }
 
     fn file(&self, name: &str, contents: &[u8]) -> PathBuf {
@@ -41,6 +47,9 @@ fn run_in(directory: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_verified"))
         .env_clear()
         .env("LANG", "en_US.UTF-8")
+        // Windows needs its system directory to start a process; elsewhere
+        // the variable is absent and nothing is added.
+        .envs(std::env::var_os("SYSTEMROOT").map(|root| ("SYSTEMROOT", root)))
         .current_dir(directory)
         .args(args)
         .output()

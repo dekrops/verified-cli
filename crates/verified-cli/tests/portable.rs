@@ -33,6 +33,9 @@ impl Scratch {
         Command::new(env!("CARGO_BIN_EXE_verified"))
             .env_clear()
             .env("LANG", "en_US.UTF-8")
+            // Windows needs its system directory to start a process; elsewhere
+            // the variable is absent and nothing is added.
+            .envs(std::env::var_os("SYSTEMROOT").map(|root| ("SYSTEMROOT", root)))
             .current_dir(&self.0)
             .args(args)
             .output()
