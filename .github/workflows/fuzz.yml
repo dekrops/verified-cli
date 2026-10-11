@@ -68,7 +68,7 @@ jobs:
         working-directory: fuzz
         run: |
           for target in $(cargo fuzz list); do
-            grep -qx "          - $target" ../.github/workflows/fuzz.yml || {
+            grep -qE "^[[:space:]]+- $target[[:space:]]*\$" ../.github/workflows/fuzz.yml || {
               echo "::error::$target is missing from the campaign matrix in fuzz.yml"
               exit 1
             }
