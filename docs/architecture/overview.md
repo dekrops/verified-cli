@@ -59,7 +59,7 @@ signed statements by which a ledger or an application says how the records of
 one unit of work are related. It stands above the verifier and uses it only to
 authenticate a statement. It resolves references and compares what records
 state; it verifies no record, and a record that was not given makes a relation
-*stated*, never refused. It is a library without a command, and outside the
+*stated*, never refused. `verified history read` prints its reading. It is outside the
 compatibility promise while the specification is a draft
 ([ADR 0015](../decisions/0015-work-relations.md)).
 
@@ -134,5 +134,7 @@ reproduced can meet the requirement; without a registry the exit code stays
 
 `verified-history` reads relations it is given; nothing stores them. The
 workspace still holds packages only, `trace` is still a view of one package,
-and `log` still shows import history only. No command reads a history, and
-there is no container for one: the specification defines none.
+and `log` still shows import history only. `history read` reads one file
+and keeps nothing. There is no container for a history: the specification
+defines none, and the file the command reads is the reader's input written
+down, as a ledger exports it.

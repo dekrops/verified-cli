@@ -102,6 +102,23 @@ true. `verified` says a run of a log is intact, not that it is complete.
 nothing beyond package integrity, and their output says so in a member, not
 only in prose.
 
+## History commands
+
+Work relation v1 is a draft; these members may change with it.
+
+| Command | `outcome` | Notable members |
+| --- | --- | --- |
+| `history read` | `checked`, `stated` (exit 3), `refused` (exit 1) | `recordsVerified`: always `false`, because the command verifies no record. `reading`: `records` (each a reference `{ kind, digest }`, or `{ error }`), `relations` (each with `standing`: `CHECKED`, `STATED` with `absent`, `CONTRADICTED` or `REFUSED` with `code`; and `relation`, `source`, `keyId` where known), `sameClaims` (`package`, `claim`, `agreement`, `result`), `streams` (`tenant`, `issuer`, `stream`, `completeness`, and `last` when uninterrupted). |
+
+`outcome` is the least favourable thing in the reading, as the exit code is:
+`refused` if a relation is refused or contradicted, a record is malformed, a
+registered claim is not the package's claim, or a stream contradicts itself;
+`stated` if a relation names a record that was not given, a record is of an
+unknown kind, or there is no relation; otherwise `checked`. `checked` says
+that every relation is consistent with the records given. It does not say a
+record was verified, that a relation is true, or that the history is
+complete: a stream's completeness is reported and does not change it.
+
 ## Evidence commands
 
 | Command | `outcome` | Notable members |

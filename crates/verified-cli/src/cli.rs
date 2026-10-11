@@ -171,6 +171,14 @@ pub(crate) enum Command {
     /// Check evidence statements held outside a package (draft protocol)
     #[command(subcommand)]
     Evidence(Evidence),
+    /// Read what authorities say about the records of one unit of work
+    /// (draft protocol)
+    ///
+    /// Work relation v1 is a draft, separate from the Work Verification
+    /// Protocol: signed statements by which a ledger or an application says
+    /// how records are related.
+    #[command(subcommand)]
+    History(History),
     /// Write and check the trust registry that --trust reads
     ///
     /// A registry is the list of keys you accept: for each, whose it is,
@@ -331,6 +339,35 @@ pub(crate) struct Sign {
         required_unless_present = "signing_input_out"
     )]
     pub(crate) output: Option<PathBuf>,
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum History {
+    /// Read relations against the records given with them
+    ///
+    /// The history is a JSON file, `{ "relations": [{ "statement", "body" }],
+    /// "records": [{ "kind", "text" }] }`: what a ledger exports for one
+    /// claim. Each relation is accepted only from a key your registry
+    /// trusts for its source, and is then compared with the records given.
+    ///
+    /// Exits 0 if every relation is consistent with the records given; 3 if
+    /// a relation names a record that was not given, or there is no
+    /// relation; 1 if a relation is refused or a record states otherwise.
+    ///
+    /// No record is verified here: verify a package with `verify` and a
+    /// registration with `registration verify`. A relation shows that its
+    /// authority said so, not that it is true, and a history says nothing
+    /// about what was left out of it.
+    Read(HistoryRead),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct HistoryRead {
+    /// The history: a JSON file of relations and records
+    pub(crate) history: PathBuf,
+    /// Your trust registry: a JSON file of the keys you accept
+    #[arg(long, value_name = "REGISTRY")]
+    pub(crate) trust: PathBuf,
 }
 
 #[derive(Debug, Subcommand)]

@@ -37,6 +37,7 @@ strip = "symbols"
 [workspace.dependencies]
 verified-canonical = { path = "crates/verified-canonical", version = "0.1.2" }
 verified-contract = { path = "crates/verified-contract", version = "0.1.2" }
+verified-history = { path = "crates/verified-history", version = "0.1.2" }
 verified-protocol = { path = "crates/verified-protocol", version = "0.1.2" }
 verified-verifier = { path = "crates/verified-verifier", version = "0.1.2" }
 verified-work-unit = { path = "crates/verified-work-unit", version = "0.1.2" }
