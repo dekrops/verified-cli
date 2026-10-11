@@ -24,6 +24,7 @@ mod inputs;
 mod refusal;
 pub mod registration;
 mod registry;
+pub mod relation;
 mod shape;
 mod statement;
 mod time;

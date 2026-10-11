@@ -110,7 +110,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: dekrops/wvp
-          ref: c7c9de2a7e8ad67e7dcee46d5c5f7fc2edccb797
+          ref: 0f00ea23924a842c7c71753b54ae0d0caf386d34
           path: wvp
           persist-credentials: false
       - run: rustup show active-toolchain || rustup toolchain install

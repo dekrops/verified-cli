@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "verified-history"
+description = "Work relation v1: reads what authorities say about the records of one unit of work, offline."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+verified-canonical.workspace = true
+verified-protocol.workspace = true
+verified-verifier.workspace = true
+
+[lints]
+workspace = true
