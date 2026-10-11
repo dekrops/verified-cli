@@ -53,6 +53,13 @@
 //! protocol with its own objects, codes and trust configuration. Nothing in
 //! package verification depends on it.
 //!
+//! # Issuing
+//!
+//! [`issue`] builds `wvp-0.2` packages from a contract, a claim and signed
+//! evidence, using the same evaluation and the same decision layout as
+//! [`verify`], and returns only packages that verify. Issuing is not
+//! verifying: an issued package carries its issuer's decision.
+//!
 //! # Statements outside a package
 //!
 //! [`evidence`] authenticates single statements, verifies that a list of
@@ -63,6 +70,7 @@
 mod container;
 pub mod evidence;
 mod inspect;
+pub mod issue;
 mod json;
 mod order_transition;
 pub mod registration;

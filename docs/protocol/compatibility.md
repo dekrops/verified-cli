@@ -19,6 +19,7 @@ states exactly how much of it this implementation performs.
 | Relying-party expectations | not defined by the protocol | yes |
 | Work Contract Language 1 (`kleene-1`) | n/a | yes |
 | Work record: computed from the package, and compared with one supplied (`RECORD_MISMATCH`) | not defined by the protocol | yes |
+| Issuing a package (`verified_verifier::issue`) | **no** | yes, as a library: evaluated and laid out by the verifier's own code, and verified before it is returned |
 | Chains of statements (evidence statement v1) | as a library, for statements outside a package (`verified_verifier::evidence`); **not** for a package's statements | the same |
 | Work-unit identity v1: identity, nullifier, key commitment | n/a (claims have no inputs) | yes, as a library (`verified-work-unit`) |
 | Work-unit registry ("was this unit already billed?") | **no**, by design | **no**, by design |

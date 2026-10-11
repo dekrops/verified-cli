@@ -6,7 +6,8 @@ Status: proposed. No SDK exists.
 
 The library crates are the Rust SDK. Stable surface, in order of maturity:
 `verified-canonical` (parse, encode, digest, signing input), then
-`verified-protocol` types, then `verified-verifier::verify` and its report.
+`verified-protocol` types, then `verified-verifier::verify` and its report,
+then `verified-verifier::issue` (ADR 0013).
 Storage internals stay private to the workspace crate. The crates are
 Apache-2.0. Nothing is published to crates.io without explicit authorization.
 
