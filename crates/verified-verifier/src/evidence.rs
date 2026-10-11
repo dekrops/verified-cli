@@ -12,6 +12,7 @@
 //! [`Authenticated`] statement can be chained or admitted, and the only way
 //! to obtain one is [`authenticate`].
 
+use std::collections::BTreeMap;
 use std::fmt;
 
 use verified_canonical::{Sha256Digest, Value};
@@ -268,14 +269,12 @@ pub fn verify_chain(
     }
 
     let digests: Vec<Sha256Digest> = links.iter().map(|(s, _)| s.digest()).collect();
-    let forked = links.iter().enumerate().any(|(i, (_, link))| {
-        links[..i]
-            .iter()
-            .zip(&digests)
-            .any(|((_, earlier), digest)| {
-                earlier.sequence == link.sequence && *digest != digests[i]
-            })
-    });
+    // One pass: the first digest seen at each step, against every later one.
+    let mut seen: BTreeMap<i64, &Sha256Digest> = BTreeMap::new();
+    let forked = links
+        .iter()
+        .zip(&digests)
+        .any(|((_, link), digest)| *seen.entry(link.sequence).or_insert(digest) != digest);
     if forked {
         return refuse(
             EvidenceCode::ChainEquivocation,

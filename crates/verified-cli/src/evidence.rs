@@ -4,7 +4,7 @@
 //! rule is in `verified_verifier::evidence`; this reads files and prints.
 
 use serde_json::json;
-use verified_canonical::{Limits, Value, parse};
+use verified_canonical::{Limits, parse};
 use verified_verifier::evidence::{Anchor, EvidenceRefusal, authenticate, verify_chain};
 
 use crate::cli::EvidenceChain;
@@ -57,19 +57,22 @@ pub(crate) fn chain(command: &EvidenceChain, out: &mut Output) -> Exit {
         Err(message) => return failed(out, "INPUT", &message),
     };
 
-    // Lines are numbered from 1, as an editor shows them.
-    let mut statements: Vec<Value> = Vec::new();
-    for (i, line) in lines(&text).into_iter().enumerate() {
-        match parse(line, &Limits::DEFAULT) {
-            Ok(value) => statements.push(value),
+    // Each line is read and then authenticated before the next, so the
+    // first failure in line order is the one reported. Lines are numbered
+    // from 1, as an editor shows them.
+    let parsed: Vec<_> = lines(&text)
+        .into_iter()
+        .map(|line| parse(line, &Limits::DEFAULT))
+        .collect();
+    let mut authentic = Vec::with_capacity(parsed.len());
+    for (i, statement) in parsed.iter().enumerate() {
+        let statement = match statement {
+            Ok(statement) => statement,
             Err(error) => {
                 let detail = format!("statement {}: {error}", i + 1);
                 return refused(out, "MALFORMED", &detail);
             }
-        }
-    }
-    let mut authentic = Vec::with_capacity(statements.len());
-    for (i, statement) in statements.iter().enumerate() {
+        };
         match authenticate(statement, &trust) {
             Ok(statement) => authentic.push(statement),
             Err(refusal) => return refused_at(out, i + 1, &refusal),

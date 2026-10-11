@@ -264,3 +264,33 @@ fn lines_may_end_as_windows_ends_them_and_people_are_told_what_is_not_shown() {
     assert!(text.contains("authentic, not true"), "{text}");
     assert!(text.contains("leave off the end"), "{text}");
 }
+
+#[test]
+fn the_first_failure_in_line_order_is_the_one_reported() {
+    let scratch = Scratch::new("order");
+    scratch.file("nobody.json", &registry(&[]).to_canonical_string());
+    let signed = run(&evidence_key(), 1);
+    // Line 1 is not authentic under this registry; line 2 is not JSON.
+    let file = scratch.file(
+        "statements.jsonl",
+        &format!("{}\n{{\n", signed[0].to_canonical_string()),
+    );
+    let output = scratch.run(&[
+        "--json",
+        "evidence",
+        "chain",
+        &file,
+        "--trust",
+        "nobody.json",
+    ]);
+    assert_eq!(exit(&output), 1);
+    let refusal = &json(&output)["refusal"];
+    assert_ne!(refusal["code"], "MALFORMED", "{refusal}");
+    assert!(
+        refusal["detail"]
+            .as_str()
+            .expect("a detail")
+            .starts_with("statement 1: "),
+        "{refusal}"
+    );
+}
