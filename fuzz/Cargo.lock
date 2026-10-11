@@ -350,6 +350,7 @@ dependencies = [
  "libfuzzer-sys",
  "verified-canonical",
  "verified-contract",
+ "verified-protocol",
  "verified-verifier",
  "verified-work-unit",
 ]

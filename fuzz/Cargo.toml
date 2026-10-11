@@ -21,6 +21,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4.12"
 verified-canonical = { path = "../crates/verified-canonical" }
 verified-contract = { path = "../crates/verified-contract" }
+verified-protocol = { path = "../crates/verified-protocol" }
 verified-verifier = { path = "../crates/verified-verifier" }
 verified-work-unit = { path = "../crates/verified-work-unit" }
 
@@ -76,6 +77,20 @@ bench = false
 [[bin]]
 name = "registered_unit"
 path = "fuzz_targets/registered_unit.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "issue"
+path = "fuzz_targets/issue.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "countersign"
+path = "fuzz_targets/countersign.rs"
 test = false
 doc = false
 bench = false
