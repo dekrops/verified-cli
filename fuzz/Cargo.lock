@@ -347,6 +347,8 @@ dependencies = [
 name = "verified-fuzz"
 version = "0.0.0"
 dependencies = [
+ "base64",
+ "ed25519-dalek",
  "libfuzzer-sys",
  "verified-canonical",
  "verified-contract",

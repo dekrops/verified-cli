@@ -18,6 +18,8 @@ cargo-fuzz = true
 [workspace]
 
 [dependencies]
+base64 = "0.23.1"
+ed25519-dalek = { version = "3.0.0", default-features = false }
 libfuzzer-sys = "0.4.12"
 verified-canonical = { path = "../crates/verified-canonical" }
 verified-contract = { path = "../crates/verified-contract" }
@@ -91,6 +93,27 @@ bench = false
 [[bin]]
 name = "countersign"
 path = "fuzz_targets/countersign.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "registry_log_signed"
+path = "fuzz_targets/registry_log_signed.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "registry_audit_signed"
+path = "fuzz_targets/registry_audit_signed.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "statement_signed"
+path = "fuzz_targets/statement_signed.rs"
 test = false
 doc = false
 bench = false

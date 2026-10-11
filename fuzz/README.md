@@ -16,6 +16,7 @@ toolchain. Building, testing or installing the tool needs none of it.
 | `package` | a trust registry and a package | verification is repeatable; inspection refuses what verification refuses, for the same reason, and otherwise carries the same report |
 | `contract` | a contract and an environment | evaluation is repeatable |
 | `statement` | a registry, a relying party's context, signed statements | an anchor reads back from the form it is written in |
+| `registry_log_signed`, `registry_audit_signed`, `statement_signed` | test keys, then the input of the target without `_signed` | the same as that target, after every signature by a test key is made again over the changed content |
 | `registration` | a trust configuration, an agreement, a claim, a receipt | verification is repeatable |
 | `registry_log` | a trust configuration, an anchor, a held entry, log entries | the check is repeatable; a held entry only adds checks |
 | `registry_audit` | a trust configuration, log entries, documents | the audit is repeatable; an audited log is a segment from the start of the log |
@@ -47,21 +48,26 @@ Without seeds a run is of little use: see the next section.
 
 ## What a run does and does not show
 
-- **The fuzzer cannot sign.** A changed byte in a signed object makes its
-  signature invalid, so an input the fuzzer invents is refused at the
-  signature check at the latest. The checks after signatures (chains, the
-  rules of an audit, a decision's reproduction) are reached through the
-  seeds, and through what the fuzzer can do to them without touching signed
-  bytes: dropping, repeating, reordering and recombining whole objects, and
-  changing the unsigned configuration. The property tests in
-  `crates/verified-verifier/tests` cover the other side: they change
-  packages and re-sign them consistently.
+- **The fuzzer cannot sign, so three targets sign for it.** A changed byte
+  in a signed object makes its signature invalid. The `_signed` targets take
+  the corpus's test keys (`{ keyId: seedHex }`, published there as
+  test-only) on a first line and make every signature by them again over
+  the content as the fuzzer left it (`src/resign.rs`). The checks after a
+  signature (chains, the rules of an audit) then see authentic objects with
+  arbitrary content. Re-signing an unchanged corpus object gives it back
+  byte for byte. A changed *package* still fails its digests first: it is
+  not re-signed or re-sealed. The property tests in
+  `crates/verified-verifier/tests` cover packages: they change them and
+  re-sign them consistently.
 - **A panic is a defect, always.** So is a failed assertion of a target. A
   refusal is not: refusing malformed input is the tool working.
 - **Finding nothing is weak evidence.** CI runs each target for 30 seconds
-  from the seeds, which shows that the targets build and the seeds pass. It
-  is not a campaign. Nothing in this repository claims the tool has been
-  fuzzed for any stated length of time.
+  on every change, which shows that the targets build and the seeds pass.
+  Once a week, and on request, a campaign runs each target for 10 minutes
+  from the corpus the last campaign left (`.github/workflows/fuzz.yml`,
+  job `campaign`); a failing input is uploaded as an artifact of that run.
+  Nothing in this repository claims the tool has been fuzzed for any stated
+  length of time beyond what those runs show.
 
 ## If a run fails
 

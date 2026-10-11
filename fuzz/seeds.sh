@@ -151,6 +151,24 @@ done
 jq -c '.cases[] | [.unitKeyHex, .agreementJson, .claimJson, .inputsJson] | join("\n")' \
     "$registration/unit.json" | emit registered_unit case
 
+# The signed targets take the corpus's test keys on a first line,
+# { keyId: seedHex }, and then the unsigned target's input. The corpus marks
+# these keys as test-only; they are read from it here, not kept in this
+# repository.
+signed() {
+    mkdir -p "$out/$1_signed"
+    for seed in "$out/$1"/*; do
+        { printf '%s\n' "$2"; cat "$seed"; } > "$out/$1_signed/${seed##*/}"
+    done
+}
+registration_keys=$(jq -c -s '[.[].keys // [] | .[] | {(.keyId): .seedHex}] | add' \
+    "$registration/vectors.json" "$registration/dispute.json")
+statement_keys=$(jq -c '[.keys[] | {(.keyId): .seedHex}] | add' \
+    "$corpus/evidence-statement/v1/keys.json")
+signed registry_log "$registration_keys"
+signed registry_audit "$registration_keys"
+signed statement "$statement_keys"
+
 for target in "$out"/*; do
     echo "${target##*/}: $(find "$target" -type f | wc -l | tr -d ' ') seeds"
 done

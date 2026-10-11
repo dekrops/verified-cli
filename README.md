@@ -384,8 +384,10 @@ Every command of the original plan exists. What is not built:
 - Claim registration in the Python SDK. `verified-python` binds verification,
   evidence, contracts and work-unit identity, but not yet the registration
   commands' library.
-- A fuzzing campaign. [Fuzz targets](fuzz/README.md) exist for every kind of
-  untrusted input and CI runs each briefly; nothing runs them at length.
+- Fuzzing of packages past their digests. [Fuzz targets](fuzz/README.md)
+  cover every kind of untrusted input, run weekly at length, and sign
+  statements and registration documents again after changing them; a
+  changed package fails its digests before anything later is reached.
 - Tests of symbolic-link refusal on Windows. The checks run on Linux, macOS
   and Windows, but the tests that plant symbolic links in a workspace run on
   Linux and macOS only, since creating one on Windows needs a privilege.

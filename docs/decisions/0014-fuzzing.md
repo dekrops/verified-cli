@@ -49,14 +49,31 @@ collides with three things this project holds to:
   Building and testing the tool need none of them.
 - The fuzzer cannot produce valid signatures, so code after a signature
   check is reached only through seeds and through rearranging whole signed
-  objects. `fuzz/README.md` says so. A harness that signs what it generates
-  would reach further; it does not exist.
+  objects. `fuzz/README.md` says so. (Amended below: three targets sign
+  again.)
 - A short CI run is a build check and a regression check for the seeds. It
   is not evidence of robustness, and the documentation does not present it
-  as such. No long campaign is scheduled; that would need somewhere to keep
-  a growing corpus.
+  as such. (Amended below: a weekly campaign keeps a growing corpus.)
 - A failure found by fuzzing becomes an ordinary test, so that the stable
   suite, which is the required check, keeps it fixed.
+
+## Amendment: signing again, and a weekly campaign
+
+- **Three targets sign again** (`registry_log_signed`,
+  `registry_audit_signed`, `statement_signed`). Their input starts with the
+  private halves of the corpus's test keys, which the corpus publishes and
+  marks as test-only; `seeds.sh` reads them from a checkout of it, so they
+  are not kept here. Before the check runs, every signature by one of those
+  keys is made again over the content as the fuzzer left it. The signing
+  domains are the library's own constants. Re-signing an unchanged corpus
+  object gives it back byte for byte, which shows the harness signs what the
+  protocol signs. Packages are not re-signed: a changed component fails its
+  digest first, and re-sealing a package is a different harness.
+- **A weekly campaign** runs every target for 10 minutes (or as long as a
+  manual run asks), each from the corpus the previous campaign left in the
+  Actions cache. A failing input is uploaded as an artifact. Like the smoke
+  run, it is not a required check, and a campaign that finds nothing shows
+  only that nothing was found in that time.
 
 ## Alternatives considered
 

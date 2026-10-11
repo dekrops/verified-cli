@@ -10,6 +10,9 @@
 //! is harmless, because a target asserts only what holds under any
 //! configuration.
 
+pub mod checks;
+pub mod resign;
+
 use verified_canonical::{Limits, Value, parse};
 
 /// The limits the command line reads input under.
