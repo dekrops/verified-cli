@@ -22,29 +22,77 @@ env:
   RUSTDOCFLAGS: -D warnings
 
 jobs:
+  # Whether anything but documentation changed. A pull request that only
+  # touches the files below runs no build, test or corpus: the jobs that
+  # are required checks still report, as skipped, which branch protection
+  # accepts. A push to main always runs everything. Files a test or a CI
+  # job reads (README.md, examples/**, THIRD-PARTY-LICENSES.md) are code
+  # here.
+  changes:
+    name: what changed
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          code=true
+          if [ "$EVENT" = pull_request ]; then
+            code=false
+            for file in $(git diff --name-only "$BASE" "$HEAD"); do
+              case "$file" in
+                docs/*|CONTRIBUTING.md|SECURITY.md|CODE_OF_CONDUCT.md) ;;
+                *) code=true ;;
+              esac
+            done
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Anything but documentation changed: $code"
+
   check:
     name: fmt, clippy, test, doc (${{ matrix.os }})
+    needs: changes
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    # Skipped step by step, not as a job: a skipped matrix job would report
+    # under its unexpanded name and leave the per-platform required checks
+    # waiting.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.code == 'true'
         with:
           persist-credentials: false
       # The toolchain and its components are pinned by rust-toolchain.toml;
       # rustup, preinstalled on the runners, installs it on first use.
       - run: rustup show active-toolchain || rustup toolchain install
+        if: needs.changes.outputs.code == 'true'
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: needs.changes.outputs.code == 'true'
       - run: cargo fmt --all -- --check
+        if: needs.changes.outputs.code == 'true'
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        if: needs.changes.outputs.code == 'true'
       # The corpus tests skip here; the conformance job runs them.
       - run: cargo test --workspace --locked --no-fail-fast
+        if: needs.changes.outputs.code == 'true'
       - run: cargo doc --workspace --no-deps --locked
+        if: needs.changes.outputs.code == 'true'
 
   conformance:
     name: reproduces the published conformance corpus
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,6 +119,8 @@ jobs:
 
   semver:
     name: library API is compatible with the last tag
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       # The whole history, for the tags.
@@ -95,6 +145,8 @@ jobs:
 
   notices:
     name: third-party notices match Cargo.lock
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,6 +169,8 @@ jobs:
 
   supply-chain:
     name: advisories, licenses, bans, sources
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -129,6 +183,8 @@ jobs:
 
   offline:
     name: builds and tests without network access
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
