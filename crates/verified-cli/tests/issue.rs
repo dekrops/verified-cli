@@ -318,3 +318,35 @@ fn an_existing_file_is_never_overwritten_and_a_bad_draft_cannot_run() {
         stderr(&output)
     );
 }
+
+#[test]
+fn a_refusal_says_what_it_was_reached_under() {
+    let scratch = Scratch::new("reached");
+    std::fs::copy(
+        examples().join("refused-component-digest.json"),
+        scratch.path("damaged.json"),
+    )
+    .expect("copy");
+    // No registry is read for the signing input: only the container checks.
+    let output = scratch.run(&["sign", "damaged.json", "--signing-input-out", "input.bin"]);
+    assert_eq!(exit(&output), 1);
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.contains("no registry was read"), "{text}");
+    assert!(!text.contains("holding this registry"), "{text}");
+    assert!(!scratch.path("input.bin").exists());
+
+    // An unusable registry is reported as one.
+    scratch.write("draft.json", draft_of("supported.json").to_string());
+    let output = scratch.run(&[
+        "--json",
+        "issue",
+        "draft.json",
+        "--trust",
+        "missing.json",
+        "-o",
+        "x.json",
+    ]);
+    assert_eq!(exit(&output), 2);
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(result["error"]["code"], "TRUST_REGISTRY");
+}

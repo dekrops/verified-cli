@@ -30,7 +30,12 @@ added, and existing members keep their names and shapes.
 
 `error.code` is one of `IO_ERROR`, `RESOURCE_LIMIT`, `TRUST_REGISTRY`,
 `WORK_RECORD`, `WORKSPACE`, `USAGE`, `EXPECTATIONS_UNDEFINED`,
-`RECORD_UNDEFINED`, `NOT_COMPARABLE`.
+`RECORD_UNDEFINED`, `NOT_COMPARABLE`, `INPUT`.
+
+`INPUT` means a file the command reads cannot be read or is not of the form
+the command takes: a log, a document, a draft, an anchor or a key file. The
+`registration` and `evidence` commands have reported it since they were
+added; it was missing from this list.
 
 ## `verify`
 

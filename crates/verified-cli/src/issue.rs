@@ -119,8 +119,16 @@ fn draft<'a>(
     })
 }
 
+/// What a refusal was reached under: the caller's registry, or the
+/// container checks alone.
+#[derive(Clone, Copy)]
+enum Checked {
+    UnderRegistry,
+    ContainerOnly,
+}
+
 /// Reports a package that was not produced.
-fn not_issued(out: &mut Output, error: IssueError) -> Exit {
+fn not_issued(out: &mut Output, error: IssueError, checked: Checked) -> Exit {
     match error {
         IssueError::Refused(refusal) => {
             match out.mode {
@@ -136,10 +144,16 @@ fn not_issued(out: &mut Output, error: IssueError) -> Exit {
                         Row::new("", Tone::Plain, &refusal.detail),
                     ]);
                     out.line("");
-                    out.line(
-                        "A verifier holding this registry would refuse the package, so none \
-                         was written.",
-                    );
+                    out.line(match checked {
+                        Checked::UnderRegistry => {
+                            "A verifier holding this registry would refuse the package, so none \
+                             was written."
+                        }
+                        Checked::ContainerOnly => {
+                            "The package fails its container checks; no registry was read, and \
+                             nothing was written."
+                        }
+                    });
                 }
             }
             Exit::Refused
@@ -149,10 +163,15 @@ fn not_issued(out: &mut Output, error: IssueError) -> Exit {
     }
 }
 
+/// The registry a command checks its result under.
+fn trust(path: &Path) -> Result<verified_verifier::Trust, (&'static str, String)> {
+    registry(path, &Limits::DEFAULT).map_err(|message| ("TRUST_REGISTRY", message))
+}
+
 /// Writes an issued package and reports it.
 fn written(out: &mut Output, issued: &Issued, path: &Path, what: &str) -> Exit {
     if let Err(message) = create(path, issued.package.as_bytes()) {
-        return failed(out, "INPUT", &message);
+        return failed(out, "IO_ERROR", &message);
     }
     let report = &issued.report;
     match out.mode {
@@ -177,12 +196,13 @@ fn written(out: &mut Output, issued: &Issued, path: &Path, what: &str) -> Exit {
 }
 
 pub(crate) fn issue(command: &Issue, out: &mut Output) -> Exit {
-    let limits = Limits::DEFAULT;
-    let read = registry(&command.trust, &limits)
-        .and_then(|trust| Ok((json_file(&command.draft, "draft", &limits)?, trust)));
+    let read = trust(&command.trust).and_then(|trust| {
+        let draft = json_file(&command.draft, "draft", &Limits::DEFAULT);
+        Ok((draft.map_err(|message| ("INPUT", message))?, trust))
+    });
     let (value, trust) = match read {
         Ok(read) => read,
-        Err(message) => return failed(out, "INPUT", &message),
+        Err((code, message)) => return failed(out, code, &message),
     };
     let mut evidence = Vec::new();
     let draft = match draft(&value, &mut evidence) {
@@ -197,15 +217,17 @@ pub(crate) fn issue(command: &Issue, out: &mut Output) -> Exit {
     };
     match issue_package(&draft, &trust) {
         Ok(issued) => written(out, &issued, &command.output, "Issued"),
-        Err(error) => not_issued(out, error),
+        Err(error) => not_issued(out, error, Checked::UnderRegistry),
     }
 }
 
 /// The signing key in a PEM PKCS #8 file. Nothing read from it is printed.
 fn private_key(path: &Path) -> Result<SigningKey, String> {
     let name = path.display();
-    let text = Zeroizing::new(read(path, 64 * 1024)?);
-    let text = String::from_utf8_lossy(&text);
+    let bytes = Zeroizing::new(read(path, 64 * 1024)?);
+    // Borrowed, never copied: every copy of the key would need wiping.
+    let text = std::str::from_utf8(&bytes)
+        .map_err(|_| format!("{name} is not an unencrypted PEM private key"))?;
     let body = Zeroizing::new(
         text.split_once("-----BEGIN PRIVATE KEY-----")
             .and_then(|(_, rest)| rest.split_once("-----END PRIVATE KEY-----"))
@@ -237,12 +259,14 @@ pub(crate) fn sign(command: &Sign, out: &mut Output) -> Exit {
     let package = package_text(&package);
     let input = match decision_signing_input(package) {
         Ok(input) => input,
-        Err(rejection) => return not_issued(out, IssueError::from(rejection)),
+        Err(rejection) => {
+            return not_issued(out, IssueError::from(rejection), Checked::ContainerOnly);
+        }
     };
 
     if let Some(path) = &command.signing_input_out {
         if let Err(message) = create(path, &input) {
-            return failed(out, "INPUT", &message);
+            return failed(out, "IO_ERROR", &message);
         }
         match out.mode {
             Mode::Quiet => {}
@@ -264,9 +288,9 @@ pub(crate) fn sign(command: &Sign, out: &mut Output) -> Exit {
     else {
         return failed(out, "USAGE", "give --key-id, --trust and --output");
     };
-    let trust = match registry(trust, &Limits::DEFAULT) {
+    let trust = match self::trust(trust) {
         Ok(trust) => trust,
-        Err(message) => return failed(out, "INPUT", &message),
+        Err((code, message)) => return failed(out, code, &message),
     };
     let encoded = match (&command.key, &command.signature_file) {
         (Some(path), None) => match private_key(path) {
@@ -285,6 +309,6 @@ pub(crate) fn sign(command: &Sign, out: &mut Output) -> Exit {
     };
     match countersign(package, &[signature], &trust) {
         Ok(issued) => written(out, &issued, output, "Signed"),
-        Err(error) => not_issued(out, error),
+        Err(error) => not_issued(out, error, Checked::UnderRegistry),
     }
 }
