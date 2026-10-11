@@ -56,11 +56,13 @@ fn write(path: &Path, registry: &Json) -> Result<Trust, String> {
         |name| name.to_string_lossy().into_owned(),
     );
     let temporary = path.with_file_name(format!(".{file_name}.tmp-{}", std::process::id()));
+    // Only a file this run created is ever removed.
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
     let written = (|| {
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)?;
         file.write_all(text.as_bytes())?;
         file.sync_all()?;
         if let Ok(metadata) = std::fs::metadata(path) {
