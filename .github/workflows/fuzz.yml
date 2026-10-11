@@ -3,9 +3,13 @@
 name: Fuzz
 
 on:
+  # Nothing here is a required check, so a change to documentation alone
+  # does not start it.
   pull_request:
+    paths-ignore: ['docs/**', 'CONTRIBUTING.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md']
   push:
     branches: [main]
+    paths-ignore: ['docs/**', 'CONTRIBUTING.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md']
   # The campaign: every target at length, once a week, and on request.
   schedule:
     - cron: "17 3 * * 0"
