@@ -1,7 +1,7 @@
 # 0015. Work relations are read by a crate of their own, which verifies no record
 
-Status: accepted and implemented in `verified-history` (the library). There
-is no command yet.
+Status: accepted and implemented in `verified-history`; amended with a
+command, `verified history read` (below).
 
 ## Context
 
@@ -61,10 +61,32 @@ agreeing.
 - The conformance pin moves to a commit of `dekrops/wvp` that contains the
   corpus. The rest of the suite was run against that commit and passes.
 
+## Amendment: a command
+
+`verified history read HISTORY --trust REGISTRY` reads one JSON file,
+`{ relations: [{ statement, body }], records: [{ kind, text }] }`, and
+prints the reading.
+
+- **The file is the reader's input, not a container.** It is what a ledger
+  exports for one claim. The specification defines no container, and this
+  command does not pretend one exists: it promises nothing about the file's
+  shape beyond the draft.
+- **The exit code is the least favourable thing found**, in the tool's
+  existing meanings: 1 if a relation is refused or contradicted, a record is
+  malformed, a registered claim is not the package's claim, or a stream
+  contradicts itself; 3 if a relation names a record that was not given, a
+  record is of an unknown kind, or there is no relation; otherwise 0. A
+  stream's completeness is reported and never changes the exit code:
+  one claim's history is usually part of a longer stream.
+- **It says, every time, that no record was verified.** JSON output carries
+  `recordsVerified: false`. Running the package and registration verifiers
+  over the same file is a later change, and would report beside the
+  reading, never fold into it.
+- **Bounded.** At most 1024 relations and 1024 records are read; the reader
+  compares each relation with each record.
+
 ## Not decided here
 
-- **A command.** Reading a history from files, and what it prints, is a
-  later change.
 - **A container.** The specification defines none; neither does this crate.
 - **Storing anything but packages.** The workspace still holds packages only
   (ADR 0004).

@@ -389,6 +389,30 @@ take the unit of another. It checks no signature, so verify the registration
 first. The key is read from a file, 64 lowercase hexadecimal characters, and
 is never printed or accepted as an argument.
 
+## Work relations (draft)
+
+One unit of work leaves several records: a package, a work record in a
+ledger, a registration. A ledger or an application can say, with a signature,
+how records it knows are related. Given a history, a JSON file of such
+relations with the records they name, this reads each relation under your
+registry and compares it with the records given:
+
+```sh
+verified history read --trust trust.json history.json
+verified --json history read --trust trust.json history.json
+```
+
+A relation is accepted only from a key your registry trusts for its source.
+It is then *consistent with the records given*, *stated* (a record it names
+was not given, exit code 3), *contradicted* by a record, or *refused* (both
+exit code 1). A history with no relation at all also exits 3.
+
+**No record is verified by this command.** Verify a package with `verify`
+and a registration with `registration verify`. A relation shows that its
+authority said so, not that it is true, and a history says nothing about
+what was left out of it. Work relation v1 is a draft, and so is this
+command's output.
+
 ## Evidence statements outside a package
 
 An issuer can chain its statements: each names its stream, its step and the
@@ -454,7 +478,7 @@ corpus: [`docs/protocol/compatibility.md`](docs/protocol/compatibility.md).
 ```text
 verified-cli        the `verified` binary: arguments, files, terminal
 verified-workspace  the local store of imported packages
-verified-history    work relation v1 (draft): what authorities say about records (library only)
+verified-history    work relation v1 (draft): what authorities say about records
 verified-verifier   pure verification: bytes in, report or refusal out
 verified-contract   Work Contract Language 1: read, check, evaluate
 verified-work-unit  work-unit identity v1: which unit a claim is about (library only)
