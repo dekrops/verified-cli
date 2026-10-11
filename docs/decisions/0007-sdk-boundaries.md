@@ -1,6 +1,8 @@
 # 0007. SDK boundaries
 
-Status: proposed. No SDK exists.
+Status: accepted. Python is decided and built, in
+[`dekrops/verified-python`](https://github.com/dekrops/verified-python);
+TypeScript is not started.
 
 ## Rust
 
@@ -13,10 +15,10 @@ Apache-2.0. Nothing is published to crates.io without explicit authorization.
 
 ## Python and TypeScript
 
-Not started, deliberately: bindings to an unfinished core would freeze its
-mistakes. The contract a first SDK would wrap is the command-line JSON
-output, described in [`docs/sdk/json-output.md`](../sdk/json-output.md). When
-they start:
+When this was proposed, neither existed, deliberately: bindings to an
+unfinished core would freeze its mistakes. The contract an SDK's results
+follow is the command-line JSON output, described in
+[`docs/sdk/json-output.md`](../sdk/json-output.md). An SDK in any language:
 
 - They expose domain operations (construct a claim, attach evidence
   references, assemble a package, verify, read a report), not hashing
@@ -29,11 +31,32 @@ they start:
 - Signing-key custody is the caller's responsibility and is documented as
   such; SDKs take a signer, not a private key file, where the platform allows.
 
+## Python: decided
+
+Rust-backed. `dekrops/verified-python` binds the five library crates through
+PyO3, pinned to a tag of this repository (`v0.1.0` when this was written), and
+ships one `abi3` wheel per platform. It is a separate repository with its own
+releases; it is on PyPI as `verified-python`, which this repository's
+publication policy does not cover.
+
+It meets the points above:
+
+- Its API is domain operations: verifier, trust registry, contract, evidence
+  source, a work lifecycle.
+- It runs the published corpus at the commit this repository pins, and
+  fails rather than skips without it.
+- It issues through `verified_verifier::issue`, and keeps the issuer's claim
+  apart from a reproduced decision.
+- It takes a `Signer`.
+
+A binding should call this repository's library for anything the library
+computes, and not restate it. Where a binding has had to write something
+itself (the report as JSON, reading an anchor), the fix is to add it here,
+in the next tag, and to delete the binding's copy.
+
 ## Open
 
-Python: Rust-backed (PyO3; one implementation, wheels to build per platform)
-or pure Python (a fourth independent implementation, simplest install).
-TypeScript: upstream already has an independent JavaScript verifier, which is
-an argument for the pure route there. Decide per language once the Rust
-verifier is complete, weighing installation friction against the value of
-independence. Package names are subject to availability.
+TypeScript: Rust-backed, as Python, or pure. Upstream already has an
+independent JavaScript verifier, which is an argument for the pure route
+there. Weigh installation friction against the value of independence.
+Package names are subject to availability.
