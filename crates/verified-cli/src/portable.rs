@@ -11,7 +11,9 @@ use std::path::Path;
 use serde_json::json;
 use verified_canonical::Limits;
 use verified_protocol::Decision;
-use verified_verifier::{DecisionFinding, Inspection, Options, Rejection, inspect, verify};
+use verified_verifier::{
+    DecisionFinding, Expectations, Inspection, Options, Rejection, inspect, verify,
+};
 use verified_workspace::{Stored, Workspace};
 
 use crate::cli::{Diff, Export, Replay};
@@ -318,7 +320,8 @@ pub(crate) fn diff(command: &Diff, out: &mut Output) -> Exit {
 
 /// What verifying one stored package now concluded.
 enum Replayed {
-    Reproduced(Decision),
+    /// The decision reproduced, and whether its contract was pinned.
+    Reproduced(Decision, bool),
     Refused(String),
     Damaged(String),
 }
@@ -329,9 +332,9 @@ fn replay_one(workspace: &Workspace, stored: &Stored, options: &Options<'_>) -> 
         Err(error) => return Replayed::Damaged(error.to_string()),
     };
     match verify(&bytes, options) {
-        Ok(report) => match report.decision {
+        Ok(report) => match &report.decision {
             DecisionFinding::Reproduced(reproduced) if report.is_complete() => {
-                Replayed::Reproduced(reproduced.decision)
+                Replayed::Reproduced(reproduced.decision, report.contract_pinned())
             }
             // A registry was supplied, so a report is complete; anything
             // else is not something to call a success.
@@ -340,6 +343,25 @@ fn replay_one(workspace: &Workspace, stored: &Stored, options: &Options<'_>) -> 
         Err(Rejection::Refused(refusal)) => Replayed::Refused(refusal.code.to_string()),
         Err(other) => Replayed::Refused(other.to_string()),
     }
+}
+
+/// One package's line in `replay --json`.
+fn replayed_json(stored: &Stored, result: &Replayed) -> serde_json::Value {
+    let (status, detail) = match result {
+        Replayed::Reproduced(decision, _) => ("reproduced", decision.to_string()),
+        Replayed::Refused(code) => ("refused", code.clone()),
+        Replayed::Damaged(detail) => ("damaged", detail.clone()),
+    };
+    let mut entry = json!({
+        "package": stored.package.to_string(),
+        "object": stored.object.to_string(),
+        "status": status,
+        "detail": detail,
+    });
+    if let Replayed::Reproduced(_, pinned) = result {
+        entry["contractPinned"] = json!(pinned);
+    }
+    entry
 }
 
 pub(crate) fn replay(command: &Replay, out: &mut Output) -> Exit {
@@ -368,6 +390,10 @@ pub(crate) fn replay(command: &Replay, out: &mut Output) -> Exit {
     let options = Options {
         limits,
         trust: Some(&trust),
+        expectations: Expectations {
+            contract: command.expect_contract,
+            ..Expectations::default()
+        },
         ..Options::default()
     };
     let results: Vec<(Stored, Replayed)> = selected
@@ -377,31 +403,22 @@ pub(crate) fn replay(command: &Replay, out: &mut Output) -> Exit {
 
     let failed_count = results
         .iter()
-        .filter(|(_, r)| !matches!(r, Replayed::Reproduced(_)))
+        .filter(|(_, r)| !matches!(r, Replayed::Reproduced(..)))
         .count();
     let unmet = command.require_decision.map_or(0, |required| {
         results
             .iter()
-            .filter(|(_, r)| matches!(r, Replayed::Reproduced(d) if *d != required))
+            .filter(|(_, r)| {
+                matches!(r, Replayed::Reproduced(d, pinned)
+                    if *d != required || !(*pinned || command.any_contract))
+            })
             .count()
     });
     match out.mode {
         Mode::Quiet => {}
         Mode::Json => out.json(&json!({
             "outcome": if failed_count > 0 { "failed" } else if unmet > 0 { "decision_not_required" } else { "replayed" },
-            "packages": results.iter().map(|(stored, result)| {
-                let (status, detail) = match result {
-                    Replayed::Reproduced(decision) => ("reproduced", decision.to_string()),
-                    Replayed::Refused(code) => ("refused", code.clone()),
-                    Replayed::Damaged(detail) => ("damaged", detail.clone()),
-                };
-                json!({
-                    "package": stored.package.to_string(),
-                    "object": stored.object.to_string(),
-                    "status": status,
-                    "detail": detail,
-                })
-            }).collect::<Vec<_>>(),
+            "packages": results.iter().map(|(stored, result)| replayed_json(stored, result)).collect::<Vec<_>>(),
             "requiredDecision": command.require_decision.map(Decision::as_str),
             "note": "every result was computed in this run under the supplied registry; nothing was reused",
         })),
@@ -409,8 +426,9 @@ pub(crate) fn replay(command: &Replay, out: &mut Output) -> Exit {
             for (stored, result) in &results {
                 let id = format!("wvp:sha-256:{}", out.short(&stored.package.commitment().to_hex()));
                 let (tone, text) = match result {
-                    Replayed::Reproduced(Decision::Supported) => (Tone::Established, "SUPPORTED reproduced".to_owned()),
-                    Replayed::Reproduced(decision) => (Tone::Unknown, format!("{decision} reproduced")),
+                    Replayed::Reproduced(Decision::Supported, true) => (Tone::Established, "SUPPORTED reproduced".to_owned()),
+                    Replayed::Reproduced(decision, true) => (Tone::Unknown, format!("{decision} reproduced")),
+                    Replayed::Reproduced(decision, false) => (Tone::Unknown, format!("{decision} reproduced, contract not pinned")),
                     Replayed::Refused(code) => (Tone::Negative, format!("refused: {code}")),
                     Replayed::Damaged(detail) => (Tone::Negative, format!("damaged: {detail}")),
                 };
@@ -423,7 +441,9 @@ pub(crate) fn replay(command: &Replay, out: &mut Output) -> Exit {
                 results.len()
             ));
             if let Some(required) = command.require_decision {
-                out.line(&format!("required decision {required}: {unmet} package(s) reproduced another"));
+                out.line(&format!(
+                    "required decision {required}: {unmet} package(s) reproduced another, or under a contract not pinned"
+                ));
             }
         }
     }

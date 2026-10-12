@@ -112,6 +112,8 @@ signer authority      not checked: no trust registry supplied
 decision reproduced   not checked: no trust registry supplied
 issuer signature      not checked: no trust registry supplied (0 carried)
 source truthfulness   NOT established: no check can establish it
+contract pinned       NO: the decision is about the contract the package carries; pin yours \
+with --expect-contract
 
 incomplete: no trust registry was supplied (--trust), so no signature was checked and the \
 decision was not reproduced; the decision the package carries is its issuer's claim
@@ -149,8 +151,11 @@ decision reproduced   SUPPORTED, matches the package
                         {:<28}TRUE
 issuer signature      absent
 source truthfulness   NOT established: no check can establish it
+contract pinned       NO: the decision is about the contract the package carries; pin yours \
+with --expect-contract
 
-complete: every protocol check ran; the decision SUPPORTED was reproduced
+complete: every protocol check ran; the decision SUPPORTED was reproduced under the contract \
+the package carries, which you did not pin
 ",
         &commitment[..12],
         uuid(0x500),
@@ -163,11 +168,9 @@ complete: every protocol check ran; the decision SUPPORTED was reproduced
         verify_with(&trust, &["--quiet"], &package).status.code(),
         Some(0)
     );
-    let output = verify_with(&trust, &["--require-decision", "SUPPORTED"], &package);
-    assert_eq!(output.status.code(), Some(0));
-    assert!(stdout(&output).ends_with("required decision SUPPORTED met\n"));
     let result = result_json(&verify_with(&trust, &["--json"], &package));
     assert!(result.get("requiredDecision").is_none());
+    assert_eq!(result["contractPinned"], false);
 
     // A file ends with a line end; the package inside it does not.
     for ending in ["\n", "\r\n"] {
@@ -203,6 +206,89 @@ complete: every protocol check ran; the decision SUPPORTED was reproduced
         )),
         "{text}"
     );
+}
+
+#[test]
+fn a_required_decision_needs_the_contract_the_relying_party_pinned() {
+    let scratch = Scratch::new("pinned");
+    let draft = Scenario::posted().draft();
+    let package = scratch.file("package.json", draft.text().as_bytes());
+    let trust = trust_file(&scratch, &[&evidence_key()]);
+    let contract = Scenario::posted().contract.digest().to_hex();
+
+    // A required decision is met only under the contract the relying party
+    // agreed. The package's producer chose the one it carries, and a contract
+    // that requires nothing reproduces as SUPPORTED (review F-1).
+    let output = verify_with(&trust, &["--require-decision", "SUPPORTED"], &package);
+    assert_eq!(output.status.code(), Some(4));
+    assert!(stdout(&output).ends_with(
+        "required decision SUPPORTED not met: the contract is not pinned; give --expect-contract \
+         with the digest you agreed, or --any-contract\n"
+    ));
+    let output = verify_with(
+        &trust,
+        &["--json", "--require-decision", "SUPPORTED"],
+        &package,
+    );
+    assert_eq!(output.status.code(), Some(4));
+    let result = result_json(&output);
+    assert_eq!(result["outcome"], "complete");
+    assert_eq!(result["requiredDecision"]["met"], false);
+    assert_eq!(result["requiredDecision"]["anyContract"], false);
+
+    let pin = format!("sha-256:{contract}");
+    let output = verify_with(
+        &trust,
+        &["--require-decision", "SUPPORTED", "--expect-contract", &pin],
+        &package,
+    );
+    let text = stdout(&output);
+    assert_eq!(output.status.code(), Some(0), "{text}");
+    assert!(
+        text.contains("expectations          met (contract)\n"),
+        "{text}"
+    );
+    assert!(!text.contains("contract pinned"), "{text}");
+    assert!(
+        text.contains(
+            "complete: every protocol check ran; the decision SUPPORTED was reproduced\n"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.ends_with("required decision SUPPORTED met\n"),
+        "{text}"
+    );
+    let result = result_json(&verify_with(
+        &trust,
+        &["--json", "--expect-contract", &pin],
+        &package,
+    ));
+    assert_eq!(result["contractPinned"], true);
+
+    // Accepting any contract is the caller's explicit choice, and is said.
+    let output = verify_with(
+        &trust,
+        &["--require-decision", "SUPPORTED", "--any-contract"],
+        &package,
+    );
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout(&output).ends_with(
+        "required decision SUPPORTED met, under the contract the package carries (--any-contract)\n"
+    ));
+    // It is a choice about a required decision, and never one about a pin.
+    for args in [
+        &["--any-contract"][..],
+        &[
+            "--require-decision",
+            "SUPPORTED",
+            "--any-contract",
+            "--expect-contract",
+            &pin,
+        ][..],
+    ] {
+        assert_eq!(verify_with(&trust, args, &package).status.code(), Some(2));
+    }
 }
 
 #[test]
@@ -264,7 +350,17 @@ fn a_reproduced_decision_that_is_not_supported_exits_0_and_says_so() {
     assert_eq!(result["requiredDecision"]["decision"], "SUPPORTED");
     assert_eq!(result["requiredDecision"]["met"], false);
     // The decision that was reproduced can be required too.
-    let output = verify_with(&trust, &["--require-decision", "UNDETERMINED"], &package);
+    let pin = format!("sha-256:{}", scenario.contract.digest().to_hex());
+    let output = verify_with(
+        &trust,
+        &[
+            "--require-decision",
+            "UNDETERMINED",
+            "--expect-contract",
+            &pin,
+        ],
+        &package,
+    );
     assert_eq!(output.status.code(), Some(0));
     assert!(stdout(&output).ends_with("required decision UNDETERMINED met\n"));
     // Without a registry nothing is reproduced: incomplete, never 0 or 4,
@@ -810,6 +906,7 @@ fn the_checked_in_examples_exit_as_their_readme_says() {
         ("refused-decision-mismatch.json", 1, 1),
         ("refused-component-digest.json", 1, 1),
     ];
+    let pin = "sha-256:6a2c3b0bf5814aacd8c699f430db0a11b50de812d3dd86f30823aa98df46b550";
     for (file, plain, required) in cases {
         let package = dir.join(file);
         assert_eq!(
@@ -820,13 +917,31 @@ fn the_checked_in_examples_exit_as_their_readme_says() {
         assert_eq!(
             verify_with(
                 &trust,
-                &["--quiet", "--require-decision", "SUPPORTED"],
+                &[
+                    "--quiet",
+                    "--require-decision",
+                    "SUPPORTED",
+                    "--expect-contract",
+                    pin
+                ],
                 &package
             )
             .status
             .code(),
             Some(required),
             "{file} with a required decision"
+        );
+        // Unpinned, no decision meets a requirement; a refusal stays one.
+        assert_eq!(
+            verify_with(
+                &trust,
+                &["--quiet", "--require-decision", "SUPPORTED"],
+                &package
+            )
+            .status
+            .code(),
+            Some(if plain == 1 { 1 } else { 4 }),
+            "{file} with a required decision, unpinned"
         );
         // Without a registry: integrity only, or the integrity refusal.
         let expected = if file == "refused-component-digest.json" {
@@ -858,6 +973,10 @@ fn the_readme_shows_what_verify_prints() {
     let output = verified()
         .current_dir(&root)
         .args(["verify", "examples/invoice-posting/supported.json"])
+        .args([
+            "--expect-contract",
+            "sha-256:6a2c3b0bf5814aacd8c699f430db0a11b50de812d3dd86f30823aa98df46b550",
+        ])
         .args(["--trust", "examples/invoice-posting/trust.json"])
         .output()
         .expect("run verified");

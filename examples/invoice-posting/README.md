@@ -15,6 +15,10 @@ agreeing with them shows nothing about conformance.
 | `supported-issuer-signed.json` | Decision `SUPPORTED` reproduced; issuer signature established | 0 |
 | `undetermined.json` | Decision `UNDETERMINED` reproduced: no record of the invoice, and nothing says the listing is complete | 0 (4 with `--require-decision SUPPORTED`) |
 | `contradicted.json` | Decision `CONTRADICTED` reproduced: the source declared its postings complete and the invoice is not among them | 0 (4 with `--require-decision SUPPORTED`) |
+
+With `--require-decision SUPPORTED`, the two `supported` files exit 0 only
+when the contract is pinned too (`--expect-contract`, digest below); without
+the pin they exit 4.
 | `refused-decision-mismatch.json` | Refused, `DECISION_MISMATCH`: the package records `SUPPORTED`, which its evidence does not yield. Its issuer signed that decision anyway | 1 |
 | `refused-component-digest.json` | Refused, `COMPONENT_DIGEST`: a record was changed after the package was assembled | 1 |
 
@@ -25,12 +29,13 @@ nothing was checked beyond integrity, whatever decision the package carries.
 verified verify examples/invoice-posting/supported.json \
   --trust examples/invoice-posting/trust.json
 verified verify examples/invoice-posting/contradicted.json \
-  --trust examples/invoice-posting/trust.json --require-decision SUPPORTED
+  --trust examples/invoice-posting/trust.json --require-decision SUPPORTED \
+  --expect-contract sha-256:6a2c3b0bf5814aacd8c699f430db0a11b50de812d3dd86f30823aa98df46b550
 ```
 
 ## What is in them
 
-One contract, `posting-test 1.0.0`, with one requirement: a posting record for
+One contract, `posting-test 1.0.0` (`sha-256:6a2c3b0bf5814aacd8c699f430db0a11b50de812d3dd86f30823aa98df46b550`), with one requirement: a posting record for
 the claimed invoice exists, from the source `erp`. The claim is about invoice
 `INV-1`. The evidence key (`test-erp-gateway`) may speak for `erp`; the issuer
 key (`test-decision-issuer`) may sign decisions.
