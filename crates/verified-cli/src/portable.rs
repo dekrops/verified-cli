@@ -347,10 +347,12 @@ fn replay_one(workspace: &Workspace, stored: &Stored, options: &Options<'_>) -> 
 
 /// One package's line in `replay --json`.
 fn replayed_json(stored: &Stored, result: &Replayed) -> serde_json::Value {
-    let (status, detail) = match result {
-        Replayed::Reproduced(decision, _) => ("reproduced", decision.to_string()),
-        Replayed::Refused(code) => ("refused", code.clone()),
-        Replayed::Damaged(detail) => ("damaged", detail.clone()),
+    let (status, detail, pinned) = match result {
+        Replayed::Reproduced(decision, pinned) => {
+            ("reproduced", decision.to_string(), Some(*pinned))
+        }
+        Replayed::Refused(code) => ("refused", code.clone(), None),
+        Replayed::Damaged(detail) => ("damaged", detail.clone(), None),
     };
     let mut entry = json!({
         "package": stored.package.to_string(),
@@ -358,7 +360,7 @@ fn replayed_json(stored: &Stored, result: &Replayed) -> serde_json::Value {
         "status": status,
         "detail": detail,
     });
-    if let Replayed::Reproduced(_, pinned) = result {
+    if let Some(pinned) = pinned {
         entry["contractPinned"] = json!(pinned);
     }
     entry
