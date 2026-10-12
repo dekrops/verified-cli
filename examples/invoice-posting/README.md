@@ -15,7 +15,6 @@ agreeing with them shows nothing about conformance.
 | `supported-issuer-signed.json` | Decision `SUPPORTED` reproduced; issuer signature established | 0 |
 | `undetermined.json` | Decision `UNDETERMINED` reproduced: no record of the invoice, and nothing says the listing is complete | 0 (4 with `--require-decision SUPPORTED`) |
 | `contradicted.json` | Decision `CONTRADICTED` reproduced: the source declared its postings complete and the invoice is not among them | 0 (4 with `--require-decision SUPPORTED`) |
-
 | `refused-decision-mismatch.json` | Refused, `DECISION_MISMATCH`: the package records `SUPPORTED`, which its evidence does not yield. Its issuer signed that decision anyway | 1 |
 | `refused-component-digest.json` | Refused, `COMPONENT_DIGEST`: a record was changed after the package was assembled | 1 |
 
