@@ -320,26 +320,32 @@ fn select<'a>(
     // G3 and G5: the entities as they were, one account of each, from complete listings.
     let mut entities = records(items, ENTITY, &profile.entity_sources);
     entities.retain(|(_, fields)| applies(fields));
-    let mut grouped: Vec<(Option<&Value>, Vec<&Object>)> = Vec::new();
+    // Grouped by identifier, in the order each identifier is first seen. The identity is the
+    // identifier's canonical text, so finding a group does not grow with their number.
+    let mut grouped: Vec<Vec<&Object>> = Vec::new();
+    let mut position: BTreeMap<Option<String>, usize> = BTreeMap::new();
     for (item, fields) in &entities {
         used.depend("entity", item);
-        match grouped
-            .iter_mut()
-            .find(|(uid, _)| *uid == fields.get("uid"))
-        {
-            Some((_, accounts)) => accounts.push(fields),
-            None => grouped.push((fields.get("uid"), vec![fields])),
-        }
+        let identity = fields.get("uid").map(Value::to_canonical_string);
+        let at = *position.entry(identity).or_insert_with(|| {
+            grouped.push(Vec::new());
+            grouped.len() - 1
+        });
+        grouped[at].push(fields);
     }
-    let disputed = grouped
-        .iter()
-        .any(|(_, accounts)| accounts.iter().any(|a| content(a) != content(accounts[0])));
+    // Disputed: some entity has two accounts that differ.
+    let disputed = grouped.iter().any(|accounts| {
+        let first = content(accounts[0]);
+        accounts[1..]
+            .iter()
+            .any(|account| content(account) != first)
+    });
     Selection {
         policy_sets,
         distinct,
         in_force,
         entities,
-        one: grouped.iter().map(|(_, accounts)| accounts[0]).collect(),
+        one: grouped.iter().map(|accounts| accounts[0]).collect(),
         disputed,
         entities_complete: profile
             .entity_sources
@@ -863,4 +869,103 @@ pub(crate) fn evaluate(
         result: outcome.to_value(),
         decision: outcome.decision.as_str().to_owned(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ENTITY, Profile, Used, select};
+    use crate::{Body, Item, object, text};
+    use verified_canonical::{Object, Sha256Digest, Value};
+
+    fn profile() -> Profile<'static> {
+        Profile {
+            event_kind: "approval",
+            event_sources: vec!["erp"],
+            event_id: "id",
+            principal_field: "approver",
+            resource_field: "order",
+            time_field: "at",
+            principal_type: "User",
+            resource_type: "PurchaseOrder",
+            action: "Action::\"approve\"",
+            policy_sources: vec!["policy-store"],
+            entity_sources: vec!["directory"],
+            language_version: "4.5",
+        }
+    }
+
+    fn entity(id: usize, limit: i64) -> Object {
+        let Value::Object(fields) = object([
+            (
+                "uid",
+                object([("type", text("User")), ("id", text(&format!("u{id}")))]),
+            ),
+            ("attrs", object([("limit", Value::Integer(limit.into()))])),
+            ("parents", Value::Array(Vec::new())),
+            ("validFrom", text("0")),
+        ]) else {
+            unreachable!("an object was built")
+        };
+        fields
+    }
+
+    /// The identifiers of the entities a selection stands on, in order, and whether any is disputed.
+    fn selected(records: &[Object]) -> (Vec<String>, bool) {
+        let ids: Vec<String> = (0..records.len()).map(|n| n.to_string()).collect();
+        let items: Vec<Item<'_>> = records
+            .iter()
+            .zip(&ids)
+            .map(|(fields, id)| Item {
+                id,
+                source: "directory",
+                digest: Sha256Digest::of(id.as_bytes()),
+                body: Body::Record {
+                    kind: ENTITY,
+                    fields,
+                },
+            })
+            .collect();
+        let selection = select(&profile(), &items, 10, &mut Used::default());
+        let names = selection
+            .one
+            .iter()
+            .map(|fields| fields.get("uid").expect("uid").to_canonical_string())
+            .collect();
+        (names, selection.disputed)
+    }
+
+    #[test]
+    fn ten_thousand_distinct_entities_are_one_account_each_in_the_order_given() {
+        let records: Vec<Object> = (0..10_000).rev().map(|n| entity(n, 1)).collect();
+        let (names, disputed) = selected(&records);
+        assert_eq!(names.len(), 10_000);
+        assert!(!disputed);
+        // First seen first: the order of the statements, not of the identifiers.
+        assert!(names[0].contains("u9999") && names[9_999].contains("\"u0\""));
+    }
+
+    #[test]
+    fn a_differing_second_account_is_a_conflict_and_an_equal_one_is_not() {
+        let mut records: Vec<Object> = (0..10_000).map(|n| entity(n, 1)).collect();
+        // The same account of one entity again: nothing is disputed.
+        records.push(entity(5_000, 1));
+        let (names, disputed) = selected(&records);
+        assert_eq!((names.len(), disputed), (10_000, false));
+        // Another account of it: disputed, and the first one still stands for the entity.
+        records.push(entity(5_000, 2));
+        let (names, disputed) = selected(&records);
+        assert_eq!((names.len(), disputed), (10_000, true));
+        // An entity identifier that differs only in type is another entity.
+        let Value::Object(group) = object([
+            (
+                "uid",
+                object([("type", text("Group")), ("id", text("u5000"))]),
+            ),
+            ("validFrom", text("0")),
+        ]) else {
+            unreachable!("an object was built")
+        };
+        let (names, _) = selected(&[entity(5_000, 1), group]);
+        assert_eq!(names.len(), 2);
+    }
 }

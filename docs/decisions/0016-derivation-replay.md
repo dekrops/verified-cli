@@ -85,7 +85,15 @@ protocol version.
 - **Two implementations of Cedar.** Both implementations call the same Cedar
   engine at the same release, one through its Java binding and one directly.
   This is a second implementation of the method, not of Cedar.
-- **A limit on evaluation time.** Input sizes are bounded. Time is not.
+- **Bounds on Cedar's execution time and memory.** This is production
+  hardening that has not been done. The sizes of the policies, the schema,
+  the entities and the statements are bounded before the engine is called,
+  and this crate's own work over them does not grow faster than their
+  number. What the engine then spends is not bounded: there is no timeout
+  on a call into it, no memory limit, and no search was made for policies
+  within the size limits that are expensive to evaluate. Until that is
+  done, replay belongs on the machine of the party that wants the answer,
+  not in a service that accepts packages from others.
 - **A fuzz target.** The crate reads untrusted packages and has none yet
   (ADR 0014).
 - **Request context, policy templates and entity tags.** Unsupported: a

@@ -497,7 +497,9 @@ the member that differs.
 **This is not part of the Work Verification Protocol.** It is proposed in
 [RFC 0005](https://github.com/dekrops/wvp/pull/36); the formats say
 `experimental`, the output says `"draft": true`, and the command may change or
-be removed ([ADR 0016](docs/decisions/0016-derivation-replay.md)). A
+be removed ([ADR 0016](docs/decisions/0016-derivation-replay.md)). Input sizes
+are bounded; the time and memory the Cedar engine spends are not, so do not
+run it as a service on packages from others. A
 reproduced result means two verifiers agree on what the evidence yields. It
 does not mean a source told the truth.
 
