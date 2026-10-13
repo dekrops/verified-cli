@@ -73,6 +73,20 @@ for package in "$examples"/*.json; do
          ($trust[0] | tojson) + "\n[]\n" + $text' "$package"
 done | emit countersign example
 
+# Replay packages (draft): the registry, then the package; and for the
+# target that signs again, the examples' test keys first. The examples are
+# synthetic and their keys are derived from these seeds, which are test-only.
+replay=$here/../examples/derivation-replay
+replay_keys='{"test-erp-1":"'$(printf '41%.0s' $(seq 32))'","test-compliance-1":"'$(printf '42%.0s' $(seq 32))'","test-identity-directory-1":"'$(printf '43%.0s' $(seq 32))'","test-policy-store-1":"'$(printf '44%.0s' $(seq 32))'","test-authorization-recomputation-1":"'$(printf '45%.0s' $(seq 32))'","test-erp-archive-1":"'$(printf '46%.0s' $(seq 32))'"}'
+for case in "$replay"/[0-9]*.json; do
+    jq -c --slurpfile trust "$replay/trust.json" \
+        '($trust[0] | tojson) + "\n" + (.package | tojson)' "$case"
+done | emit derivation example
+mkdir -p "$out/derivation_signed"
+for seed in "$out/derivation"/*; do
+    { printf '%s\n' "$replay_keys"; cat "$seed"; } > "$out/derivation_signed/${seed##*/}"
+done
+
 corpus=${VERIFIED_CONFORMANCE_DIR:-}
 if [ -z "$corpus" ]; then
     echo "VERIFIED_CONFORMANCE_DIR is not set: seeded from the examples only" >&2

@@ -23,6 +23,8 @@ toolchain. Building, testing or installing the tool needs none of it.
 | `registered_unit` | a unit key, an agreement, a claim, the claim's inputs | the check is repeatable |
 | `issue` | a trust registry and a draft: a contract, a claim, signed evidence | issuing is repeatable; an issued package is canonical and a verifier with the same registry accepts it with the same complete report |
 | `countersign` | a trust registry, countersignatures and a package | a verified package has a signing input; a countersigned package keeps its identifier and verifies with an issuer signature that counts |
+| `derivation` | a trust registry and a replay package (draft) | a replay is repeatable; every commitment is the digest of its core; a definite authorization names no failed guard, agrees with Cedar's own answer and stands beside no evaluation error |
+| `derivation_signed` | the examples' test keys, then the input of `derivation` | the same, after every statement signed by a test key is signed again over the changed content |
 
 A target that takes several texts takes them one per line; each target's
 source states its format. Trust configuration is part of the input so that a
@@ -48,7 +50,7 @@ Without seeds a run is of little use: see the next section.
 
 ## What a run does and does not show
 
-- **The fuzzer cannot sign, so three targets sign for it.** A changed byte
+- **The fuzzer cannot sign, so four targets sign for it.** A changed byte
   in a signed object makes its signature invalid. The `_signed` targets take
   the corpus's test keys (`{ keyId: seedHex }`, published there as
   test-only) on a first line and make every signature by them again over

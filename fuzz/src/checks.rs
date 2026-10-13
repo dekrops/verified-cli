@@ -5,6 +5,7 @@
 //! so the two differ only in what reaches it.
 
 use verified_canonical::Value;
+use verified_derivation::replay;
 use verified_verifier::Trust;
 use verified_verifier::evidence::{Anchor, admit, authenticate, verify_chain};
 use verified_verifier::registration::RegistrationTrust;
@@ -111,5 +112,55 @@ pub fn statement(data: &[u8]) {
     let evidence: Vec<_> = authentic.into_iter().zip(&bodies).collect();
     if let Ok(admitted) = admit(tenant, &texts(&context, "claimed"), &evidence) {
         let _ = admitted.manifest(&Value::Null, &Value::Null, &Value::Null, &Value::Null);
+    }
+}
+
+/// A trust registry and a replay package (draft). A replay is a function of
+/// its input; and what it reports is consistent with itself: every
+/// commitment is the digest of its core, a definite authorization names no
+/// failed guard, and Cedar's own answer agrees with a definite outcome. So
+/// no answer the engine gave beside an evaluation error is ever an outcome.
+pub fn derivation(registry: &[u8], package: &[u8]) {
+    let Some(Ok(trust)) = json(registry).map(|registry| Trust::from_value(&registry)) else {
+        return;
+    };
+    let Some(package) = json(package) else {
+        return;
+    };
+    let first = replay(&package, &trust);
+    let again = replay(&package, &trust);
+    assert_eq!(
+        first
+            .as_ref()
+            .map(|replayed| (replayed.commitment, replayed.decision.clone())),
+        again
+            .as_ref()
+            .map(|replayed| (replayed.commitment, replayed.decision.clone())),
+        "a replay is not repeatable"
+    );
+    let Ok(replayed) = first else {
+        return;
+    };
+    assert_eq!(replayed.core.digest(), replayed.commitment);
+    for derivation in &replayed.derivations {
+        assert_eq!(derivation.core.digest(), derivation.commitment);
+        let errors = member(&derivation.diagnostics, "errors")
+            .and_then(Value::as_array)
+            .map_or(0, <[Value]>::len);
+        match derivation.outcome {
+            "ALLOW" => assert_eq!(derivation.engine_decision, Some("Allow")),
+            "DENY" => assert_eq!(derivation.engine_decision, Some("Deny")),
+            _ => assert!(
+                !derivation.reasons.is_empty(),
+                "undetermined without a reason"
+            ),
+        }
+        if derivation.outcome != "UNDETERMINED" {
+            assert!(
+                derivation.reasons.is_empty(),
+                "a definite outcome with a failed guard"
+            );
+            assert_eq!(errors, 0, "a definite outcome beside an evaluation error");
+        }
     }
 }

@@ -23,6 +23,7 @@ ed25519-dalek = { version = "3.0.0", default-features = false }
 libfuzzer-sys = "0.4.12"
 verified-canonical = { path = "../crates/verified-canonical" }
 verified-contract = { path = "../crates/verified-contract" }
+verified-derivation = { path = "../crates/verified-derivation" }
 verified-protocol = { path = "../crates/verified-protocol" }
 verified-verifier = { path = "../crates/verified-verifier" }
 verified-work-unit = { path = "../crates/verified-work-unit" }
@@ -114,6 +115,20 @@ bench = false
 [[bin]]
 name = "statement_signed"
 path = "fuzz_targets/statement_signed.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "derivation"
+path = "fuzz_targets/derivation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "derivation_signed"
+path = "fuzz_targets/derivation_signed.rs"
 test = false
 doc = false
 bench = false

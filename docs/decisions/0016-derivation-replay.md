@@ -94,8 +94,11 @@ protocol version.
   within the size limits that are expensive to evaluate. Until that is
   done, replay belongs on the machine of the party that wants the answer,
   not in a service that accepts packages from others.
-- **A fuzz target.** The crate reads untrusted packages and has none yet
-  (ADR 0014).
+- **A long fuzzing campaign.** The crate reads untrusted packages. It has
+  two fuzz targets, `derivation` and `derivation_signed` (ADR 0014), which
+  run for 30 seconds on every change and for ten minutes in the weekly
+  campaign. That shows what those runs show. A slow input in the engine
+  would appear there as a timeout, since its time is not bounded.
 - **Request context, policy templates and entity tags.** Unsupported: a
   package that needs one is undetermined.
 - **Producing a package.** This tool replays; it does not derive and write.
