@@ -6,6 +6,7 @@
 //! lives in the library crates.
 
 mod cli;
+mod derivation;
 mod evidence;
 mod exit;
 mod history;
@@ -52,6 +53,15 @@ fn main() -> ExitCode {
         cli::Command::Evidence(cli::Evidence::Chain(command)) => evidence::chain(command, &mut out),
         cli::Command::Evidence(cli::Evidence::Sign(command)) => evidence::sign(command, &mut out),
         cli::Command::History(cli::History::Read(command)) => history::run(command, &mut out),
+        cli::Command::Derivation(cli::Derivation::Replay(command)) => {
+            derivation::run_replay(command, &mut out)
+        }
+        cli::Command::Derivation(cli::Derivation::Inspect(command)) => {
+            derivation::run_inspect(command, &mut out)
+        }
+        cli::Command::Derivation(cli::Derivation::Compare(command)) => {
+            derivation::run_compare(command, &mut out)
+        }
         cli::Command::Trust(cli::TrustCommand::Init(command)) => trust::init(command, &mut out),
         cli::Command::Trust(cli::TrustCommand::Add(command)) => trust::add(command, &mut out),
         cli::Command::Trust(cli::TrustCommand::Revoke(command)) => trust::revoke(command, &mut out),

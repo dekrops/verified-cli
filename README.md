@@ -473,12 +473,41 @@ interchanged.
 Exactly what is and is not implemented, and how it measures against the
 corpus: [`docs/protocol/compatibility.md`](docs/protocol/compatibility.md).
 
+## Recomputed authorization (draft, experimental)
+
+A work contract often requires that someone was authorized. A relying party
+that trusts neither a directory's flat list nor the enforcing system's word
+can hold the policy set and the entity records as signed evidence, and the
+decision follows from them. Given a replay package (a contract, signed
+statements and the result a first verifier arrived at), this computes the
+result again from the evidence and compares:
+
+```sh
+verified derivation replay examples/derivation-replay/01-allowed.json \
+  --trust examples/derivation-replay/trust.json
+verified derivation inspect examples/derivation-replay/02-denied.json
+```
+
+Nothing presented is believed: every statement is checked against your
+registry, the authorization is prepared again from the statements and decided
+by the [Cedar](https://www.cedarpolicy.com/) policy engine, the contract is
+evaluated again, and a result that the evidence does not yield is named with
+the member that differs.
+
+**This is not part of the Work Verification Protocol.** It is proposed in
+[RFC 0005](https://github.com/dekrops/wvp/pull/36); the formats say
+`experimental`, the output says `"draft": true`, and the command may change or
+be removed ([ADR 0016](docs/decisions/0016-derivation-replay.md)). A
+reproduced result means two verifiers agree on what the evidence yields. It
+does not mean a source told the truth.
+
 ## Architecture
 
 ```text
 verified-cli        the `verified` binary: arguments, files, terminal
 verified-workspace  the local store of imported packages
 verified-history    work relation v1 (draft): what authorities say about records
+verified-derivation a recomputed authorization, replayed (draft, experimental; links Cedar)
 verified-verifier   pure verification: bytes in, report or refusal out
 verified-contract   Work Contract Language 1: read, check, evaluate
 verified-work-unit  work-unit identity v1: which unit a claim is about (library only)

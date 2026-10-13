@@ -33,6 +33,8 @@ Exit codes:
      registration: the registration, the log, the audit or the unit check
      was refused, or the log contradicts the entry you hold
      evidence chain: the statements are refused, or are not one run
+     derivation replay: the presented result was not reproduced
+     derivation compare: the two files differ
      trust show: the registry cannot be used
      issue, sign: a verifier would refuse the package; nothing is written
      evidence sign: the statement would be refused; nothing is written
@@ -179,6 +181,14 @@ pub(crate) enum Command {
     /// how records are related.
     #[command(subcommand)]
     History(History),
+    /// Replay a recomputed authorization from its evidence (draft,
+    /// experimental)
+    ///
+    /// A recomputed authorization is a record a verifier derives from signed
+    /// evidence by asking the Cedar policy engine. It is proposed for the
+    /// protocol and is not part of it: nothing here is a WVP verification.
+    #[command(subcommand)]
+    Derivation(Derivation),
     /// Write and check the trust registry that --trust reads
     ///
     /// A registry is the list of keys you accept: for each, whose it is,
@@ -368,6 +378,50 @@ pub(crate) struct HistoryRead {
     /// Your trust registry: a JSON file of the keys you accept
     #[arg(long, value_name = "REGISTRY")]
     pub(crate) trust: PathBuf,
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum Derivation {
+    /// Compute a presented result again from its evidence
+    ///
+    /// Every statement is checked against your registry, the authorization
+    /// is prepared again from the statements and decided by Cedar, the
+    /// contract is evaluated again, and only then is the result compared
+    /// with the one presented. Nothing presented is believed.
+    ///
+    /// Exits 0 if every commitment is reproduced; 1 if not, with the stage
+    /// and what differs. No network is used.
+    Replay(DerivationReplay),
+    /// Show what a package claims, without checking anything
+    Inspect(DerivationInspect),
+    /// Compare what two files commit to
+    ///
+    /// Only the parts every implementation must agree on are compared.
+    /// Neither file is replayed. Exits 0 if they are equal, 1 if not.
+    Compare(DerivationCompare),
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct DerivationReplay {
+    /// The replay package: a JSON file
+    pub(crate) package: PathBuf,
+    /// Your trust registry: a JSON file of the keys you accept
+    #[arg(long, value_name = "REGISTRY")]
+    pub(crate) trust: PathBuf,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct DerivationInspect {
+    /// The replay package: a JSON file
+    pub(crate) package: PathBuf,
+}
+
+#[derive(Debug, ClapArgs)]
+pub(crate) struct DerivationCompare {
+    /// One package or result
+    pub(crate) expected: PathBuf,
+    /// The other
+    pub(crate) actual: PathBuf,
 }
 
 #[derive(Debug, Subcommand)]

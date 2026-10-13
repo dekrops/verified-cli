@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "verified-derivation"
+description = "Draft: replays a recomputed Cedar authorization from signed evidence, offline. Outside the compatibility promise."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+verified-canonical.workspace = true
+verified-contract.workspace = true
+verified-protocol.workspace = true
+verified-verifier.workspace = true
+cedar-policy.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

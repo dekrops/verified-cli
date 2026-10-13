@@ -119,6 +119,23 @@ that every relation is consistent with the records given. It does not say a
 record was verified, that a relation is true, or that the history is
 complete: a stream's completeness is reported and does not change it.
 
+## Derivation commands
+
+A recomputed authorization is a draft and experimental, and not part of the
+protocol ([ADR 0016](../decisions/0016-derivation-replay.md)). These members
+may change or disappear. Every output carries `"draft": true`.
+
+| Command | `outcome` | Notable members |
+| --- | --- | --- |
+| `derivation replay` | `reproduced`, `not-reproduced` (exit 1) | Reproduced: `commitment`, `decision` (the contract's, which may be `CONTRADICTED` or `UNDETERMINED`), and `authorization`: for each work event its `correlation`, `outcome` (`ALLOW`, `DENY`, `UNDETERMINED`), `reasons`, `commitment` and this tool's own `diagnostics`. Not reproduced: `stage` (`PACKAGE`, `EVIDENCE`, `CONTRACT`, `PROFILE`, `DERIVATION`, `EVALUATION`), `code`, and `detail`: each member that differs, with the presented and the computed value |
+| `derivation inspect` | `inspected` | `checked`: always `"nothing"`. `format`, `profile`, `statements` (a count) and `presented`, as the package states them |
+| `derivation compare` | `equal`, `different` (exit 1) | `differing`: the members of the two cores that differ. Neither file is replayed |
+
+`reproduced` says that this tool computed the presented result again from the
+statements under your registry. It does not say the action was authorized
+(read `authorization` and `decision`), and it does not say a source told the
+truth.
+
 ## Evidence commands
 
 | Command | `outcome` | Notable members |
