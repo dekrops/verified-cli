@@ -114,6 +114,8 @@ jobs:
           - canonical
           - contract
           - countersign
+          - derivation
+          - derivation_signed
           - issue
           - package
           - registered_unit
