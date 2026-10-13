@@ -127,9 +127,12 @@ may change or disappear. Every output carries `"draft": true`.
 
 | Command | `outcome` | Notable members |
 | --- | --- | --- |
-| `derivation replay` | `reproduced`, `not-reproduced` (exit 1) | Reproduced: `commitment`, `decision` (the contract's, which may be `CONTRADICTED` or `UNDETERMINED`), and `authorization`: for each work event its `correlation`, `outcome` (`ALLOW`, `DENY`, `UNDETERMINED`), `reasons`, `commitment` and this tool's own `diagnostics`. Not reproduced: `stage` (`PACKAGE`, `EVIDENCE`, `CONTRACT`, `PROFILE`, `DERIVATION`, `EVALUATION`), `code`, and `detail`: each member that differs, with the presented and the computed value |
+| `derivation replay` | `reproduced`, `not-reproduced` (exit 1) | Reproduced: `commitment`, `decision` (the contract's, which may be `CONTRADICTED` or `UNDETERMINED`), `authorization`: for each work event its `correlation`, `outcome` (`ALLOW`, `DENY`, `UNDETERMINED`), `reasons`, `commitment` and this tool's own `diagnostics`, which hold `engineDecision` (what Cedar itself returned, `Allow`, `Deny` or `null` if it was not asked), `determining`, `errors`, `interpretation` and `details`; and `bindings`: for each contract requirement that depends on the derived records, its `requirement`, the `method` and the `derivations` it depends on. Not reproduced: `stage` (`PACKAGE`, `EVIDENCE`, `CONTRACT`, `PROFILE`, `DERIVATION`, `EVALUATION`), `code`, and `detail`: each member that differs, with the presented and the computed value |
 | `derivation inspect` | `inspected` | `checked`: always `"nothing"`. `format`, `profile`, `statements` (a count) and `presented`, as the package states them |
 | `derivation compare` | `equal`, `different` (exit 1) | `differing`: the members of the two cores that differ. Neither file is replayed |
+
+`engineDecision` is never the outcome. Cedar answers Allow when it has skipped
+a policy that failed to evaluate; `outcome` is then `UNDETERMINED`.
 
 `reproduced` says that this tool computed the presented result again from the
 statements under your registry. It does not say the action was authorized

@@ -4,15 +4,19 @@
     "authorization" : [
       {
         "correlation" : "WF-7",
+        "engineDecision" : null,
         "outcome" : "UNDETERMINED",
         "reasons" : [
           "ENGINE_NOT_AS_NAMED"
         ]
       }
     ],
+    "bindings" : [
+      "APPROVAL_AUTHORIZED"
+    ],
     "commitment" : {
       "algorithm" : "sha-256",
-      "hex" : "345450431963a80c615e795c86085cf1f48326103df37a83b9faec2d78c812a3"
+      "hex" : "7585df6d7e5b185b868d239eda7d00b4f5b6de722031f50681fe25eab57f4117"
     },
     "decision" : "UNDETERMINED",
     "replay" : "REPRODUCED"
@@ -488,13 +492,32 @@
     "inputs" : {
       "order" : "PO-123"
     },
-    "package" : "verified-recomputation-package-experimental-1",
+    "package" : "verified-recomputation-package-experimental-2",
     "presented" : {
       "commitment" : {
         "algorithm" : "sha-256",
-        "hex" : "345450431963a80c615e795c86085cf1f48326103df37a83b9faec2d78c812a3"
+        "hex" : "7585df6d7e5b185b868d239eda7d00b4f5b6de722031f50681fe25eab57f4117"
       },
       "core" : {
+        "bindings" : [
+          {
+            "derivations" : [
+              {
+                "commitment" : {
+                  "algorithm" : "sha-256",
+                  "hex" : "8b43bdc0f8a9459577c3564c03a7025be754dca8ba8d8aaa621730c56e8b7e6b"
+                },
+                "correlation" : "WF-7",
+                "record" : null
+              }
+            ],
+            "method" : {
+              "name" : "verified-cedar-recomputation",
+              "version" : "0.2.0"
+            },
+            "requirement" : "APPROVAL_AUTHORIZED"
+          }
+        ],
         "contract" : {
           "digest" : {
             "algorithm" : "sha-256",
@@ -517,7 +540,7 @@
           "algorithm" : "sha-256",
           "hex" : "1ee7a4bd0df5d6ddaf07c90d623ee2b4a6ccc078a6dbc2bf72315e753053356e"
         },
-        "format" : "verified-derived-evaluation-experimental-1",
+        "format" : "verified-derived-evaluation-experimental-2",
         "inputs" : {
           "algorithm" : "sha-256",
           "hex" : "1e2823c2811a33aa5103e10cfa704625383d7ace18cee7fce9a5428bb9b30636"
@@ -703,13 +726,22 @@
             "details" : [
               "ENGINE_NOT_AS_NAMED: the contract names Cedar language 4.9; this engine is 4.5"
             ],
+            "determining" : [
+            ],
             "engine" : "cedar-java 4.10.0",
+            "engineDecision" : null,
             "errors" : [
-            ]
+            ],
+            "interpretation" : {
+              "outcome" : "UNDETERMINED",
+              "reasons" : [
+                "ENGINE_NOT_AS_NAMED"
+              ]
+            }
           },
           "diagnosticsCommitment" : {
             "algorithm" : "sha-256",
-            "hex" : "7503c1535a13c656dd9dcd3f777221864d7b787259c34b800e3975860293c8ba"
+            "hex" : "d5686ae34c5a1cb434c84474ee508d1266affd797b2ba6598209dabb2e82fb2b"
           }
         }
       ]

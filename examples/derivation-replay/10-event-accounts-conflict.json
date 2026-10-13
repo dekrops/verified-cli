@@ -4,15 +4,19 @@
     "authorization" : [
       {
         "correlation" : "WF-7",
+        "engineDecision" : null,
         "outcome" : "UNDETERMINED",
         "reasons" : [
           "CONFLICTING_EVIDENCE"
         ]
       }
     ],
+    "bindings" : [
+      "APPROVAL_AUTHORIZED"
+    ],
     "commitment" : {
       "algorithm" : "sha-256",
-      "hex" : "233adc67741ee41dd43c0a4e14b8d9e102728877e72ac0785ea95e221d48b3cf"
+      "hex" : "27ea5e50f242aa73dc13d6338f1e6c48cba034d6099d07ec422b3f59bee8545a"
     },
     "decision" : "UNDETERMINED",
     "replay" : "REPRODUCED"
@@ -488,13 +492,32 @@
     "inputs" : {
       "order" : "PO-123"
     },
-    "package" : "verified-recomputation-package-experimental-1",
+    "package" : "verified-recomputation-package-experimental-2",
     "presented" : {
       "commitment" : {
         "algorithm" : "sha-256",
-        "hex" : "233adc67741ee41dd43c0a4e14b8d9e102728877e72ac0785ea95e221d48b3cf"
+        "hex" : "27ea5e50f242aa73dc13d6338f1e6c48cba034d6099d07ec422b3f59bee8545a"
       },
       "core" : {
+        "bindings" : [
+          {
+            "derivations" : [
+              {
+                "commitment" : {
+                  "algorithm" : "sha-256",
+                  "hex" : "5f9b4510ff42739ffd135ca693413931e3eba93f3fa2b799409093c8fffa36b6"
+                },
+                "correlation" : "WF-7",
+                "record" : null
+              }
+            ],
+            "method" : {
+              "name" : "verified-cedar-recomputation",
+              "version" : "0.2.0"
+            },
+            "requirement" : "APPROVAL_AUTHORIZED"
+          }
+        ],
         "contract" : {
           "digest" : {
             "algorithm" : "sha-256",
@@ -517,7 +540,7 @@
           "algorithm" : "sha-256",
           "hex" : "dafeeaf4d7a751c489a515222b7f64d6dec402fad0b23ee523e5746e3c0d9ed7"
         },
-        "format" : "verified-derived-evaluation-experimental-1",
+        "format" : "verified-derived-evaluation-experimental-2",
         "inputs" : {
           "algorithm" : "sha-256",
           "hex" : "1e2823c2811a33aa5103e10cfa704625383d7ace18cee7fce9a5428bb9b30636"
@@ -626,13 +649,22 @@
             "details" : [
               "CONFLICTING_EVIDENCE: accepted records of WF-7 disagree"
             ],
+            "determining" : [
+            ],
             "engine" : "cedar-java 4.10.0",
+            "engineDecision" : null,
             "errors" : [
-            ]
+            ],
+            "interpretation" : {
+              "outcome" : "UNDETERMINED",
+              "reasons" : [
+                "CONFLICTING_EVIDENCE"
+              ]
+            }
           },
           "diagnosticsCommitment" : {
             "algorithm" : "sha-256",
-            "hex" : "457abeb65f08c4232ab4b2ceb4c31421f758f16d54b8c24ba86f643d593b1fa1"
+            "hex" : "3a723a3ed75ed6d8e6ffe1f9229398d5c3a30f15c46b1a40afe80b025084c431"
           }
         }
       ]

@@ -4,15 +4,19 @@
     "authorization" : [
       {
         "correlation" : "WF-7",
+        "engineDecision" : null,
         "outcome" : "UNDETERMINED",
         "reasons" : [
           "FEATURE_NOT_SUPPORTED"
         ]
       }
     ],
+    "bindings" : [
+      "APPROVAL_AUTHORIZED"
+    ],
     "commitment" : {
       "algorithm" : "sha-256",
-      "hex" : "c3d2d3cf49ca0ee71ead97e90039288ffe90264e91347fd9b10be5a297f9d7d2"
+      "hex" : "4255f4cdd50d327492b1653a13c57efe4f09d4dd2b3edf251b18e11c718fff84"
     },
     "decision" : "UNDETERMINED",
     "replay" : "REPRODUCED"
@@ -488,13 +492,32 @@
     "inputs" : {
       "order" : "PO-123"
     },
-    "package" : "verified-recomputation-package-experimental-1",
+    "package" : "verified-recomputation-package-experimental-2",
     "presented" : {
       "commitment" : {
         "algorithm" : "sha-256",
-        "hex" : "c3d2d3cf49ca0ee71ead97e90039288ffe90264e91347fd9b10be5a297f9d7d2"
+        "hex" : "4255f4cdd50d327492b1653a13c57efe4f09d4dd2b3edf251b18e11c718fff84"
       },
       "core" : {
+        "bindings" : [
+          {
+            "derivations" : [
+              {
+                "commitment" : {
+                  "algorithm" : "sha-256",
+                  "hex" : "49d5e901583630d803ba5a9e4afb9d3e2cedfeaa3f884e8ced4bb1c307e03fcb"
+                },
+                "correlation" : "WF-7",
+                "record" : null
+              }
+            ],
+            "method" : {
+              "name" : "verified-cedar-recomputation",
+              "version" : "0.2.0"
+            },
+            "requirement" : "APPROVAL_AUTHORIZED"
+          }
+        ],
         "contract" : {
           "digest" : {
             "algorithm" : "sha-256",
@@ -517,7 +540,7 @@
           "algorithm" : "sha-256",
           "hex" : "c16a769e69c0d59b727e1da5e973c9aaf8194ca293afaddf2c86b72f2e15cadd"
         },
-        "format" : "verified-derived-evaluation-experimental-1",
+        "format" : "verified-derived-evaluation-experimental-2",
         "inputs" : {
           "algorithm" : "sha-256",
           "hex" : "1e2823c2811a33aa5103e10cfa704625383d7ace18cee7fce9a5428bb9b30636"
@@ -703,13 +726,22 @@
             "details" : [
               "FEATURE_NOT_SUPPORTED: policy templates and links are not evaluated"
             ],
+            "determining" : [
+            ],
             "engine" : "cedar-java 4.10.0",
+            "engineDecision" : null,
             "errors" : [
-            ]
+            ],
+            "interpretation" : {
+              "outcome" : "UNDETERMINED",
+              "reasons" : [
+                "FEATURE_NOT_SUPPORTED"
+              ]
+            }
           },
           "diagnosticsCommitment" : {
             "algorithm" : "sha-256",
-            "hex" : "70a3fc24ebc1b1c46d86d00a137dbc7ffc0e27b4264da8e3b5fbb22016224434"
+            "hex" : "b8eabd55689f434d9f5d45b16a9061b51f7a640f550b005a65acca752af84835"
           }
         }
       ]

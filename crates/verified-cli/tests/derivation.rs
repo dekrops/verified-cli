@@ -46,6 +46,11 @@ fn a_package_is_reproduced_from_its_evidence() {
     assert_eq!(report["draft"], true);
     assert_eq!(report["decision"], "SUPPORTED");
     assert_eq!(report["authorization"][0]["outcome"], "ALLOW");
+    assert_eq!(
+        report["authorization"][0]["diagnostics"]["engineDecision"],
+        "Allow"
+    );
+    assert_eq!(report["bindings"][0]["requirement"], "APPROVAL_AUTHORIZED");
     // No member says more than was checked.
     for forbidden in ["valid", "verified", "ok", "trusted"] {
         assert!(report.get(forbidden).is_none(), "{forbidden}");
@@ -146,5 +151,26 @@ fn compare_reads_only_what_both_must_agree_on() {
             .expect("differing")
             .iter()
             .any(|m| m == "result")
+    );
+}
+
+#[test]
+fn cedars_own_answer_is_shown_beside_what_was_made_of_it() {
+    let output = run(&[
+        "--json",
+        "derivation",
+        "replay",
+        &example("09-evaluation-error.json"),
+        "--trust",
+        &example("trust.json"),
+    ]);
+    assert_eq!(output.status.code(), Some(0));
+    let authorization = &json(&output)["authorization"][0];
+    // Cedar skipped an errored policy and allowed. That is reported, and decides nothing.
+    assert_eq!(authorization["diagnostics"]["engineDecision"], "Allow");
+    assert_eq!(authorization["outcome"], "UNDETERMINED");
+    assert_eq!(
+        authorization["diagnostics"]["interpretation"]["reasons"][0],
+        "EVALUATION_ERROR"
     );
 }

@@ -4,15 +4,19 @@
     "authorization" : [
       {
         "correlation" : "WF-7",
+        "engineDecision" : "Allow",
         "outcome" : "UNDETERMINED",
         "reasons" : [
           "EVALUATION_ERROR"
         ]
       }
     ],
+    "bindings" : [
+      "APPROVAL_AUTHORIZED"
+    ],
     "commitment" : {
       "algorithm" : "sha-256",
-      "hex" : "54d43eda7e68a96b8289abd6c1fafa593dcc4d91356dadaa4a0c77d2f31ef7b5"
+      "hex" : "b4f6e236ac2c3bd3c17cf3e44cd7ea95eca676730f81ed21fe6d84e6faad4807"
     },
     "decision" : "UNDETERMINED",
     "replay" : "REPRODUCED"
@@ -488,13 +492,32 @@
     "inputs" : {
       "order" : "PO-123"
     },
-    "package" : "verified-recomputation-package-experimental-1",
+    "package" : "verified-recomputation-package-experimental-2",
     "presented" : {
       "commitment" : {
         "algorithm" : "sha-256",
-        "hex" : "54d43eda7e68a96b8289abd6c1fafa593dcc4d91356dadaa4a0c77d2f31ef7b5"
+        "hex" : "b4f6e236ac2c3bd3c17cf3e44cd7ea95eca676730f81ed21fe6d84e6faad4807"
       },
       "core" : {
+        "bindings" : [
+          {
+            "derivations" : [
+              {
+                "commitment" : {
+                  "algorithm" : "sha-256",
+                  "hex" : "f61bf805de95fac4c19087b44c8e5f08d4729964c87d009d1259188fcb0f7b59"
+                },
+                "correlation" : "WF-7",
+                "record" : null
+              }
+            ],
+            "method" : {
+              "name" : "verified-cedar-recomputation",
+              "version" : "0.2.0"
+            },
+            "requirement" : "APPROVAL_AUTHORIZED"
+          }
+        ],
         "contract" : {
           "digest" : {
             "algorithm" : "sha-256",
@@ -517,7 +540,7 @@
           "algorithm" : "sha-256",
           "hex" : "7973db608c2322f3a5799d4bb1e21605e3ded5d50ba547e6d366ded76565bbdb"
         },
-        "format" : "verified-derived-evaluation-experimental-1",
+        "format" : "verified-derived-evaluation-experimental-2",
         "inputs" : {
           "algorithm" : "sha-256",
           "hex" : "1e2823c2811a33aa5103e10cfa704625383d7ace18cee7fce9a5428bb9b30636"
@@ -704,14 +727,24 @@
             "details" : [
               "EVALUATION_ERROR: policy3: integer overflow while attempting to add the values `2500000` and `9223372036854775807`"
             ],
+            "determining" : [
+              "policy0"
+            ],
             "engine" : "cedar-java 4.10.0",
+            "engineDecision" : "Allow",
             "errors" : [
               "policy3: integer overflow while attempting to add the values `2500000` and `9223372036854775807`"
-            ]
+            ],
+            "interpretation" : {
+              "outcome" : "UNDETERMINED",
+              "reasons" : [
+                "EVALUATION_ERROR"
+              ]
+            }
           },
           "diagnosticsCommitment" : {
             "algorithm" : "sha-256",
-            "hex" : "5f00b03975dfabeb8df707bc7839c759591484caebd8f13635fba6792a3f55e3"
+            "hex" : "2e3bc2fd40c8bf7cdf0d0a1bf39bbf45d594d9314cf7c9264e411bbb18fd4cdc"
           }
         }
       ]

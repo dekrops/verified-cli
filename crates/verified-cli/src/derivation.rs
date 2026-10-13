@@ -52,6 +52,7 @@ fn reproduced(out: &mut Output, replayed: &Replayed) {
             "commitment": { "algorithm": "sha-256", "hex": replayed.commitment.to_hex() },
             "decision": replayed.decision,
             "authorization": authorization,
+            "bindings": member(&replayed.core, "bindings").map(output_json),
         })),
         Mode::Human => {
             out.heading(TITLE);
@@ -71,6 +72,16 @@ fn reproduced(out: &mut Output, replayed: &Replayed) {
                 };
                 let text = format!("{} {}{reasons}", printable(&d.correlation), d.outcome);
                 rows.push(Row::new("authorization", Tone::Plain, text));
+            }
+            let bound = member(&replayed.core, "bindings")
+                .and_then(Value::as_array)
+                .unwrap_or(&[]);
+            for binding in bound {
+                let name = member(binding, "requirement")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                let text = format!("{} depends on the derived records", printable(name));
+                rows.push(Row::new("requirement", Tone::Plain, text));
             }
             rows.push(Row::new(
                 "commitment",

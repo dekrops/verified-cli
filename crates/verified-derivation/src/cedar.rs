@@ -41,6 +41,9 @@ pub(crate) struct Answer {
     pub(crate) determining: Vec<String>,
     pub(crate) errors: Vec<String>,
     pub(crate) details: Vec<String>,
+    /// What Cedar itself returned, when it was asked and answered. A diagnostic, never the
+    /// outcome.
+    pub(crate) engine_decision: Option<&'static str>,
 }
 
 /// The engine's language version, as `major.minor`.
@@ -62,6 +65,7 @@ fn undetermined(found: Vec<(&'static str, String)>) -> Answer {
             .into_iter()
             .map(|(code, detail)| format!("{code}: {detail}"))
             .collect(),
+        engine_decision: None,
     }
 }
 
@@ -420,13 +424,16 @@ fn ask(parsed: Parsed, entities: &Entities) -> Answer {
         .errors()
         .map(ToString::to_string)
         .collect();
+    let allowed = response.decision() == Decision::Allow;
+    let engine_decision = Some(if allowed { "Allow" } else { "Deny" });
     if errors.is_empty() {
         return Answer {
-            permitted: Some(response.decision() == Decision::Allow),
+            permitted: Some(allowed),
             reasons: BTreeSet::new(),
             determining,
             errors,
             details: Vec::new(),
+            engine_decision,
         };
     }
     // An errored policy was skipped. It may have been the one that decides.
@@ -439,6 +446,7 @@ fn ask(parsed: Parsed, entities: &Entities) -> Answer {
             .map(|e| format!("EVALUATION_ERROR: {e}"))
             .collect(),
         errors,
+        engine_decision,
     }
 }
 

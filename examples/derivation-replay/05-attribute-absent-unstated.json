@@ -4,15 +4,19 @@
     "authorization" : [
       {
         "correlation" : "WF-7",
+        "engineDecision" : null,
         "outcome" : "UNDETERMINED",
         "reasons" : [
           "ENTITIES_NOT_VALID"
         ]
       }
     ],
+    "bindings" : [
+      "APPROVAL_AUTHORIZED"
+    ],
     "commitment" : {
       "algorithm" : "sha-256",
-      "hex" : "9e5100c41fae376f886e450d78b93e3cb4501e02bdcf22b825031f4246a34ac3"
+      "hex" : "b0e48910f8e737a9b017c7262ec2ba5674dcdef4a88f90c4b1c244972668e734"
     },
     "decision" : "UNDETERMINED",
     "replay" : "REPRODUCED"
@@ -488,13 +492,32 @@
     "inputs" : {
       "order" : "PO-123"
     },
-    "package" : "verified-recomputation-package-experimental-1",
+    "package" : "verified-recomputation-package-experimental-2",
     "presented" : {
       "commitment" : {
         "algorithm" : "sha-256",
-        "hex" : "9e5100c41fae376f886e450d78b93e3cb4501e02bdcf22b825031f4246a34ac3"
+        "hex" : "b0e48910f8e737a9b017c7262ec2ba5674dcdef4a88f90c4b1c244972668e734"
       },
       "core" : {
+        "bindings" : [
+          {
+            "derivations" : [
+              {
+                "commitment" : {
+                  "algorithm" : "sha-256",
+                  "hex" : "7c542e2bd51812d2cd8af40ed200c286e9d1a3ed07516507dd404e6289019689"
+                },
+                "correlation" : "WF-7",
+                "record" : null
+              }
+            ],
+            "method" : {
+              "name" : "verified-cedar-recomputation",
+              "version" : "0.2.0"
+            },
+            "requirement" : "APPROVAL_AUTHORIZED"
+          }
+        ],
         "contract" : {
           "digest" : {
             "algorithm" : "sha-256",
@@ -517,7 +540,7 @@
           "algorithm" : "sha-256",
           "hex" : "c42183179e0f9f28036b4f89141fae39bb3f4e67fd0b13b19944ce54d559ea91"
         },
-        "format" : "verified-derived-evaluation-experimental-1",
+        "format" : "verified-derived-evaluation-experimental-2",
         "inputs" : {
           "algorithm" : "sha-256",
           "hex" : "1e2823c2811a33aa5103e10cfa704625383d7ace18cee7fce9a5428bb9b30636"
@@ -703,13 +726,22 @@
             "details" : [
               "ENTITIES_NOT_VALID: User::\"m.okafor\" states no value for 'department'"
             ],
+            "determining" : [
+            ],
             "engine" : "cedar-java 4.10.0",
+            "engineDecision" : null,
             "errors" : [
-            ]
+            ],
+            "interpretation" : {
+              "outcome" : "UNDETERMINED",
+              "reasons" : [
+                "ENTITIES_NOT_VALID"
+              ]
+            }
           },
           "diagnosticsCommitment" : {
             "algorithm" : "sha-256",
-            "hex" : "68e73ede11fffd7a14ec2e6aa4718ac51b8573f260a47ff9a4a86a83116d7682"
+            "hex" : "244b49f4bdbb2b3b63256d59446134d4bc57f767230ffaccf48c6e52628c123d"
           }
         }
       ]

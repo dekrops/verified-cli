@@ -1,6 +1,6 @@
 # Synthetic packages for replaying a recomputed authorization (draft)
 
-Twenty-one replay packages and the trust registry to replay them under. They
+Twenty-two replay packages and the trust registry to replay them under. They
 are **synthetic**: the tenant, systems, people, records and keys name nothing
 real, and the keys are test keys derived from fixed seeds.
 
@@ -22,9 +22,14 @@ policy set that was in force.
 | `03` to `10`, `13` | Reproduced, and undetermined: a policy set not declared complete or of another time, a missing entity, an unstated absence, conflicting records, a policy template, an evaluation error, another language version | 0 |
 | `11`, `12` | Reproduced: a denial that is not concluded because the event listing is incomplete; an authorized approval of an order that was not approved in the end | 0 |
 | `14-statements-in-another-order` | Reproduced, with the commitment of `01` | 0 |
+| `15-two-requirements-one-derivation` | Reproduced: the contract has two requirements over the derived records, and both are bound to the one derivation | 0 |
 | `20-statement-altered` | Not reproduced at `EVIDENCE`, `SIGNATURE_INVALID` | 1 |
 | `21`, `22`, `24`, `25` | Not reproduced at `DERIVATION`: a body altered, a statement removed, a correlation altered, an outcome altered with digests to match | 1 |
 | `23-profile-altered`, `26-contract-altered` | Not reproduced at `PROFILE`, at `CONTRACT` | 1 |
+
+In `09` Cedar itself answers Allow, having skipped a policy that failed to
+evaluate. The replay reports that answer under `diagnostics.engineDecision`
+and an outcome of `UNDETERMINED`: an answer beside an error decides nothing.
 
 Exit 0 means the presented result was computed again from the evidence and
 is the same. It does not mean the work was authorized: `02` exits 0 on a

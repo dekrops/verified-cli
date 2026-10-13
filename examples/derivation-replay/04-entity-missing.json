@@ -4,15 +4,19 @@
     "authorization" : [
       {
         "correlation" : "WF-7",
+        "engineDecision" : null,
         "outcome" : "UNDETERMINED",
         "reasons" : [
           "ENTITY_NOT_PRESENT"
         ]
       }
     ],
+    "bindings" : [
+      "APPROVAL_AUTHORIZED"
+    ],
     "commitment" : {
       "algorithm" : "sha-256",
-      "hex" : "8554fda6f216e43d0380b1c2c2c61427382a1b5ae97cd17c961f26a552dbc773"
+      "hex" : "c9334d8ad72efdd998bb34115f376f205e97cc45231caca9c89277cba03c6b38"
     },
     "decision" : "UNDETERMINED",
     "replay" : "REPRODUCED"
@@ -488,13 +492,32 @@
     "inputs" : {
       "order" : "PO-123"
     },
-    "package" : "verified-recomputation-package-experimental-1",
+    "package" : "verified-recomputation-package-experimental-2",
     "presented" : {
       "commitment" : {
         "algorithm" : "sha-256",
-        "hex" : "8554fda6f216e43d0380b1c2c2c61427382a1b5ae97cd17c961f26a552dbc773"
+        "hex" : "c9334d8ad72efdd998bb34115f376f205e97cc45231caca9c89277cba03c6b38"
       },
       "core" : {
+        "bindings" : [
+          {
+            "derivations" : [
+              {
+                "commitment" : {
+                  "algorithm" : "sha-256",
+                  "hex" : "9d5cd41232c880f7861535d2a9dea030e41b46c7c4e13798ecfed92d44fc3a37"
+                },
+                "correlation" : "WF-7",
+                "record" : null
+              }
+            ],
+            "method" : {
+              "name" : "verified-cedar-recomputation",
+              "version" : "0.2.0"
+            },
+            "requirement" : "APPROVAL_AUTHORIZED"
+          }
+        ],
         "contract" : {
           "digest" : {
             "algorithm" : "sha-256",
@@ -517,7 +540,7 @@
           "algorithm" : "sha-256",
           "hex" : "4782a21fb09551fa63c669a6500533c97db709cffe9dab4291dc33a1eb46e272"
         },
-        "format" : "verified-derived-evaluation-experimental-1",
+        "format" : "verified-derived-evaluation-experimental-2",
         "inputs" : {
           "algorithm" : "sha-256",
           "hex" : "1e2823c2811a33aa5103e10cfa704625383d7ace18cee7fce9a5428bb9b30636"
@@ -693,13 +716,22 @@
             "details" : [
               "ENTITY_NOT_PRESENT: Group::\"approvers\" is not among the entities"
             ],
+            "determining" : [
+            ],
             "engine" : "cedar-java 4.10.0",
+            "engineDecision" : null,
             "errors" : [
-            ]
+            ],
+            "interpretation" : {
+              "outcome" : "UNDETERMINED",
+              "reasons" : [
+                "ENTITY_NOT_PRESENT"
+              ]
+            }
           },
           "diagnosticsCommitment" : {
             "algorithm" : "sha-256",
-            "hex" : "9f8ead503afbd2e74d0c57f60f283322b4a944ed60bda46b383acb4fb48de321"
+            "hex" : "0b820aae5a2541d286d28120fcbc6c335b3244832057cbf1cb0476490d272e95"
           }
         }
       ]

@@ -4,14 +4,18 @@
     "authorization" : [
       {
         "correlation" : "WF-7",
+        "engineDecision" : "Allow",
         "outcome" : "ALLOW",
         "reasons" : [
         ]
       }
     ],
+    "bindings" : [
+      "APPROVAL_AUTHORIZED"
+    ],
     "commitment" : {
       "algorithm" : "sha-256",
-      "hex" : "b82594f9ebd5d6859a200877d3331d6b833b76d71eaaa11ccc27b160f30f035c"
+      "hex" : "b1f8eb47398dcccceafe2d5f94fe037c18a2357927e07f3457552e804244acb3"
     },
     "decision" : "CONTRADICTED",
     "replay" : "REPRODUCED"
@@ -487,13 +491,32 @@
     "inputs" : {
       "order" : "PO-123"
     },
-    "package" : "verified-recomputation-package-experimental-1",
+    "package" : "verified-recomputation-package-experimental-2",
     "presented" : {
       "commitment" : {
         "algorithm" : "sha-256",
-        "hex" : "b82594f9ebd5d6859a200877d3331d6b833b76d71eaaa11ccc27b160f30f035c"
+        "hex" : "b1f8eb47398dcccceafe2d5f94fe037c18a2357927e07f3457552e804244acb3"
       },
       "core" : {
+        "bindings" : [
+          {
+            "derivations" : [
+              {
+                "commitment" : {
+                  "algorithm" : "sha-256",
+                  "hex" : "f6731d6a6347590be0c93ddc1d31eb4c343e330d1f922329cfd83185f47af507"
+                },
+                "correlation" : "WF-7",
+                "record" : "d-f6731d6a6347590be0c93ddc1d31eb4c343e330d"
+              }
+            ],
+            "method" : {
+              "name" : "verified-cedar-recomputation",
+              "version" : "0.2.0"
+            },
+            "requirement" : "APPROVAL_AUTHORIZED"
+          }
+        ],
         "contract" : {
           "digest" : {
             "algorithm" : "sha-256",
@@ -516,7 +539,7 @@
           "algorithm" : "sha-256",
           "hex" : "78a79c898c98f44eca8c1ad8e5e7f2a6fdf5ff663bd81c75eb2498b2a6b4f6b7"
         },
-        "format" : "verified-derived-evaluation-experimental-1",
+        "format" : "verified-derived-evaluation-experimental-2",
         "inputs" : {
           "algorithm" : "sha-256",
           "hex" : "1e2823c2811a33aa5103e10cfa704625383d7ace18cee7fce9a5428bb9b30636"
@@ -701,13 +724,22 @@
           "diagnostics" : {
             "details" : [
             ],
+            "determining" : [
+              "policy0"
+            ],
             "engine" : "cedar-java 4.10.0",
+            "engineDecision" : "Allow",
             "errors" : [
-            ]
+            ],
+            "interpretation" : {
+              "outcome" : "ALLOW",
+              "reasons" : [
+              ]
+            }
           },
           "diagnosticsCommitment" : {
             "algorithm" : "sha-256",
-            "hex" : "4f181fb52c5ada7a1cbf7af78eb887bd8b962771e8781724f600bfea6324db47"
+            "hex" : "a615bb42fc1ed0be3a7677219d47af504a3241b223d870e789d71f9463eb2d01"
           }
         }
       ]

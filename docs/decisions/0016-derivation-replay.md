@@ -46,6 +46,16 @@ protocol version.
 - **Cedar is asked only when every precondition holds**, and its answer is
   used only when it reports no evaluation error. Everything else is
   undetermined, which is never a denial. The preconditions are the proposal's.
+- **Two things are kept apart in every report.** What Cedar itself returned
+  (`engineDecision`, a diagnostic) and what was made of it (`outcome`). An
+  Allow beside an evaluation error is reported as an Allow and is
+  undetermined.
+- **A requirement is bound to the derivations it depends on**, read from the
+  contract: every requirement whose predicate quantifies over the derived
+  kind, when the contract accepts the reserved source for it. The binding
+  is part of what is committed to. It names every derivation such a
+  requirement can see, not the one record that satisfied or refuted it: the
+  evaluator does not report witnesses.
 - **Example packages are committed**, in `examples/derivation-replay`, with
   the approval recorded in the publication review. They were produced by the
   first implementation and are the differential test between the two. They
@@ -66,8 +76,8 @@ protocol version.
   a documented command is its own surprise.
 - Writing this implementation found an error in the first: its binding
   reports a fixed Cedar language version whatever engine it carries. The
-  first implementation was corrected. The two now agree on all 21 example
-  packages: 14 reproduced with identical commitments, 7 that were altered
+  first implementation was corrected. The two now agree on all 22 example
+  packages: 15 reproduced with identical commitments, 7 that were altered
   failing at the same stage with the same code.
 
 ## Deliberately not here

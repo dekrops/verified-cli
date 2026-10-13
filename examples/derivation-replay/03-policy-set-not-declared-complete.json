@@ -4,15 +4,19 @@
     "authorization" : [
       {
         "correlation" : "WF-7",
+        "engineDecision" : null,
         "outcome" : "UNDETERMINED",
         "reasons" : [
           "POLICY_SET_NOT_IN_FORCE"
         ]
       }
     ],
+    "bindings" : [
+      "APPROVAL_AUTHORIZED"
+    ],
     "commitment" : {
       "algorithm" : "sha-256",
-      "hex" : "60dd88779afd6d926b93637aaee6f98ec8e4cc1220adf4e1ef421325ea04bcfb"
+      "hex" : "a76fee5a3c13ff65bba23f3667c8e065fb319814da0efc5d7e1608e021f0afcc"
     },
     "decision" : "UNDETERMINED",
     "replay" : "REPRODUCED"
@@ -488,13 +492,32 @@
     "inputs" : {
       "order" : "PO-123"
     },
-    "package" : "verified-recomputation-package-experimental-1",
+    "package" : "verified-recomputation-package-experimental-2",
     "presented" : {
       "commitment" : {
         "algorithm" : "sha-256",
-        "hex" : "60dd88779afd6d926b93637aaee6f98ec8e4cc1220adf4e1ef421325ea04bcfb"
+        "hex" : "a76fee5a3c13ff65bba23f3667c8e065fb319814da0efc5d7e1608e021f0afcc"
       },
       "core" : {
+        "bindings" : [
+          {
+            "derivations" : [
+              {
+                "commitment" : {
+                  "algorithm" : "sha-256",
+                  "hex" : "b45b966acfa6864f969b24f5702536830ee6f863a63ebf8ef9c4767daea72935"
+                },
+                "correlation" : "WF-7",
+                "record" : null
+              }
+            ],
+            "method" : {
+              "name" : "verified-cedar-recomputation",
+              "version" : "0.2.0"
+            },
+            "requirement" : "APPROVAL_AUTHORIZED"
+          }
+        ],
         "contract" : {
           "digest" : {
             "algorithm" : "sha-256",
@@ -517,7 +540,7 @@
           "algorithm" : "sha-256",
           "hex" : "5031153fb37d265b5c53328e474182b936d497b18f66e205593e180151a05935"
         },
-        "format" : "verified-derived-evaluation-experimental-1",
+        "format" : "verified-derived-evaluation-experimental-2",
         "inputs" : {
           "algorithm" : "sha-256",
           "hex" : "1e2823c2811a33aa5103e10cfa704625383d7ace18cee7fce9a5428bb9b30636"
@@ -694,13 +717,22 @@
             "details" : [
               "POLICY_SET_NOT_IN_FORCE: the policy set is not shown to be the complete set in force"
             ],
+            "determining" : [
+            ],
             "engine" : "cedar-java 4.10.0",
+            "engineDecision" : null,
             "errors" : [
-            ]
+            ],
+            "interpretation" : {
+              "outcome" : "UNDETERMINED",
+              "reasons" : [
+                "POLICY_SET_NOT_IN_FORCE"
+              ]
+            }
           },
           "diagnosticsCommitment" : {
             "algorithm" : "sha-256",
-            "hex" : "8a58ef8182d9878b57884a03eec54751d2782b0951d56dace49203e31ded0500"
+            "hex" : "3a3ede488cf556739cbb0a10157c13d4750e07ef41d2ecb3b1b103a7efc74239"
           }
         }
       ]

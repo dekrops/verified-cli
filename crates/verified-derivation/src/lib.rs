@@ -23,9 +23,9 @@ use verified_verifier::{Trust, evidence};
 pub use prepare::Derivation;
 
 /// The package format this crate replays.
-pub const PACKAGE: &str = "verified-recomputation-package-experimental-1";
+pub const PACKAGE: &str = "verified-recomputation-package-experimental-2";
 /// The format of a derived evaluation's core.
-pub const EVALUATION: &str = "verified-derived-evaluation-experimental-1";
+pub const EVALUATION: &str = "verified-derived-evaluation-experimental-2";
 /// The source name of derived decisions. Reserved: a signed statement that claims it is not read.
 pub const DERIVED_SOURCE: &str = "authorization-recomputation";
 
@@ -297,6 +297,74 @@ fn compare_derivations(presented: &Value, computed: &[Derivation]) -> Result<Val
     Ok(commitments)
 }
 
+/// Whether a predicate quantifies over records of a kind.
+fn quantifies_over(predicate: &Value, kind: &str) -> bool {
+    match predicate {
+        Value::Object(members) => {
+            let quantifier = members.get("exists").is_some() || members.get("forall").is_some();
+            (quantifier && members.get("in").and_then(Value::as_str) == Some(kind))
+                || members
+                    .iter()
+                    .any(|(_, inner)| quantifies_over(inner, kind))
+        }
+        Value::Array(items) => items.iter().any(|inner| quantifies_over(inner, kind)),
+        _ => false,
+    }
+}
+
+/// Which requirements depend on which derivations, read from the contract itself.
+///
+/// A requirement depends on the derived records if its predicate quantifies over their kind and
+/// the contract accepts the reserved source for that kind. Such a requirement depends on every
+/// derivation, including one that yielded no record: the absence of a record is what the
+/// quantifier then sees. This is exact about which requirements can be affected and conservative
+/// about which derivation affected them; no single witness is named.
+fn bindings(contract: &Value, kind: &str, derivations: &[Derivation]) -> Value {
+    let accepted = member(contract, "evidence")
+        .and_then(|evidence| member(evidence, "sources"))
+        .and_then(|sources| member(sources, kind))
+        .and_then(Value::as_array)
+        .is_some_and(|sources| sources.iter().any(|s| s.as_str() == Some(DERIVED_SOURCE)));
+    let depended: Vec<Value> = derivations
+        .iter()
+        .map(|d| {
+            object([
+                ("correlation", text(&d.correlation)),
+                ("commitment", digest(&d.commitment)),
+                ("record", d.record().map_or(Value::Null, text)),
+            ])
+        })
+        .collect();
+    let mut requirements: Vec<&str> = member(contract, "requires")
+        .and_then(Value::as_array)
+        .unwrap_or(&[])
+        .iter()
+        .filter(|requirement| {
+            accepted && member(requirement, "predicate").is_some_and(|p| quantifies_over(p, kind))
+        })
+        .filter_map(|requirement| string(requirement, "id"))
+        .collect();
+    requirements.sort_by(|a, b| cmp_keys(a, b));
+    Value::Array(
+        requirements
+            .into_iter()
+            .map(|id| {
+                object([
+                    ("requirement", text(id)),
+                    (
+                        "method",
+                        object([
+                            ("name", text(prepare::METHOD)),
+                            ("version", text(prepare::METHOD_VERSION)),
+                        ]),
+                    ),
+                    ("derivations", Value::Array(depended.clone())),
+                ])
+            })
+            .collect(),
+    )
+}
+
 /// Replay a package against the caller's trust registry.
 ///
 /// Stages, in order: the package's shape; every statement against the registry; the contract and
@@ -376,6 +444,10 @@ pub fn replay(package: &Value, trust: &Trust) -> Result<Replayed, Failure> {
         ("inputs", digest(&inputs.digest())),
         ("evidence", digest(&admitted.commitment)),
         ("derivations", commitments),
+        (
+            "bindings",
+            bindings(contract_value, decision_kind, &evaluated.derivations),
+        ),
         ("result", evaluated.result.clone()),
     ]);
     let commitment = core.digest();

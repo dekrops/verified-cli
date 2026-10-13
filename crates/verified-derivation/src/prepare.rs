@@ -11,8 +11,8 @@ use crate::cedar::{self, Question};
 use crate::{Body, DERIVED_SOURCE, Item, digest, member, number, object, string, text};
 
 const FORMAT: &str = "verified-recomputed-authorization-experimental-1";
-const METHOD: &str = "verified-cedar-recomputation";
-const METHOD_VERSION: &str = "0.2.0";
+pub(crate) const METHOD: &str = "verified-cedar-recomputation";
+pub(crate) const METHOD_VERSION: &str = "0.2.0";
 const FEATURES: &str = "cedar-static-no-context-1";
 const POLICY_SET: &str = "cedarPolicySet";
 const ENTITY: &str = "cedarEntity";
@@ -128,7 +128,17 @@ pub struct Derivation {
     pub outcome: &'static str,
     /// The failed guards, sorted.
     pub reasons: Vec<&'static str>,
+    /// What Cedar itself returned, when it was asked and answered. A diagnostic: `outcome` is
+    /// the only thing that decides.
+    pub engine_decision: Option<&'static str>,
     fact: Option<Value>,
+}
+
+impl Derivation {
+    /// The identifier of the record this derivation yielded, if it yielded one.
+    pub(crate) fn record(&self) -> Option<&str> {
+        string(self.fact.as_ref()?, "id")
+    }
 }
 
 type Failure = (&'static str, String);
@@ -476,6 +486,7 @@ struct Decided {
     errors: Vec<String>,
     details: Vec<String>,
     inputs: Option<Inputs>,
+    engine_decision: Option<&'static str>,
 }
 
 fn undecided(found: Vec<Failure>) -> Decided {
@@ -489,6 +500,7 @@ fn undecided(found: Vec<Failure>) -> Decided {
             .map(|(code, detail)| format!("{code}: {detail}"))
             .collect(),
         inputs: None,
+        engine_decision: None,
     }
 }
 
@@ -516,6 +528,7 @@ fn decide(profile: &Profile<'_>, asked: &Asked, selection: &Selection<'_>) -> De
                 errors: answer.errors,
                 details: answer.details,
                 inputs: Some(inputs(selection, policies, schema)),
+                engine_decision: answer.engine_decision,
             }
         }
         // No policy set, several, or one that is not text: there is nothing to ask Cedar.
@@ -670,16 +683,32 @@ fn recompute(
 
     let core = core(profile, profile_digest, correlation, asked, &decided, used);
     let commitment = core.digest();
+    let reasons: Vec<&'static str> = if decided.permitted.is_some() {
+        Vec::new()
+    } else {
+        decided.reasons.iter().copied().collect()
+    };
+    // This implementation's account: what the engine returned, and what was made of it.
+    let texts = |values: &[String]| Value::Array(values.iter().map(|v| text(v)).collect());
     let diagnostics = object([
         ("engine", text(cedar::ENGINE)),
         (
-            "errors",
-            Value::Array(decided.errors.iter().map(|e| text(e)).collect()),
+            "engineDecision",
+            decided.engine_decision.map_or(Value::Null, text),
         ),
+        ("determining", texts(&decided.determining)),
+        ("errors", texts(&decided.errors)),
         (
-            "details",
-            Value::Array(details.iter().map(|d| text(d)).collect()),
+            "interpretation",
+            object([
+                ("outcome", text(outcome(decided.permitted))),
+                (
+                    "reasons",
+                    Value::Array(reasons.iter().map(|code| text(code)).collect()),
+                ),
+            ]),
         ),
+        ("details", texts(&details)),
     ]);
     Derivation {
         fact: fact(profile, correlation, asked, &decided, &commitment),
@@ -688,11 +717,8 @@ fn recompute(
         diagnostics,
         correlation: correlation.to_owned(),
         outcome: outcome(decided.permitted),
-        reasons: if decided.permitted.is_some() {
-            Vec::new()
-        } else {
-            decided.reasons.into_iter().collect()
-        },
+        reasons,
+        engine_decision: decided.engine_decision,
     }
 }
 
