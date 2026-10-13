@@ -17,6 +17,7 @@
 | [0013](0013-issuing-packages.md) | `wvp-0.2` packages are issued by the library that verifies them | Accepted; implemented; amended (commands) |
 | [0014](0014-fuzzing.md) | Fuzz targets live outside the workspace, on a pinned nightly | Accepted; implemented |
 | [0015](0015-work-relations.md) | Work relations are read by a crate of their own, which verifies no record | Accepted; implemented; amended (command, producer) |
+| [0016](0016-derivation-replay.md) | A recomputed authorization is replayed here, as a draft outside the protocol | Accepted; implemented; an exception to 0005 |
 
 "Proposed" means the design is a starting point for the pull request that
 builds it, not a commitment.

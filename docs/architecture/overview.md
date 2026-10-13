@@ -54,6 +54,15 @@ depends only on the canonical encoding. It answers "are these two claims about
 the same unit?" and nothing else: it holds no state, so it cannot say whether
 a unit was already billed, and no command uses it.
 
+**`verified-derivation`** replays a recomputed authorization: a record a
+verifier derives from signed evidence by asking the Cedar policy engine. It
+stands above the verifier and the contract evaluator, authenticates every
+statement itself, and compares its own result with the presented one only at
+the end. It is the one crate that links Cedar. The step it performs is
+proposed for the protocol and is not part of it; the crate is an exception to
+ADR 0005 and outside the compatibility promise
+([ADR 0016](../decisions/0016-derivation-replay.md)).
+
 **`verified-history`** reads work relations (work relation v1, a draft):
 signed statements by which a ledger or an application says how the records of
 one unit of work are related. It stands above the verifier and uses it only to

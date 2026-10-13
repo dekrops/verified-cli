@@ -15,7 +15,16 @@ version = 2
 # reviewed decision, not a convenience.
 # BSD-3-Clause: the dalek Ed25519 crates. It asks binary distributions to
 # reproduce its copyright notice, which a release process must do.
-allow = ["Apache-2.0", "BSD-3-Clause", "MIT", "Unicode-3.0"]
+# Zlib and Apache-2.0 WITH LLVM-exception: the Cedar policy engine's graph
+# (foldhash, linked; ar_archive_writer, build time only). ADR 0016.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
 confidence-threshold = 0.93
 
 [licenses.private]
