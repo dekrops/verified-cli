@@ -225,6 +225,13 @@ fn admit<'a>(listed: &'a [Value], tenant: &str, trust: &Trust) -> Result<Admitte
         authenticated.push((authentic, carried, parsed));
     }
     authenticated.sort_by(|a, b| cmp_keys(a.0.statement().id, b.0.statement().id));
+    // One statement, one identifier: two statements with the same one are not two records.
+    if authenticated
+        .windows(2)
+        .any(|pair| pair[0].0.statement().id == pair[1].0.statement().id)
+    {
+        return Err(evidence_failure("DUPLICATE_EVIDENCE_ID"));
+    }
 
     let (mut items, mut not_read, mut digests) = (Vec::new(), Vec::new(), Vec::new());
     for (authentic, carried, parsed) in authenticated {

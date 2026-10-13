@@ -76,8 +76,8 @@ protocol version.
   a documented command is its own surprise.
 - Writing this implementation found an error in the first: its binding
   reports a fixed Cedar language version whatever engine it carries. The
-  first implementation was corrected. The two now agree on all 22 example
-  packages: 15 reproduced with identical commitments, 7 that were altered
+  first implementation was corrected. The two now agree on all 23 example
+  packages: 15 reproduced with identical commitments, 8 that were altered
   failing at the same stage with the same code.
 
 ## Deliberately not here

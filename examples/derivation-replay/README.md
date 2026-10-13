@@ -1,6 +1,6 @@
 # Synthetic packages for replaying a recomputed authorization (draft)
 
-Twenty-two replay packages and the trust registry to replay them under. They
+Twenty-three replay packages and the trust registry to replay them under. They
 are **synthetic**: the tenant, systems, people, records and keys name nothing
 real, and the keys are test keys derived from fixed seeds.
 
@@ -23,7 +23,7 @@ policy set that was in force.
 | `11`, `12` | Reproduced: a denial that is not concluded because the event listing is incomplete; an authorized approval of an order that was not approved in the end | 0 |
 | `14-statements-in-another-order` | Reproduced, with the commitment of `01` | 0 |
 | `15-two-requirements-one-derivation` | Reproduced: the contract has two requirements over the derived records, and both are bound to the one derivation | 0 |
-| `20-statement-altered` | Not reproduced at `EVIDENCE`, `SIGNATURE_INVALID` | 1 |
+| `20-statement-altered`, `27-statement-twice` | Not reproduced at `EVIDENCE`: `SIGNATURE_INVALID`, `DUPLICATE_EVIDENCE_ID` | 1 |
 | `21`, `22`, `24`, `25` | Not reproduced at `DERIVATION`: a body altered, a statement removed, a correlation altered, an outcome altered with digests to match | 1 |
 | `23-profile-altered`, `26-contract-altered` | Not reproduced at `PROFILE`, at `CONTRACT` | 1 |
 

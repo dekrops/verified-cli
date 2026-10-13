@@ -98,15 +98,27 @@ fn an_altered_statement_fails_before_anything_is_computed() {
 }
 
 #[test]
-fn without_a_registry_nothing_runs() {
-    let output = run(&[
+fn an_unusable_registry_and_an_unreadable_package_have_their_own_codes() {
+    let registry = run(&[
+        "--json",
         "derivation",
         "replay",
         &example("01-allowed.json"),
         "--trust",
         "no-such-file.json",
     ]);
-    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(registry.status.code(), Some(2));
+    assert_eq!(json(&registry)["error"]["code"], "TRUST_REGISTRY");
+    let package = run(&[
+        "--json",
+        "derivation",
+        "replay",
+        "no-such-file.json",
+        "--trust",
+        &example("trust.json"),
+    ]);
+    assert_eq!(package.status.code(), Some(2));
+    assert_eq!(json(&package)["error"]["code"], "INPUT");
 }
 
 #[test]

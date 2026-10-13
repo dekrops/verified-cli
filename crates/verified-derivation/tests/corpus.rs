@@ -42,7 +42,7 @@ fn cases() -> Vec<String> {
 fn every_case_replays_as_the_first_implementation_says() {
     let trust = Trust::from_value(&read("trust.json")).expect("the registry is usable");
     let names = cases();
-    assert_eq!(names.len(), 22, "there are 22 cases");
+    assert_eq!(names.len(), 23, "there are 23 cases");
     let mut disagreements = Vec::new();
     for name in &names {
         let case = read(name);

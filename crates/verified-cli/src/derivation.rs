@@ -125,10 +125,12 @@ fn not_reproduced(out: &mut Output, failure: &Failure) {
 }
 
 pub(crate) fn run_replay(command: &DerivationReplay, out: &mut Output) -> Exit {
-    let loaded = registry(&command.trust, &Limits::DEFAULT)
-        .and_then(|trust| Ok((package(&command.package)?, trust)));
-    let (package, trust) = match loaded {
-        Ok(loaded) => loaded,
+    let trust = match registry(&command.trust, &Limits::DEFAULT) {
+        Ok(trust) => trust,
+        Err(message) => return failed(out, "TRUST_REGISTRY", &message),
+    };
+    let package = match package(&command.package) {
+        Ok(package) => package,
         Err(message) => return failed(out, "INPUT", &message),
     };
     match replay(&package, &trust) {
