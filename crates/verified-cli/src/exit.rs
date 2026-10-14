@@ -22,7 +22,8 @@ pub(crate) enum Exit {
     /// registry's log does not reach an entry held against it.
     Incomplete = 3,
     /// Every check ran and the package was not refused, but the decision it
-    /// reproduced is not the one `--require-decision` asked for.
+    /// reproduced is not the one `--require-decision` asked for, or it was
+    /// reproduced under a `wvp-0.2` contract the caller did not pin.
     DecisionNotRequired = 4,
 }
 

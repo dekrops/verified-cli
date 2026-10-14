@@ -311,8 +311,14 @@ fn replay_verifies_stored_packages_now_and_reuses_nothing() {
     let output = scratch.run(&["replay", "--trust", "trust.json"]);
     let text = stdout(&output);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert!(text.contains("SUPPORTED reproduced\n"), "{text}");
-    assert!(text.contains("UNDETERMINED reproduced\n"), "{text}");
+    assert!(
+        text.contains("SUPPORTED reproduced, contract not pinned\n"),
+        "{text}"
+    );
+    assert!(
+        text.contains("UNDETERMINED reproduced, contract not pinned\n"),
+        "{text}"
+    );
     assert!(
         text.contains(
             "2 package(s) verified now under the supplied registry; 0 refused or damaged."
@@ -331,17 +337,38 @@ fn replay_verifies_stored_packages_now_and_reuses_nothing() {
     ]);
     assert_eq!(output.status.code(), Some(4));
     assert_eq!(json(&output)["outcome"], "decision_not_required");
-    // Named packages only.
-    let output = scratch.run(&[
-        "replay",
-        "--quiet",
-        "--trust",
-        "trust.json",
-        "--require-decision",
-        "SUPPORTED",
-        &posted,
-    ]);
+    // Named packages only, under the contract the relying party agreed.
+    let pin = format!("sha-256:{}", Scenario::posted().contract.digest().to_hex());
+    let required = |extra: &[&str]| {
+        let mut args = vec![
+            "replay",
+            "--json",
+            "--trust",
+            "trust.json",
+            "--require-decision",
+            "SUPPORTED",
+        ];
+        args.extend_from_slice(extra);
+        args.push(&posted);
+        scratch.run(&args)
+    };
+    let output = required(&["--expect-contract", &pin]);
     assert_eq!(output.status.code(), Some(0));
+    assert_eq!(json(&output)["packages"][0]["contractPinned"], true);
+    // Unpinned, SUPPORTED does not meet the requirement, unless the caller
+    // accepts any contract.
+    let output = required(&[]);
+    assert_eq!(output.status.code(), Some(4));
+    assert_eq!(json(&output)["packages"][0]["contractPinned"], false);
+    assert_eq!(required(&["--any-contract"]).status.code(), Some(0));
+    // A package about another contract is refused, not counted.
+    let other = format!("sha-256:{}", "0".repeat(64));
+    let output = required(&["--expect-contract", &other]);
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(
+        json(&output)["packages"][0]["detail"],
+        "CONTRACT_NOT_EXPECTED"
+    );
 
     // The same packages under a registry that does not hold their signer.
     let output = scratch.run(&["replay", "--json", "--trust", "other.json"]);

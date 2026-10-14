@@ -75,7 +75,7 @@ pub(crate) fn run(command: &Verify, out: &mut Output) -> Exit {
         },
     };
     match verified_verifier::verify(package_text(&bytes), &options) {
-        Ok(report) => reported(out, &report, command.require_decision),
+        Ok(report) => reported(out, &report, command.require_decision, command.any_contract),
         Err(Rejection::Refused(refusal)) => refused(out, &refusal),
         Err(Rejection::Limit(limit)) => not_examined(out, limit),
         Err(error @ Rejection::ExpectationsUndefined(_)) => {
@@ -296,7 +296,12 @@ pub(crate) fn issuer_row(issuer: IssuerSignature) -> Row {
 
 /// The package was not refused. Whether every check ran is the report's to
 /// say, and decides the exit code.
-fn reported(out: &mut Output, report: &Report, required: Option<Decision>) -> Exit {
+fn reported(
+    out: &mut Output,
+    report: &Report,
+    required: Option<Decision>,
+    any_contract: bool,
+) -> Exit {
     let complete = report.is_complete();
     // A requirement is met only by a decision this run reproduced. The
     // decision a package carries never meets one.
@@ -304,25 +309,44 @@ fn reported(out: &mut Output, report: &Report, required: Option<Decision>) -> Ex
         DecisionFinding::Reproduced(reproduced) => Some(reproduced.decision),
         _ => None,
     };
-    let met = required.map(|required| reproduced == Some(required));
+    // Nor does one reproduced under a contract the caller did not pin,
+    // unless the caller said that any contract will do.
+    let pinned = report.contract_pinned() || any_contract;
+    let met = required.map(|required| reproduced == Some(required) && pinned);
     match out.mode {
         Mode::Quiet => {}
         Mode::Json => {
             let mut result = report_json(report, complete);
             if let (Some(required), Some(met)) = (required, met) {
-                result["requiredDecision"] = json!({ "decision": required.as_str(), "met": met });
+                result["requiredDecision"] = json!({
+                    "decision": required.as_str(),
+                    "met": met,
+                    "anyContract": any_contract,
+                });
             }
             out.json(&result);
         }
         Mode::Human => {
             human(out, report, complete);
             match (required, met, reproduced) {
-                (Some(required), Some(false), Some(reproduced)) => out.line(&format!(
-                    "required decision {required} not met: the reproduced decision is {reproduced}"
+                (Some(required), Some(false), Some(reproduced)) if reproduced != required => {
+                    out.line(&format!(
+                        "required decision {required} not met: the reproduced decision is {reproduced}"
+                    ));
+                }
+                (Some(required), Some(false), Some(_)) => out.line(&format!(
+                    "required decision {required} not met: the contract is not pinned; give \
+                     --expect-contract with the digest you agreed, or --any-contract"
                 )),
                 (Some(required), Some(false), None) => out.line(&format!(
                     "required decision {required} not met: no decision was reproduced"
                 )),
+                (Some(required), Some(true), _) if !report.contract_pinned() => {
+                    out.line(&format!(
+                        "required decision {required} met, under the contract the package carries \
+                         (--any-contract)"
+                    ));
+                }
                 (Some(required), Some(true), _) => {
                     out.line(&format!("required decision {required} met"));
                 }
@@ -348,6 +372,14 @@ fn binding_rows(report: &Report) -> Vec<Row> {
             "work record",
             Tone::Established,
             "the supplied record is about this package",
+        ));
+    }
+    if !report.contract_pinned() {
+        rows.push(Row::new(
+            "contract pinned",
+            Tone::Unknown,
+            "NO: the decision is about the contract the package carries; \
+             pin yours with --expect-contract",
         ));
     }
     if !report.expectations_met.is_empty() {
@@ -441,9 +473,19 @@ pub(crate) fn human(out: &mut Output, report: &Report, complete: bool) {
                 ..
             }),
             true,
-        ) => {
+        ) if report.contract_pinned() => {
             out.line("complete: every protocol check ran; the decision SUPPORTED was reproduced");
         }
+        (
+            DecisionFinding::Reproduced(Reproduced {
+                decision: Decision::Supported,
+                ..
+            }),
+            true,
+        ) => out.line(
+            "complete: every protocol check ran; the decision SUPPORTED was reproduced under \
+             the contract the package carries, which you did not pin",
+        ),
         (DecisionFinding::Reproduced(Reproduced { decision, .. }), true) => {
             out.line(&format!(
                 "complete: every protocol check ran; the reproduced decision is {decision}, \

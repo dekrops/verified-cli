@@ -62,12 +62,14 @@ mapping.
 | `properties.sourceTruthfulness` | Always `{ "status": "not_established", … }` |
 | `expectationsMet` | The expectations that were given, each `null` if not given |
 | `workRecord`, `recordMatched` | `wvp-0.2` only: the record computed from the package, and whether a supplied one was compared (it matched, or the outcome would be `refused`) |
-| `requiredDecision` | Only with `--require-decision`: `decision` and `met` |
+| `contractPinned` | `wvp-0.2` only: whether `--expect-contract` pinned the contract. When `false`, the decision is about the contract the package carries, which its producer chose |
+| `requiredDecision` | Only with `--require-decision`: `decision`, `met` and `anyContract`. For `wvp-0.2`, `met` needs a pinned contract unless `anyContract` |
 | `note` | Only when `incomplete`: why |
 
-To act on a package: require `outcome == "complete"` **and**
-`properties.decisionReproduced.decision` equal to the decision you need, or
-pass `--require-decision` and require exit code 0.
+To act on a package: require `outcome == "complete"`,
+`properties.decisionReproduced.decision` equal to the decision you need **and**
+`contractPinned` (for `wvp-0.2`), or pass `--expect-contract` and
+`--require-decision` and require exit code 0.
 
 ## Workspace commands
 
