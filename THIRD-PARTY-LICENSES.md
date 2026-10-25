@@ -22,7 +22,7 @@ This project's own license is in [`LICENSE`](LICENSE), and its notices are in
 
 Used by:
 - [cmov 0.5.4](https://github.com/RustCrypto/utils)
-- [ctutils 0.4.3](https://github.com/RustCrypto/utils)
+- [ctutils 0.4.4](https://github.com/RustCrypto/utils)
 - [miette 7.6.0](https://github.com/zkat/miette)
 - [tinyvec 1.13.3](https://github.com/Lokathor/tinyvec)
 - [zeroize 1.9.1](https://github.com/RustCrypto/utils)
