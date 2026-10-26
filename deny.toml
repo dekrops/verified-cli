@@ -8,6 +8,14 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+    # The Marvin attack recovers an RSA private key from the timing of
+    # operations with it. This tool holds no RSA private key: `rsa` only
+    # verifies RS256 passkey signatures over public data, for contract
+    # approvals (decision 0017). Revisit if any RSA private-key operation
+    # is ever added.
+    { id = "RUSTSEC-2023-0071", reason = "verification with public keys only; no RSA private key is used (docs/decisions/0017)" },
+]
 
 [licenses]
 version = 2

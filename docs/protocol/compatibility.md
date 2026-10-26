@@ -33,6 +33,10 @@ resolutions it names: `verified registration audit`. The library is
 `verified_verifier::registration`. The unit check is
 `verified registration unit`, and `verified_work_unit::registered`.
 
+Contract approval v1 is a separate draft protocol, too. This project
+verifies an approval, all fifteen checks with ES256, EdDSA and RS256 passkeys:
+`verified approval verify`, and `verified_verifier::approval`.
+
 Chain verification is not one of the thirteen checks. A package's statements
 may carry chain links; their shape is checked and their continuity is not,
 which is also what the two upstream verifiers do for packages. A relying
@@ -62,6 +66,7 @@ expectation is compared in full, never by refusal code alone.
 | `claim-registration/v1/unit.json`, 7 cases | 7 reproduced: accepted, or the refusal code. |
 | `claim-registration/v1/audit.json`, `notice.json`, `dispute.json`, 69 cases | 69 reproduced (22, 15 and 32): the refusal code, or every claim's digest, identifier, position, deadline, state and dispute state. |
 | `work-relation/v1/vectors.json`, 41 cases | 41 reproduced: every record's reference or why it is not held, every relation's standing, every derived same-claim result and every stream's completeness. A draft specification; this is its second implementation. |
+| `contract-approval/v1/vectors.json`, 18 cases | 18 reproduced against the vectors in `dekrops/verified` (#279), before their publication in `dekrops/wvp`: the statement and challenge of the 5 valid approvals, and the refusal code of the 13 invalid ones. |
 | `evidence-statement/v1`, 39 vectors | 39 reproduced: 17 statement, 13 chain and 9 admission. Refusals by code; accepted statements by key, canonical text, digest and signing input; accepted chains by their whole summary; accepted admissions by their evidence manifest. **Not compared:** the `verificationResultSha256` and `verificationStatus` of the 3 accepted admissions, which are the platform's verification result and are not computed here. |
 
 One case is not reproduced because it cannot reach the evaluator:

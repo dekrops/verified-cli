@@ -33,6 +33,7 @@ Exit codes:
      registration: the registration, the log, the audit or the unit check
      was refused, or the log contradicts the entry you hold
      evidence chain: the statements are refused, or are not one run
+     approval verify: the approval is refused; the refusal code is printed
      derivation replay: the presented result was not reproduced
      derivation compare: the two files differ
      trust show: the registry cannot be used
@@ -173,6 +174,13 @@ pub(crate) enum Command {
     /// Check evidence statements held outside a package (draft protocol)
     #[command(subcommand)]
     Evidence(Evidence),
+    /// Check a signed contract approval (draft protocol)
+    ///
+    /// Contract approval v1 is a draft, separate from the Work Verification
+    /// Protocol: an approver signs, with a passkey, a statement naming a
+    /// Work Contract and what they were shown before approving it.
+    #[command(subcommand)]
+    Approval(Approval),
     /// Read what authorities say about the records of one unit of work
     /// (draft protocol)
     ///
@@ -378,6 +386,39 @@ pub(crate) struct HistoryRead {
     /// Your trust registry: a JSON file of the keys you accept
     #[arg(long, value_name = "REGISTRY")]
     pub(crate) trust: PathBuf,
+}
+
+#[derive(Debug, Subcommand)]
+#[allow(clippy::doc_markdown)] // help text, not Markdown
+pub(crate) enum Approval {
+    /// Check that an approval is a passkey's signature over its statement
+    ///
+    /// Takes an approval file (`approval.json`) and applies contract approval
+    /// v1's checks in order, as the relying party you name: the snapshot of
+    /// what the approver was shown is the one the statement names and is of
+    /// the same contract, and the passkey signed the statement for your
+    /// relying party, from an origin you accept, with the user present.
+    /// ES256, EdDSA and RS256 passkeys are supported.
+    ///
+    /// Exit code 0 means whoever approved held that passkey's authenticator.
+    /// Whose passkey it is, is for you to know: the approval carries its key.
+    /// It does not show what the authenticator displayed.
+    Verify(ApprovalVerify),
+}
+
+#[derive(Debug, ClapArgs)]
+#[allow(clippy::doc_markdown)] // help text, not Markdown
+pub(crate) struct ApprovalVerify {
+    /// The approval: a JSON file, as the service offers it for download
+    pub(crate) approval: PathBuf,
+    /// The relying party the passkey was registered with: the service's
+    /// host name, such as playground.beverified.ai
+    #[arg(long, value_name = "HOST")]
+    pub(crate) rp_id: String,
+    /// An origin you accept the assertion from: scheme, host and any
+    /// port, as the browser reports it. Repeat for several
+    #[arg(long = "origin", value_name = "ORIGIN", required = true)]
+    pub(crate) origins: Vec<String>,
 }
 
 #[derive(Debug, Subcommand)]
