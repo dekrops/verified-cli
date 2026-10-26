@@ -60,3 +60,10 @@ use EdDSA. The specification requires all three.
   direction of disagreement.
 - What a valid approval does not establish is printed with it: whose passkey
   it is, and what the authenticator displayed.
+- Not checked, because contract approval v1 does not check it (its section
+  6): `crossOrigin` and `topOrigin` in the client data, so an approval
+  collected in a page framed by another site verifies if its `origin` is
+  accepted; the user-verified flag; the signature counter; attestation;
+  `issuedAt`. Checking any of them here would refuse approvals the
+  specification accepts. A stricter reading belongs in a next version of the
+  specification.

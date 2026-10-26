@@ -477,7 +477,11 @@ are supported ([decision 0017](docs/decisions/0017-contract-approvals.md)).
 A valid approval shows that whoever approved held that passkey's
 authenticator, for that contract and that snapshot. It does not show whose
 passkey it is (the approval carries its key; that it is the approver's is for
-you to know), or what the authenticator displayed.
+you to know), or what the authenticator displayed. As the specification
+says, it does not check the client data's `crossOrigin` or `topOrigin` (an
+approval collected in a page framed by another site still verifies if its
+`origin` is one you accept), user verification, the signature counter,
+attestation, or when the statement was issued.
 
 ## Where it is going
 
