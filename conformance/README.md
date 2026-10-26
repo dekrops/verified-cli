@@ -25,12 +25,13 @@ VERIFIED_CONFORMANCE_REQUIRED=1 \
 
 - `VERIFIED_CONFORMANCE_DIR` is the directory containing
   `canonical-hash-v1.json`, `wvp/`, `work-contract/`, `work-unit/`,
-  `evidence-statement/`, `claim-registration/` and `work-relation/`.
+  `evidence-statement/`, `claim-registration/`, `work-relation/` and
+  `contract-approval/`.
 - Without it the corpus tests print `skipped` and pass. With
   `VERIFIED_CONFORMANCE_REQUIRED=1` a missing corpus is a failure, so a run
   that claims conformance cannot skip silently.
 
-Seven test files use it:
+Eight test files use it:
 
 | Test | Corpus | What it checks |
 | --- | --- | --- |
@@ -39,6 +40,7 @@ Seven test files use it:
 | `verified-work-unit/tests/work_unit.rs` | `work-unit/v1/vectors.json`, `claim-registration/v1/unit.json` | Every key commitment, canonical identity and nullifier; the outcome of every unit check. |
 | `verified-verifier/tests/evidence_conformance.rs` | `evidence-statement/v1` | The refusal code of every refused statement, chain and admission; the key, canonical text and digests of every accepted statement; the summary of every accepted chain; the evidence manifest of every accepted admission. Not the platform's verification result. |
 | `verified-verifier/tests/registration_conformance.rs` | `claim-registration/v1/vectors.json`, `log.json`, `audit.json`, `notice.json`, `dispute.json` | The refusal code of every refused registration, and every stated fact of every accepted one. For logs: the refusal code, the segment's summary, or how the held entry relates to it. For audits: the refusal code, or every claim with its state and dispute state. |
+| `verified-verifier/tests/approval_conformance.rs` | `contract-approval/v1/vectors.json` | The statement and challenge of every valid approval; the refusal code of every invalid one. Each approval is handed over as the text the vectors hold. |
 | `verified-history/tests/conformance.rs` | `work-relation/v1/vectors.json` | The whole expected reading of every case: each record's reference or why it is not held, each relation's standing with its code or absent references, each derived same-claim result, and each stream's completeness. |
 | `verified-verifier/tests/conformance.rs` | `wvp/v0.1`, `wvp/v0.2`, `expectations.json`, the worked examples | The whole expected report or refusal of every vector, under the registry the vector supplies. |
 

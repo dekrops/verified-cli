@@ -44,7 +44,8 @@ complete: every protocol check ran; the decision SUPPORTED was reproduced
 > protocol's checks; `init`, `import`, `show`, `log`, `trace`, `fsck`, `export`,
 > `diff` and `replay` keep, inspect and move packages in a local workspace;
 > `registration` and `evidence` check claim registrations and statement
-> chains. The protocols are drafts.
+> chains; `approval` checks signed contract approvals. The protocols are
+> drafts.
 > Nothing here is audited, certified or production-hardened.
 >
 > **Open source under the [Apache License 2.0](LICENSE).** Tagged revisions
@@ -453,6 +454,34 @@ inserted, removed or altered. It shows nothing about steps after the last:
 whoever passes statements on can always leave off the end. Each statement is
 authentic, which is not the same as true. Verifying a package does not
 verify chains; the protocol does not make continuity a package check.
+
+## Contract approvals (draft)
+
+An approver can approve the exact text of a Work Contract by signing, with a
+passkey, a statement that names the contract and a snapshot of what they were
+shown. The service offers the approval for download (`approval.json`); this
+checks it offline, as the relying party you name:
+
+```sh
+verified approval verify approval.json \
+  --rp-id playground.beverified.ai --origin https://playground.beverified.ai
+```
+
+It applies the fifteen checks of
+[contract approval v1](https://github.com/dekrops/wvp/blob/main/protocols/contract-approval/v1/SPEC.md)
+in order: the snapshot is the one the statement names and is of the same
+contract, and the passkey signed the statement for your relying party, from
+an origin you accept, with the user present. ES256, EdDSA and RS256 passkeys
+are supported ([decision 0017](docs/decisions/0017-contract-approvals.md)).
+
+A valid approval shows that whoever approved held that passkey's
+authenticator, for that contract and that snapshot. It does not show whose
+passkey it is (the approval carries its key; that it is the approver's is for
+you to know), or what the authenticator displayed. As the specification
+says, it does not check the client data's `crossOrigin` or `topOrigin` (an
+approval collected in a page framed by another site still verifies if its
+`origin` is one you accept), user verification, the signature counter,
+attestation, or when the statement was issued.
 
 ## Where it is going
 

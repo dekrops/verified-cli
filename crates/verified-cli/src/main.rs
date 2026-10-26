@@ -5,6 +5,7 @@
 //! This binary parses arguments, reads files and prints. Every protocol rule
 //! lives in the library crates.
 
+mod approval;
 mod cli;
 mod derivation;
 mod evidence;
@@ -49,6 +50,9 @@ fn main() -> ExitCode {
         }
         cli::Command::Registration(cli::Registration::Unit(command)) => {
             registration::unit(command, &mut out)
+        }
+        cli::Command::Approval(cli::Approval::Verify(command)) => {
+            approval::verify(command, &mut out)
         }
         cli::Command::Evidence(cli::Evidence::Chain(command)) => evidence::chain(command, &mut out),
         cli::Command::Evidence(cli::Evidence::Sign(command)) => evidence::sign(command, &mut out),

@@ -13,6 +13,9 @@ publish.workspace = true
 [dependencies]
 base64.workspace = true
 ed25519-dalek.workspace = true
+p256.workspace = true
+rsa.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 verified-canonical.workspace = true
 verified-contract.workspace = true
@@ -22,6 +25,7 @@ verified-protocol.workspace = true
 base64.workspace = true
 ed25519-dalek.workspace = true
 proptest.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
 
 [lints]
 workspace = true

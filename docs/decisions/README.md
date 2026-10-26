@@ -18,6 +18,7 @@
 | [0014](0014-fuzzing.md) | Fuzz targets live outside the workspace, on a pinned nightly | Accepted; implemented |
 | [0015](0015-work-relations.md) | Work relations are read by a crate of their own, which verifies no record | Accepted; implemented; amended (command, producer) |
 | [0016](0016-derivation-replay.md) | A recomputed authorization is replayed here, as a draft outside the protocol | Accepted; implemented; an exception to 0005 |
+| [0017](0017-contract-approvals.md) | Contract approvals are verified here, with the WebAuthn signature schemes | Accepted; implemented |
 
 "Proposed" means the design is a starting point for the pull request that
 builds it, not a commitment.

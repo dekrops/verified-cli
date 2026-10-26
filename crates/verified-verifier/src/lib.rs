@@ -53,6 +53,12 @@
 //! protocol with its own objects, codes and trust configuration. Nothing in
 //! package verification depends on it.
 //!
+//! # Contract approvals
+//!
+//! [`approval`] checks a contract approval offline: a statement an approver
+//! signed with a passkey (`WebAuthn`), naming a contract and what they were
+//! shown. A separate draft protocol with its own codes.
+//!
 //! # Issuing
 //!
 //! [`issue`] builds `wvp-0.2` packages from a contract, a claim and signed
@@ -67,6 +73,7 @@
 //! a claim. Verifying a package does not verify chains: a package's
 //! statements may carry chain links, and only their structure is checked.
 
+pub mod approval;
 mod container;
 pub mod evidence;
 mod inspect;

@@ -14,7 +14,7 @@ pub(crate) const ED25519: &str = "Ed25519";
 /// The DER encoding of an Ed25519 `SubjectPublicKeyInfo` up to the key: a
 /// sequence holding the algorithm identifier 1.3.101.112 and a 33-byte bit
 /// string with no unused bits. The 32 key bytes follow.
-const SPKI_PREFIX: [u8; 12] = [
+pub(crate) const SPKI_PREFIX: [u8; 12] = [
     0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
 ];
 
