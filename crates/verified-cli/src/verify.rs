@@ -231,9 +231,10 @@ pub(crate) fn decision_rows(finding: &DecisionFinding) -> Vec<Row> {
     };
     match evaluation {
         Evaluation::OrderTransition { conditions } => {
+            let width = column(conditions.iter().map(|c| &c.id));
             rows.extend(conditions.iter().map(|c| {
                 let holds = if c.holds { "holds" } else { "does not hold" };
-                Row::new("", truth(c.holds), format!("  {:<28}{holds}", c.id))
+                Row::new("", truth(c.holds), format!("  {:<width$}{holds}", c.id))
             }));
         }
         Evaluation::WorkContract {
@@ -241,13 +242,14 @@ pub(crate) fn decision_rows(finding: &DecisionFinding) -> Vec<Row> {
             ignored,
             conflicts,
         } => {
+            let width = column(requirements.iter().map(|r| &r.id));
             rows.extend(requirements.iter().map(|r| {
                 let tone = match r.value.as_str() {
                     "TRUE" => Tone::Established,
                     "FALSE" => Tone::Negative,
                     _ => Tone::Unknown,
                 };
-                Row::new("", tone, format!("  {:<28}{}", r.id, r.value))
+                Row::new("", tone, format!("  {:<width$}{}", r.id, r.value))
             }));
             if !ignored.is_empty() {
                 rows.push(Row::new(
@@ -510,5 +512,26 @@ mod tests {
         assert_eq!(package_text(b"{} \n"), b"{} ");
         assert_eq!(package_text(b"\n"), b"");
         assert_eq!(package_text(b""), b"");
+    }
+}
+
+/// The width of an identifier column: 28, or wider so that the longest identifier still leaves two
+/// spaces before its value.
+fn column<S: AsRef<str>>(ids: impl Iterator<Item = S>) -> usize {
+    ids.map(|id| id.as_ref().chars().count() + 2)
+        .max()
+        .unwrap_or(0)
+        .max(28)
+}
+
+#[cfg(test)]
+mod column_tests {
+    use super::column;
+
+    #[test]
+    fn short_identifiers_keep_the_usual_column_and_long_ones_widen_it() {
+        assert_eq!(column(["POSTED", "APPROVED"].into_iter()), 28);
+        assert_eq!(column(["S_DB_SECURITY_OWNER_APPROVED"].into_iter()), 30);
+        assert_eq!(column(std::iter::empty::<&str>()), 28);
     }
 }
