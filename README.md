@@ -21,6 +21,7 @@
 
 ```console
 $ verified verify examples/invoice-posting/supported.json \
+    --expect-contract sha-256:6a2c3b0bf5814aacd8c699f430db0a11b50de812d3dd86f30823aa98df46b550 \
     --trust examples/invoice-posting/trust.json
 Work Verification Protocol package (wvp-0.2, draft)
 package               wvp:sha-256:d0982b73f310…
@@ -34,6 +35,7 @@ decision reproduced   SUPPORTED, matches the package
                         POSTED                      TRUE
 issuer signature      absent
 source truthfulness   NOT established: no check can establish it
+expectations          met (contract)
 
 complete: every protocol check ran; the decision SUPPORTED was reproduced
 ```
@@ -69,6 +71,12 @@ that:
 - each piece of evidence was signed by a key you authorized for that source;
 - the decision (`SUPPORTED`, `CONTRADICTED` or `UNDETERMINED`) is what the
   contract yields from that evidence, recomputed on your machine.
+
+The contract travels in the package, chosen by whoever made it. A contract
+that requires nothing reproduces as `SUPPORTED` like any other, so the
+decision is about the contract you agreed only when you pin it:
+`--expect-contract` with its digest. Without a pin, the report says
+`contract pinned  NO`.
 
 It cannot establish that a source told the truth, that a completeness
 statement was honest, or that the package holds everything the sources know.
@@ -116,7 +124,8 @@ $ echo $?
 | --- | --- |
 | `--trust <REGISTRY>` | Your trust registry: the keys you accept, for which issuer, tenant, sources and period. Keys inside a package are never trusted. |
 | `--expect-tenant`, `--expect-contract`, `--expect-claim` | Refuse a `wvp-0.2` package that verifies but is about another tenant, contract (by digest) or claim than you meant. |
-| `--require-decision <DECISION>` | Exit 0 only if this decision (`SUPPORTED`, `CONTRADICTED` or `UNDETERMINED`) was reproduced; otherwise exit 4. Use it in scripts. |
+| `--require-decision <DECISION>` | Exit 0 only if this decision (`SUPPORTED`, `CONTRADICTED` or `UNDETERMINED`) was reproduced, and for `wvp-0.2` under a contract pinned with `--expect-contract`; otherwise exit 4. Use it in scripts. |
+| `--any-contract` | With `--require-decision`: accept the decision under whatever contract a `wvp-0.2` package carries. Say so only if any contract will do. |
 | `--protocol <VERSION>` | Require a protocol version instead of detecting it. |
 | `--json` | The same result as structured data, with full identifiers. |
 | `--quiet` | Print nothing; rely on the exit code. |
@@ -128,7 +137,7 @@ $ echo $?
 | 1 | Refused by a protocol check. `fsck`: damage found. `diff`: the packages differ. `replay`: a package was refused or is damaged. |
 | 2 | The command could not run (usage, unreadable input, unusable registry, resource limit). |
 | 3 | `verify`: not refused, but not every check ran (no registry). |
-| 4 | `--require-decision` (`verify`, `replay`): every check ran, but a reproduced decision is not the required one. |
+| 4 | `--require-decision` (`verify`, `replay`): every check ran, but a reproduced decision is not the required one, or a `wvp-0.2` contract was not pinned. |
 
 ### Gating a script on the decision
 
@@ -138,15 +147,21 @@ A script that acts on the exit code alone must therefore say which decision
 it needs:
 
 ```sh
-verified verify invoice.json --trust trust.json --require-decision SUPPORTED \
+verified verify invoice.json --trust trust.json \
+  --expect-contract sha-256:<the digest you agreed> \
+  --require-decision SUPPORTED \
   && pay_invoice
 ```
 
 With `--require-decision`, exit 0 means every check ran **and** that decision
-was reproduced on this machine. Any other reproduced decision exits 4. The
-decision a package merely carries never satisfies the requirement: without a
-registry nothing is reproduced and the exit code is 3. The flag is opt-in;
-without it the behaviour is unchanged.
+was reproduced on this machine, under the contract you pinned. Any other
+reproduced decision exits 4, and so does a `wvp-0.2` package whose contract
+you did not pin: its producer chose that contract, and one that requires
+nothing reproduces as `SUPPORTED`. `--any-contract` accepts the contract the
+package carries, when that is really what you mean. The decision a package
+merely carries never satisfies the requirement: without a registry nothing is
+reproduced and the exit code is 3. Without `--require-decision` the exit code
+is unchanged; the report says whether the contract was pinned.
 
 A trust registry is a JSON file:
 
@@ -331,7 +346,7 @@ no damage found. Every stored package is the content its names commit to; that s
 | --- | --- |
 | `verified export <id> [-o FILE]` | Writes a stored package out byte for byte, to standard output or to a file that must not exist. Nothing is added: no signature, no result, no claim of this tool's own. |
 | `verified diff <a> <b>` | Compares two packages (files or stored ones): which components differ and what the two state differently. Both need integrity; nothing else is checked. Exits 0 if the texts are identical, 1 if not. |
-| `verified replay --trust REGISTRY [id…]` | Verifies stored packages again, now, under the registry given now. Nothing from an earlier run is reused. Exits 1 if any is refused or damaged; with `--require-decision`, 4 if any reproduces another decision. |
+| `verified replay --trust REGISTRY [id…]` | Verifies stored packages again, now, under the registry given now. Nothing from an earlier run is reused. Exits 1 if any is refused or damaged; with `--require-decision`, 4 if any reproduces another decision or, unless `--any-contract`, is a `wvp-0.2` package whose contract `--expect-contract` did not pin. |
 | `verified verify <package> --record FILE` | Refuses (`RECORD_MISMATCH`) a `wvp-0.2` package that a work record you hold is not about, naming every member that differs. |
 
 A **work record** states one verification of one package: the claim, the

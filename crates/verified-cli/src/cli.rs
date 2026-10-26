@@ -44,7 +44,8 @@ Exit codes:
   3  verify: the package was not refused, but not every check ran
      registration log: the log does not reach the entry you hold
   4  --require-decision: every check ran, but a reproduced decision is not
-     the required one
+     the required one, or a wvp-0.2 contract was not pinned
+     (--expect-contract; --any-contract accepts it unpinned)
 
 The Work Verification Protocol is a draft. No check establishes that a
 source told the truth.
@@ -671,9 +672,21 @@ pub(crate) struct Replay {
     /// Your trust registry
     #[arg(long, value_name = "REGISTRY")]
     pub(crate) trust: PathBuf,
-    /// Exit 4 unless every package reproduces this decision
+    /// Exit 4 unless every package reproduces this decision under a pinned
+    /// contract
     #[arg(long, value_name = "DECISION", value_parser = decision)]
     pub(crate) require_decision: Option<Decision>,
+    /// Refuse a wvp-0.2 package about another contract, by digest
+    #[arg(long, value_name = "SHA-256", value_parser = digest)]
+    pub(crate) expect_contract: Option<Sha256Digest>,
+    /// With --require-decision: accept the decision under whatever contract
+    /// each wvp-0.2 package carries, unpinned
+    #[arg(
+        long,
+        requires = "require_decision",
+        conflicts_with = "expect_contract"
+    )]
+    pub(crate) any_contract: bool,
     /// The packages to verify (default: every stored package)
     pub(crate) packages: Vec<String>,
 }
@@ -725,7 +738,8 @@ pub(crate) struct Verify {
     #[arg(long, value_name = "VERSION", value_parser = protocol)]
     pub(crate) protocol: Option<ProtocolVersion>,
     /// Exit 0 only if this decision was reproduced: SUPPORTED, CONTRADICTED
-    /// or UNDETERMINED. Another reproduced decision exits 4
+    /// or UNDETERMINED. Another reproduced decision exits 4, and so does a
+    /// wvp-0.2 package whose contract you did not pin with --expect-contract
     #[arg(long, value_name = "DECISION", value_parser = decision)]
     pub(crate) require_decision: Option<Decision>,
     /// A work record you hold, as a JSON file: refuse a package the record
@@ -738,6 +752,15 @@ pub(crate) struct Verify {
     /// Refuse a package about another contract, by digest (wvp-0.2)
     #[arg(long, value_name = "SHA-256", value_parser = digest)]
     pub(crate) expect_contract: Option<Sha256Digest>,
+    /// With --require-decision: accept the decision under whatever contract
+    /// the package carries, unpinned (wvp-0.2). The package's producer chose
+    /// that contract, and one that requires nothing is SUPPORTED
+    #[arg(
+        long,
+        requires = "require_decision",
+        conflicts_with = "expect_contract"
+    )]
+    pub(crate) any_contract: bool,
     /// Refuse a package carrying another claim, by identifier (wvp-0.2)
     #[arg(long, value_name = "CLAIM")]
     pub(crate) expect_claim: Option<String>,

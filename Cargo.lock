@@ -2032,7 +2032,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "verified-canonical"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "sha2",
@@ -2041,7 +2041,7 @@ dependencies = [
 
 [[package]]
 name = "verified-cli"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "anstream",
  "anstyle",
@@ -2062,14 +2062,14 @@ dependencies = [
 
 [[package]]
 name = "verified-contract"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "verified-canonical",
 ]
 
 [[package]]
 name = "verified-derivation"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "cedar-policy",
  "serde_json",
@@ -2081,7 +2081,7 @@ dependencies = [
 
 [[package]]
 name = "verified-history"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -2092,7 +2092,7 @@ dependencies = [
 
 [[package]]
 name = "verified-protocol"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "thiserror",
  "verified-canonical",
@@ -2100,7 +2100,7 @@ dependencies = [
 
 [[package]]
 name = "verified-verifier"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -2117,7 +2117,7 @@ dependencies = [
 
 [[package]]
 name = "verified-work-unit"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "hmac",
  "sha2",
@@ -2128,7 +2128,7 @@ dependencies = [
 
 [[package]]
 name = "verified-workspace"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "base64",
  "ed25519-dalek",

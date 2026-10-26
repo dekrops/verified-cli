@@ -126,7 +126,7 @@ first is a statement about the package.
 | 1 | Refused by a protocol check. `fsck`: damage found. `diff`: the packages differ. `replay`: a package was refused or is damaged. |
 | 2 | The command could not run: usage, unreadable input, unusable registry, resource limit. |
 | 3 | Not refused, but not every check ran. |
-| 4 | `--require-decision` (`verify`, `replay`): every check ran, but a reproduced decision is not the required one. |
+| 4 | `--require-decision` (`verify`, `replay`): every check ran, but a reproduced decision is not the required one, or a `wvp-0.2` contract was not pinned. |
 
 Code 3 is where upstream's CLI and this one differ on purpose: upstream exits
 0 for integrity-only verification without a registry. Here, "not everything
@@ -139,7 +139,10 @@ opt-in answer: with it, exit 0 also means that decision was reproduced, and
 any other reproduced decision is exit 4. The default is unchanged so that the
 tool keeps the protocol's meaning of success. Only a decision this run
 reproduced can meet the requirement; without a registry the exit code stays
-3.
+3. And for `wvp-0.2` only one reproduced under a contract the caller pinned
+(`--expect-contract`): the contract travels in the package, chosen by its
+producer, and one that requires nothing reproduces as `SUPPORTED`.
+`--any-contract` is the explicit way to accept it unpinned.
 
 ## Not built yet
 
