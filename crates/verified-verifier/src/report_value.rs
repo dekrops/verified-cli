@@ -7,6 +7,7 @@
 //! nothing here decides anything.
 
 use verified_canonical::{Integer, Object, Value};
+use verified_protocol::ProtocolVersion;
 
 use crate::json::{digest, object, text};
 use crate::report::{
@@ -128,8 +129,8 @@ impl Report {
     /// The report as the `verify` command's JSON output states it
     /// (`docs/sdk/json-output.md`): `outcome` (`complete` or `incomplete`),
     /// the package's identity, `components`, `properties`,
-    /// `expectationsMet`, and for `wvp-0.2` `contract` and, when computed,
-    /// `workRecord` and `recordMatched`.
+    /// `expectationsMet`, and for `wvp-0.2` `contractPinned`, `contract`
+    /// and, when computed, `workRecord` and `recordMatched`.
     ///
     /// Members only the command line adds (`note`, `requiredDecision`) are
     /// not here. `properties.sourceTruthfulness` always is, and is never
@@ -185,6 +186,9 @@ impl Report {
                 ("tenant", optional(met.tenant.as_deref())),
             ]),
         );
+        if self.protocol == ProtocolVersion::V0_2 {
+            members.insert("contractPinned", Value::Bool(self.contract_pinned()));
+        }
         if let Some(contract) = &self.contract {
             members.insert(
                 "contract",

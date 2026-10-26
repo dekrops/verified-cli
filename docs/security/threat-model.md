@@ -65,6 +65,12 @@ relying party's own trust registry.
   decision can be `CONTRADICTED` or `UNDETERMINED`. A script that gates on
   the exit code must pass `--require-decision SUPPORTED`, or read the
   decision from `--json`.
+- **A contract chosen by the package's producer.** The contract travels in
+  the package. One that requires nothing is reproduced as `SUPPORTED`, with
+  no evidence at all. Only `--expect-contract`, with the digest the relying
+  party agreed, ties the decision to that agreement. The report says
+  `contract pinned  NO` without it, and `--require-decision` is not met
+  without it unless `--any-contract` is given.
 - **Chains of statements** are not verified when a package is: its
   statements are checked individually. The library verifies a chain of
   statements held outside a package (`verified_verifier::evidence`,

@@ -222,4 +222,16 @@ impl Report {
                 IssuerSignature::Established { .. } | IssuerSignature::Absent
             )
     }
+
+    /// `wvp-0.2`: whether the contract was pinned, that is, whether the
+    /// relying party gave the contract it agreed by digest and the package
+    /// met it. Without a pin the decision is about the contract the package
+    /// carries, which its producer chose: a contract that requires nothing
+    /// is reproduced as `SUPPORTED` like any other. A `wvp-0.1` contract
+    /// names an evaluator the verifier implements, so there is nothing to
+    /// pin, and this is `true`.
+    #[must_use]
+    pub const fn contract_pinned(&self) -> bool {
+        !matches!(self.protocol, ProtocolVersion::V0_2) || self.expectations_met.contract.is_some()
+    }
 }
