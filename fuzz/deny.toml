@@ -13,6 +13,11 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+    # As in ../deny.toml: `rsa` only verifies RS256 passkey signatures with
+    # public keys (decision 0017); no RSA private key is used.
+    { id = "RUSTSEC-2023-0071", reason = "verification with public keys only; no RSA private key is used (docs/decisions/0017)" },
+]
 
 [licenses]
 version = 2
