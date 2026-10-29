@@ -189,6 +189,45 @@ jobs:
           command: check
           arguments: --locked
 
+  wasi:
+    name: builds for WASI, verifies an example there, and publishes verified.wasm
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: rustup target add wasm32-wasip1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo build --release --locked --target wasm32-wasip1 -p verified-cli
+      # The same tool, run under Node's WASI with the examples as its root: the browser console
+      # of the Agent Compliance Center runs this file the same way.
+      - name: verify an example under WASI
+        run: |
+          cat > "$RUNNER_TEMP/run.mjs" <<'JS'
+          import { readFile } from 'node:fs/promises';
+          import { WASI } from 'node:wasi';
+          const [, , wasm, root, ...args] = process.argv;
+          const wasi = new WASI({ version: 'preview1', args: ['verified', ...args], env: {}, preopens: { '/': root }, returnOnExit: true });
+          const instance = await WebAssembly.instantiate(await WebAssembly.compile(await readFile(wasm)), wasi.getImportObject());
+          process.exitCode = wasi.start(instance);
+          JS
+          node --no-warnings "$RUNNER_TEMP/run.mjs" target/wasm32-wasip1/release/verified.wasm examples/invoice-posting \
+            verify supported.json --trust trust.json \
+            --expect-contract sha-256:6a2c3b0bf5814aacd8c699f430db0a11b50de812d3dd86f30823aa98df46b550 \
+            | tee "$RUNNER_TEMP/out.txt"
+          grep -q "complete: every protocol check ran" "$RUNNER_TEMP/out.txt"
+      - run: |
+          mkdir -p wasi
+          cp target/wasm32-wasip1/release/verified.wasm wasi/
+          (cd wasi && sha512sum verified.wasm > SHA512SUMS && git -C .. rev-parse HEAD > COMMIT)
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verified-wasm32-wasip1
+          path: wasi/
+
   offline:
     name: builds and tests without network access
     needs: changes
