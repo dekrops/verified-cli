@@ -55,7 +55,10 @@ fn write(path: &Path, registry: &Json) -> Result<Trust, String> {
         || "registry".to_owned(),
         |name| name.to_string_lossy().into_owned(),
     );
-    let temporary = path.with_file_name(format!(".{file_name}.tmp-{}", std::process::id()));
+    let temporary = path.with_file_name(format!(
+        ".{file_name}.tmp-{}",
+        verified_workspace::process_tag()
+    ));
     // Only a file this run created is ever removed.
     let mut file = std::fs::OpenOptions::new()
         .write(true)

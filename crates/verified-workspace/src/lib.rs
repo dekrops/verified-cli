@@ -47,6 +47,7 @@ use verified_protocol::{PackageId, ProtocolVersion};
 pub use check::{Check, Problem};
 pub use error::{Error, ImportError, ResolveError};
 pub use history::{History, ImportRecord};
+pub use store::process_tag;
 
 /// The name of a workspace directory.
 pub const DIRECTORY: &str = ".verified";

@@ -79,12 +79,26 @@ fn is_hex(name: &str, len: usize) -> bool {
     name.len() == len && name.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
+/// The process's identifier, for naming a temporary file. WASI has no process identifiers: an
+/// instance there is one process, and the counter beside it keeps the names apart.
+#[must_use]
+pub fn process_tag() -> u32 {
+    #[cfg(target_os = "wasi")]
+    {
+        0
+    }
+    #[cfg(not(target_os = "wasi"))]
+    {
+        std::process::id()
+    }
+}
+
 /// Writes `bytes` to `path` so that the path holds either nothing or all of
 /// them: a temporary file in the same directory, flushed, then renamed.
 fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), Error> {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let unique = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let temporary = path.with_file_name(format!(".tmp-{}-{unique}", std::process::id()));
+    let temporary = path.with_file_name(format!(".tmp-{}-{unique}", process_tag()));
     let written = (|| {
         let mut file = std::fs::OpenOptions::new()
             .write(true)
