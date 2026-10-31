@@ -213,6 +213,37 @@ fn exponents_cannot_multiply_the_input_beyond_the_byte_limit() {
 }
 
 #[test]
+fn the_byte_limit_bounds_the_canonical_text_not_only_the_input() {
+    let limits = |max_bytes| Limits {
+        max_bytes,
+        ..Limits::DEFAULT
+    };
+    let too_large = |max_bytes| Err(ParseError::Limit(LimitExceeded::Bytes { limit: max_bytes }));
+
+    // An exponent: 5 bytes of input, 12 of canonical text (`[1000000000]`).
+    assert_eq!(parse(b"[1e9]", &limits(10)), too_large(10));
+    assert_eq!(parse(b"[1e9]", &limits(11)), too_large(11));
+    assert!(parse(b"[1e9]", &limits(12)).is_ok());
+
+    // A raw C1 control: 4 bytes of input, 8 of canonical text (`"\u0080"`).
+    let c1 = "\"\u{80}\"".as_bytes();
+    assert_eq!(c1.len(), 4);
+    assert_eq!(parse(c1, &limits(7)), too_large(7));
+    assert!(parse(c1, &limits(8)).is_ok());
+
+    // The same in an object key, with structure around it: 8 bytes of input, 12 of canonical
+    // text (`{"\u0080":0}`).
+    let key = "{\"\u{80}\":0}".as_bytes();
+    assert_eq!(key.len(), 8);
+    assert_eq!(parse(key, &limits(11)), too_large(11));
+    assert!(parse(key, &limits(12)).is_ok());
+
+    // A raw DEL, which JSON allows unescaped: 3 bytes of input, 8 of canonical text.
+    assert_eq!(parse(b"\"\x7f\"", &limits(7)), too_large(7));
+    assert!(parse(b"\"\x7f\"", &limits(8)).is_ok());
+}
+
+#[test]
 fn deep_nesting_is_refused_without_exhausting_the_stack() {
     let input = "[".repeat(1_000_000);
     assert_eq!(
