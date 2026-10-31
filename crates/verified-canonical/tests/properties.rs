@@ -111,6 +111,11 @@ fn respell(value: &Value, out: &mut String) {
 
 proptest! {
     #[test]
+    fn canonical_len_is_the_length_of_the_canonical_text(value in value()) {
+        prop_assert_eq!(value.canonical_len(), value.to_canonical_string().len());
+    }
+
+    #[test]
     fn canonical_text_round_trips(value in value()) {
         let text = value.to_canonical_string();
         let reread = parse_canonical(text.as_bytes(), &Limits::DEFAULT);

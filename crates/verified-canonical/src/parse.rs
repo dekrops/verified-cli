@@ -184,6 +184,14 @@ pub fn parse(input: &[u8], limits: &Limits) -> Result<Value, ParseError> {
     if parser.pos < input.len() {
         return Err(parser.syntax(SyntaxError::TrailingData));
     }
+    // Canonical text can be longer than the input: exponents are written out and some characters
+    // are escaped. The bound holds for both.
+    if value.canonical_len() > limits.max_bytes {
+        return Err(LimitExceeded::Bytes {
+            limit: limits.max_bytes,
+        }
+        .into());
+    }
     Ok(value)
 }
 
@@ -210,7 +218,8 @@ struct Parser<'a> {
     pos: usize,
     values: usize,
     /// Zeros written out for exponents, so that numbers such as `1e4000`
-    /// cannot multiply the input's size without bound.
+    /// cannot multiply the input's size without bound while it is read. The
+    /// whole canonical text is measured once the value is read.
     expansion: usize,
     limits: &'a Limits,
 }

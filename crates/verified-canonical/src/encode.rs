@@ -38,6 +38,44 @@ pub(crate) fn write_value(value: &Value, out: &mut String) {
     }
 }
 
+/// The length in bytes of `value`'s canonical text, without writing it.
+///
+/// It must agree with [`write_value`] byte for byte; a property test checks that it does. Sums
+/// saturate, so a value too large to measure reads as `usize::MAX`.
+pub(crate) fn canonical_len(value: &Value) -> usize {
+    match value {
+        Value::Null | Value::Bool(true) => 4,
+        Value::Bool(false) => 5,
+        Value::Integer(i) => i.as_str().len(),
+        Value::String(s) => string_len(s),
+        // Brackets, plus a comma between items.
+        Value::Array(items) => items.iter().fold(
+            items.len().saturating_sub(1).saturating_add(2),
+            |len, item| len.saturating_add(canonical_len(item)),
+        ),
+        // Braces, a comma between members, and a colon in each.
+        Value::Object(object) => object.iter().fold(
+            object.len().saturating_sub(1).saturating_add(2),
+            |len, (key, member)| {
+                len.saturating_add(string_len(key))
+                    .saturating_add(1)
+                    .saturating_add(canonical_len(member))
+            },
+        ),
+    }
+}
+
+/// The length of a string's canonical text, quotes and escapes included.
+fn string_len(text: &str) -> usize {
+    text.chars().fold(2, |len: usize, ch| {
+        len.saturating_add(match ch {
+            '"' | '\\' | '\u{08}' | '\t' | '\n' | '\u{0c}' | '\r' => 2,
+            '\u{00}'..='\u{1f}' | '\u{7f}'..='\u{9f}' => 6,
+            _ => ch.len_utf8(),
+        })
+    })
+}
+
 fn write_string(text: &str, out: &mut String) {
     out.push('"');
     for ch in text.chars() {

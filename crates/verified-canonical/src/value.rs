@@ -36,6 +36,12 @@ impl Value {
         out
     }
 
+    /// The length in bytes of the canonical text, without writing it.
+    #[must_use]
+    pub fn canonical_len(&self) -> usize {
+        encode::canonical_len(self)
+    }
+
     /// The SHA-256 digest of the canonical text.
     #[must_use]
     pub fn digest(&self) -> Sha256Digest {
