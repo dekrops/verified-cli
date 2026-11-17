@@ -2,7 +2,7 @@
 
 [package]
 name = "verified-contract"
-description = "Work Contract Language 1: reading, checking and evaluating work contracts."
+description = "Work Contract Languages 1 and 2: reading, checking and evaluating work contracts."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

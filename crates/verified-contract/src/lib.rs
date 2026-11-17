@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Work Contract Language 1 (`work-contract-1`, semantics `kleene-1`).
+//! Work Contract Language 1 (`work-contract-1`, semantics `kleene-1`), and
+//! Language 2 (`work-contract-2`) as WVP RFC 0008 proposes it.
 //!
 //! The language is a **draft**. A work contract states, as data, what must be
 //! true for a unit of work to count as done. This crate reads a contract,
 //! checks the language's static rules, and evaluates a checked contract
 //! against an environment of admitted records:
 //!
-//! - [`Contract::read`] refuses anything that is not a well-formed contract;
+//! - [`Contract::read`] refuses anything that is not a well-formed Language 1
+//!   contract, and [`Contract::read_as`] reads one of a named [`Language`];
 //! - [`Contract::evaluate`] yields an [`Outcome`] (one of three
 //!   [`Decision`]s, with the value of every requirement) or a [`Refusal`].
 //!
@@ -32,8 +34,35 @@ use std::fmt;
 pub use evaluate::{Conflict, Outcome, RequirementValue};
 pub use model::Contract;
 
-/// The identifier of the language this crate implements.
+/// The identifier of Language 1, the language [`Contract::read`] reads.
 pub const LANGUAGE: &str = "work-contract-1";
+/// The identifier of Language 2 (WVP RFC 0008, under review): Language 1
+/// with exact integer arithmetic on terms, and `count`, `count` of distinct
+/// values and `sum` over the records of a closed kind.
+pub const LANGUAGE_2: &str = "work-contract-2";
+
+/// A language a contract can be read as. Versions are never interchanged:
+/// read as one language, a contract naming the other is refused
+/// (`CONTRACT_ILL_FORMED`), and Language 2's forms are not forms of Language
+/// 1 (`CONTRACT_MALFORMED`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Language {
+    /// `work-contract-1`.
+    One,
+    /// `work-contract-2`, as WVP RFC 0008 proposes it.
+    Two,
+}
+
+impl Language {
+    /// The language's identifier, as a contract's `language` names it.
+    #[must_use]
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::One => LANGUAGE,
+            Self::Two => LANGUAGE_2,
+        }
+    }
+}
 /// The identifier of the evaluation semantics this crate implements.
 pub const SEMANTICS: &str = "kleene-1";
 
@@ -51,6 +80,10 @@ pub enum Refusal {
     EnvironmentNonconforming,
     /// Evaluation would exceed the language's work bound.
     WorkLimit,
+    /// Language 2: a value arithmetic computed (a term node or an
+    /// aggregate) lies outside the range of numbers, strictly between −2⁶³
+    /// and 2⁶³.
+    ArithmeticRange,
 }
 
 impl Refusal {
@@ -63,6 +96,7 @@ impl Refusal {
             Self::EnvironmentMalformed => "ENVIRONMENT_MALFORMED",
             Self::EnvironmentNonconforming => "ENVIRONMENT_NONCONFORMING",
             Self::WorkLimit => "WORK_LIMIT",
+            Self::ArithmeticRange => "ARITHMETIC_RANGE",
         }
     }
 }

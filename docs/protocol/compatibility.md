@@ -18,6 +18,7 @@ states exactly how much of it this implementation performs.
 | Step 13: issuer signatures (`ISSUER_SIGNATURE_INVALID`) | yes | yes |
 | Relying-party expectations | not defined by the protocol | yes |
 | Work Contract Language 1 (`kleene-1`) | n/a | yes |
+| Work Contract Language 2 (WVP RFC 0008, under review): arithmetic, `count`, `sum`, `ARITHMETIC_RANGE` | n/a: v0.2 packages name Language 1, and a package carrying Language 2 is refused | as a library only (`verified_contract::Contract::read_as`), reproducing RFC 0008's proposed vectors |
 | Work record: computed from the package, and compared with one supplied (`RECORD_MISMATCH`) | not defined by the protocol | yes |
 | Issuing a package (`verified_verifier::issue`) | **no** | yes, as a library: evaluated and laid out by the verifier's own code, and verified before it is returned |
 | Chains of statements (evidence statement v1) | as a library, for statements outside a package (`verified_verifier::evidence`); **not** for a package's statements | the same |
