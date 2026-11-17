@@ -395,16 +395,13 @@ impl<'a> Settled<'a> {
                 .find(|(bound, _)| bound == variable)
                 .and_then(|(_, record)| record.fields.get(field.as_str()))
                 .cloned()),
-            Term::Add(a, b) | Term::Sub(a, b) => {
+            Term::Add(a, b) => {
                 let (a, b) = (number(self.value(a, scope)?), number(self.value(b, scope)?));
-                let sum = a.zip(b).map(|(a, b)| {
-                    if matches!(term, Term::Add(..)) {
-                        a + b
-                    } else {
-                        a - b
-                    }
-                });
-                checked(sum)
+                checked(a.zip(b).map(|(a, b)| a + b))
+            }
+            Term::Sub(a, b) => {
+                let (a, b) = (number(self.value(a, scope)?), number(self.value(b, scope)?));
+                checked(a.zip(b).map(|(a, b)| a - b))
             }
             Term::Scale { factor, of } => {
                 let of = number(self.value(of, scope)?);
