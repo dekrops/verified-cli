@@ -6,9 +6,11 @@
 
 use verified_canonical::Value;
 
-use crate::model::{Contract, Kind, Op, Pred, Term, Type, is_name, is_version};
+use crate::model::{
+    Aggregation, Contract, Function, Kind, Op, Pred, Term, Type, is_name, is_version,
+};
 use crate::read::read_contract;
-use crate::{LANGUAGE, Refusal, SEMANTICS};
+use crate::{Language, Refusal, SEMANTICS};
 
 const MAX_KINDS: usize = 32;
 const MAX_FIELDS: usize = 32;
@@ -17,21 +19,27 @@ const MAX_PREDICATE_NODES: u64 = 512;
 const MAX_QUANTIFIER_DEPTH: u32 = 3;
 
 impl Contract {
-    /// Reads a contract and checks the language's static rules.
+    /// Reads a Language 1 contract and checks the language's static rules.
     ///
     /// The value must already be JSON under `verified-json-v1`; whether the
     /// text it came from was canonical is the caller's check.
     pub fn read(json: &Value) -> Result<Self, Refusal> {
-        let contract = read_contract(json)?;
-        if contract.is_well_formed() {
+        Self::read_as(json, Language::One)
+    }
+
+    /// Reads a contract of `language` and checks that language's static
+    /// rules. A contract naming another language is `CONTRACT_ILL_FORMED`.
+    pub fn read_as(json: &Value, language: Language) -> Result<Self, Refusal> {
+        let contract = read_contract(json, language)?;
+        if contract.is_well_formed(language) {
             Ok(contract)
         } else {
             Err(Refusal::ContractIllFormed)
         }
     }
 
-    fn is_well_formed(&self) -> bool {
-        self.language == LANGUAGE
+    fn is_well_formed(&self, language: Language) -> bool {
+        self.language == language.id()
             && self.semantics == SEMANTICS
             && is_name(&self.id)
             && is_version(&self.version)
@@ -87,15 +95,70 @@ impl Contract {
             })
     }
 
-    fn term_type<'a>(&'a self, scope: &[(&str, &str)], term: &'a Term) -> Option<&'a Type> {
+    /// The term's type, if it is well typed. `scope` holds the bound
+    /// variables with their kinds.
+    fn term_type(&self, scope: &[(&str, &str)], term: &Term) -> Option<Type> {
+        let numeric = |ty: Type| ty.is_numeric().then_some(ty);
         match term {
-            Term::Literal { of, .. } => of.is_valid().then_some(of),
-            Term::Input(name) => self.inputs.get(name),
-            Term::Parameter(name) => self.policy.get(name).map(|p| &p.ty),
+            Term::Literal { of, .. } => of.is_valid().then(|| of.clone()),
+            Term::Input(name) => self.inputs.get(name).cloned(),
+            Term::Parameter(name) => self.policy.get(name).map(|p| p.ty.clone()),
             Term::Field { variable, field } => {
                 let (_, kind) = scope.iter().find(|(bound, _)| bound == variable)?;
-                self.kinds.get(*kind)?.fields.get(field).map(|f| &f.ty)
+                self.kinds
+                    .get(*kind)?
+                    .fields
+                    .get(field)
+                    .map(|f| f.ty.clone())
             }
+            // Both operands of one numeric type, with that type.
+            Term::Add(a, b) => {
+                let ty = self.term_type(scope, a)?;
+                (self.term_type(scope, b)? == ty)
+                    .then_some(ty)
+                    .and_then(numeric)
+            }
+            // The same, or two times, giving whole seconds.
+            Term::Sub(a, b) => {
+                let ty = self.term_type(scope, a)?;
+                if self.term_type(scope, b)? != ty {
+                    None
+                } else if ty == Type::Time {
+                    Some(Type::Int)
+                } else {
+                    numeric(ty)
+                }
+            }
+            Term::Scale { factor, of } => factor
+                .and_then(|_| self.term_type(scope, of))
+                .and_then(numeric),
+            Term::Abs(of) => self.term_type(scope, of).and_then(numeric),
+        }
+    }
+
+    /// Language 2: the type an aggregation over `kind` yields, if its
+    /// members fit it. `count` yields an `int` and names no field; with
+    /// `distinct`, a non-optional field of the kind, of any type. `sum`
+    /// names a non-optional numeric field and has the field's type.
+    fn aggregate_type(&self, kind: &str, aggregation: &Aggregation) -> Option<Type> {
+        let declared = |name: &str| {
+            self.kinds
+                .get(kind)?
+                .fields
+                .get(name)
+                .filter(|field| !field.optional)
+        };
+        match (
+            aggregation.function,
+            &aggregation.field,
+            &aggregation.distinct,
+        ) {
+            (Function::Count, None, None) => Some(Type::Int),
+            (Function::Count, None, Some(name)) => declared(name).map(|_| Type::Int),
+            (Function::Sum, Some(name), None) => declared(name)
+                .map(|field| field.ty.clone())
+                .filter(Type::is_numeric),
+            _ => None,
         }
     }
 
@@ -106,9 +169,7 @@ impl Contract {
         match predicate {
             Pred::Compare { op, left, right } => {
                 match (self.term_type(scope, left), self.term_type(scope, right)) {
-                    (Some(a), Some(b)) => {
-                        a == b && (matches!(op, Op::Eq | Op::Ne) || a.is_ordered())
-                    }
+                    (Some(a), Some(b)) => comparable(*op, &a, &b),
                     _ => false,
                 }
             }
@@ -133,8 +194,42 @@ impl Contract {
                 scope.pop();
                 typed
             }
+            // The variable is bound in the body only: `than` is typed in the
+            // enclosing scope.
+            Pred::Aggregate {
+                aggregation,
+                variable,
+                kind,
+                body,
+                op,
+                than,
+            } => {
+                if !is_name(variable)
+                    || scope.iter().any(|(bound, _)| bound == variable)
+                    || !self.kinds.contains_key(kind)
+                {
+                    return false;
+                }
+                let compared = match (
+                    self.aggregate_type(kind, aggregation),
+                    self.term_type(scope, than),
+                ) {
+                    (Some(a), Some(b)) => comparable(*op, &a, &b),
+                    _ => false,
+                };
+                scope.push((variable, kind));
+                let typed = self.is_typed(scope, body);
+                scope.pop();
+                compared && typed
+            }
         }
     }
+}
+
+/// Language 1's comparison rule: identical types, ordered for `lt`, `le`,
+/// `gt` and `ge`.
+fn comparable(op: Op, a: &Type, b: &Type) -> bool {
+    a == b && (matches!(op, Op::Eq | Op::Ne) || a.is_ordered())
 }
 
 fn distinct(names: &[String]) -> bool {

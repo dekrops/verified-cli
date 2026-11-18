@@ -7,10 +7,11 @@ use std::collections::BTreeMap;
 
 use verified_canonical::{Object, Value};
 
-use crate::Refusal;
 use crate::model::{
-    ConflictPolicy, Contract, Field, Kind, Op, Parameter, Pred, Quantifier, Requirement, Term, Type,
+    Aggregation, ConflictPolicy, Contract, Field, Function, Kind, Op, Parameter, Pred, Quantifier,
+    Requirement, Term, Type,
 };
+use crate::{Language, Refusal};
 
 type Read<T> = Result<T, Refusal>;
 
@@ -108,7 +109,25 @@ fn read_field(value: &Value) -> Read<Field> {
     Ok(Field { ty, optional })
 }
 
-fn read_term(value: &Value) -> Read<Term> {
+/// A `scale` factor: a number string. One spelled as a number but outside
+/// the range of numbers is read as `None`, for the static rules to refuse.
+fn read_factor(value: &Value) -> Read<Option<i64>> {
+    let text = value.as_str().ok_or(MALFORMED)?;
+    let digits = text.strip_prefix('-').unwrap_or(text);
+    let spelled = !digits.is_empty()
+        && digits.bytes().all(|b| b.is_ascii_digit())
+        && (digits == "0" || !digits.starts_with('0'))
+        && text != "-0";
+    if !spelled {
+        return Err(MALFORMED);
+    }
+    Ok(text.parse::<i64>().ok().filter(|n| *n != i64::MIN))
+}
+
+/// A term. `depth` is the level of the term below its requirement; the
+/// arithmetic nodes of Language 2 count toward the read depth as predicates
+/// do.
+fn read_term(value: &Value, depth: usize, language: Language) -> Read<Term> {
     if let Some(o) = exactly(value, &["lit", "of"]) {
         let of = read_type(need(o, "of")?, &[])?;
         let value = of.value(need(o, "lit")?).ok_or(MALFORMED)?;
@@ -126,7 +145,58 @@ fn read_term(value: &Value) -> Read<Term> {
             field: string(need(o, "field")?)?,
         });
     }
+    if language != Language::Two || depth > MAX_PREDICATE_DEPTH {
+        return Err(MALFORMED);
+    }
+    let next = |inner: &Value| read_term(inner, depth + 1, language).map(Box::new);
+    let pair = |inner: &Value| match list(inner)? {
+        [a, b] => Ok((next(a)?, next(b)?)),
+        _ => Err(MALFORMED),
+    };
+    if let Some(o) = exactly(value, &["add"]) {
+        let (a, b) = pair(need(o, "add")?)?;
+        return Ok(Term::Add(a, b));
+    }
+    if let Some(o) = exactly(value, &["sub"]) {
+        let (a, b) = pair(need(o, "sub")?)?;
+        return Ok(Term::Sub(a, b));
+    }
+    if let Some(o) = exactly(value, &["scale", "of"]) {
+        return Ok(Term::Scale {
+            factor: read_factor(need(o, "scale")?)?,
+            of: next(need(o, "of")?)?,
+        });
+    }
+    if let Some(o) = exactly(value, &["abs"]) {
+        return Ok(Term::Abs(next(need(o, "abs")?)?));
+    }
     Err(MALFORMED)
+}
+
+/// Language 2's aggregate: `{ aggregate, of, in, where, cmp, than }`, with
+/// `field` (for `sum`) and `distinct` (for `count`) where present. Which of
+/// them an aggregation may carry is a static rule, not a reading one.
+fn read_aggregate(o: &Object, depth: usize, language: Language) -> Read<Pred> {
+    let optional = |key: &str| o.get(key).map(string).transpose();
+    let (field, distinct) = (optional("field")?, optional("distinct")?);
+    let function = match need(o, "aggregate")?.as_str() {
+        Some("count") => Function::Count,
+        Some("sum") => Function::Sum,
+        _ => return Err(MALFORMED),
+    };
+    let aggregation = Aggregation {
+        function,
+        field,
+        distinct,
+    };
+    Ok(Pred::Aggregate {
+        aggregation,
+        variable: string(need(o, "of")?)?,
+        kind: string(need(o, "in")?)?,
+        body: Box::new(read_pred(need(o, "where")?, depth + 1, language)?),
+        op: read_op(need(o, "cmp")?)?,
+        than: read_term(need(o, "than")?, depth + 1, language)?,
+    })
 }
 
 fn read_op(value: &Value) -> Read<Op> {
@@ -141,11 +211,12 @@ fn read_op(value: &Value) -> Read<Op> {
     })
 }
 
-fn read_pred(value: &Value, depth: usize) -> Read<Pred> {
+fn read_pred(value: &Value, depth: usize, language: Language) -> Read<Pred> {
     if depth > MAX_PREDICATE_DEPTH {
         return Err(MALFORMED);
     }
-    let next = |inner: &Value| read_pred(inner, depth + 1);
+    let next = |inner: &Value| read_pred(inner, depth + 1, language);
+    let term = |inner: &Value| read_term(inner, depth + 1, language);
     let all = |inner: &Value| list(inner)?.iter().map(next).collect::<Read<Vec<_>>>();
     let quantified = |quantifier, o: &Object, variable: &str, body: &str| {
         Ok(Pred::Quantified {
@@ -158,8 +229,8 @@ fn read_pred(value: &Value, depth: usize) -> Read<Pred> {
     if let Some(o) = exactly(value, &["cmp", "left", "right"]) {
         return Ok(Pred::Compare {
             op: read_op(need(o, "cmp")?)?,
-            left: read_term(need(o, "left")?)?,
-            right: read_term(need(o, "right")?)?,
+            left: term(need(o, "left")?)?,
+            right: term(need(o, "right")?)?,
         });
     }
     if let Some(o) = exactly(value, &["and"]) {
@@ -176,6 +247,15 @@ fn read_pred(value: &Value, depth: usize) -> Read<Pred> {
     }
     if let Some(o) = exactly(value, &["forall", "in", "holds"]) {
         return quantified(Quantifier::Forall, o, "forall", "holds");
+    }
+    if language == Language::Two
+        && let Some(o) = value.as_object().filter(|o| o.get("aggregate").is_some())
+    {
+        const MEMBERS: [&str; 6] = ["aggregate", "of", "in", "where", "cmp", "than"];
+        only(value, &[&MEMBERS[..], &["field", "distinct"]].concat())?;
+        if MEMBERS.iter().all(|key| o.get(key).is_some()) {
+            return read_aggregate(o, depth, language);
+        }
     }
     Err(MALFORMED)
 }
@@ -204,16 +284,17 @@ fn read_parameter(value: &Value) -> Read<Parameter> {
     })
 }
 
-fn read_requirement(value: &Value) -> Read<Requirement> {
+fn read_requirement(value: &Value, language: Language) -> Read<Requirement> {
     let requirement = only(value, &["id", "predicate"])?;
     Ok(Requirement {
         id: string(need(requirement, "id")?)?,
-        predicate: read_pred(need(requirement, "predicate")?, 0)?,
+        predicate: read_pred(need(requirement, "predicate")?, 0, language)?,
     })
 }
 
-/// Reads a contract's forms, without checking the static rules.
-pub(crate) fn read_contract(json: &Value) -> Read<Contract> {
+/// Reads a contract's forms as those of `language`, without checking the
+/// static rules.
+pub(crate) fn read_contract(json: &Value, language: Language) -> Read<Contract> {
     let root = only(
         json,
         &[
@@ -250,7 +331,7 @@ pub(crate) fn read_contract(json: &Value) -> Read<Contract> {
         cutoff: evaluation.get("cutoff").map(string).transpose()?,
         requires: list(need(root, "requires")?)?
             .iter()
-            .map(read_requirement)
+            .map(|r| read_requirement(r, language))
             .collect::<Read<_>>()?,
     })
 }

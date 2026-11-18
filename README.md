@@ -555,7 +555,7 @@ verified-workspace  the local store of imported packages
 verified-history    work relation v1 (draft): what authorities say about records
 verified-derivation a recomputed authorization, replayed (draft, experimental; links Cedar)
 verified-verifier   pure verification: bytes in, report or refusal out
-verified-contract   Work Contract Language 1: read, check, evaluate
+verified-contract   Work Contract Languages 1 and 2: read, check, evaluate
 verified-work-unit  work-unit identity v1: which unit a claim is about (library only)
 verified-protocol   typed protocol structures and refusal codes
 verified-canonical  canonical encoding, SHA-256 commitments, signing input

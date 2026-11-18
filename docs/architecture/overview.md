@@ -9,7 +9,7 @@ verified-cli        binary `verified`: arguments, files, terminal, exit codes
    │        │
 verified-verifier   verify(bytes, options) -> Report | Rejection   (pure)
    │        │
-   │   verified-contract   Work Contract Language 1: read, check, evaluate
+   │   verified-contract   Work Contract Languages 1 and 2: read, check, evaluate
    │        │
 verified-protocol   │      components of both versions, statements,
    │        │              trust registry, refusal codes
@@ -41,7 +41,9 @@ registries, instants, refusal codes. Reading a structure checks that it is
 closed and well typed at every depth and nothing else; it decides nothing
 about acceptability.
 
-**`verified-contract`** owns Work Contract Language 1. It knows nothing of
+**`verified-contract`** owns Work Contract Language 1, and Language 2 as WVP
+RFC 0008 proposes it (`Contract::read_as`; packages still carry Language 1
+only). It knows nothing of
 packages, signatures or tenants: it reads a contract, checks the language's
 static rules, and evaluates a checked contract against an environment of
 source-named records under strong Kleene logic. A `Contract` can only be

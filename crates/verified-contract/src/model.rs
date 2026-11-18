@@ -74,6 +74,14 @@ impl Type {
         !matches!(self, Self::Text | Self::Bool)
     }
 
+    /// Language 2: whether the type is numeric (`int`, `decimal` of a
+    /// scale, `money` of a currency and scale), so `add`, `sub`, `scale`,
+    /// `abs` and `sum` apply. `time` is not: it takes part in arithmetic
+    /// only as `time − time`.
+    pub(crate) const fn is_numeric(&self) -> bool {
+        matches!(self, Self::Int | Self::Decimal { .. } | Self::Money { .. })
+    }
+
     /// Whether the type's own parameters are in range.
     pub(crate) fn is_valid(&self) -> bool {
         let scale_fits = |scale: &i32| (0..=18).contains(scale);
@@ -162,10 +170,61 @@ pub(crate) enum Op {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Term {
-    Literal { value: Val, of: Type },
+    Literal {
+        value: Val,
+        of: Type,
+    },
     Input(String),
     Parameter(String),
-    Field { variable: String, field: String },
+    Field {
+        variable: String,
+        field: String,
+    },
+    /// Language 2: the sum of two terms.
+    Add(Box<Term>, Box<Term>),
+    /// Language 2: the difference of two terms.
+    Sub(Box<Term>, Box<Term>),
+    /// Language 2: the term times a whole number. `None` when the factor is
+    /// spelled as a number but lies outside the range of numbers, which is a
+    /// static error, not a reading one.
+    Scale {
+        factor: Option<i64>,
+        of: Box<Term>,
+    },
+    /// Language 2: the absolute value of a term.
+    Abs(Box<Term>),
+}
+
+impl Term {
+    /// Language 2: the number of arithmetic nodes (`add`, `sub`, `scale`,
+    /// `abs`) in the term. They count, with the predicates, toward the node
+    /// limit and the work bound.
+    pub(crate) fn arithmetic_nodes(&self) -> u64 {
+        match self {
+            Self::Literal { .. } | Self::Input(_) | Self::Parameter(_) | Self::Field { .. } => 0,
+            Self::Add(a, b) | Self::Sub(a, b) => 1 + a.arithmetic_nodes() + b.arithmetic_nodes(),
+            Self::Scale { of, .. } | Self::Abs(of) => 1 + of.arithmetic_nodes(),
+        }
+    }
+}
+
+/// Language 2: what an aggregate computes over the records of a kind.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Function {
+    /// The number of records the body holds for, or with `distinct`, the
+    /// number of distinct values the named field takes over them.
+    Count,
+    /// The sum of a numeric field over the records the body holds for.
+    Sum,
+}
+
+/// Language 2: an aggregate's function with its `field` and `distinct`
+/// members, as read. Which of them a function may carry is a static rule.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Aggregation {
+    pub(crate) function: Function,
+    pub(crate) field: Option<String>,
+    pub(crate) distinct: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -190,6 +249,16 @@ pub(crate) enum Pred {
         kind: String,
         body: Box<Pred>,
     },
+    /// Language 2: an aggregate over the records of `kind`, compared with
+    /// `than`. Its variable is bound in `body` only.
+    Aggregate {
+        aggregation: Aggregation,
+        variable: String,
+        kind: String,
+        body: Box<Pred>,
+        op: Op,
+        than: Term,
+    },
 }
 
 impl Pred {
@@ -198,24 +267,34 @@ impl Pred {
             Self::Compare { .. } => &[],
             Self::And(args) | Self::Or(args) => args,
             Self::Not(inner) => std::slice::from_ref(inner),
-            Self::Quantified { body, .. } => std::slice::from_ref(body),
+            Self::Quantified { body, .. } | Self::Aggregate { body, .. } => {
+                std::slice::from_ref(body)
+            }
         }
     }
 
-    /// The number of predicate nodes.
+    /// The number of predicate nodes, and in Language 2 of arithmetic
+    /// nodes in its terms.
     pub(crate) fn nodes(&self) -> u64 {
-        1 + self.children().iter().map(Self::nodes).sum::<u64>()
+        let terms = match self {
+            Self::Compare { left, right, .. } => left.arithmetic_nodes() + right.arithmetic_nodes(),
+            Self::Aggregate { than, .. } => than.arithmetic_nodes(),
+            _ => 0,
+        };
+        1 + terms + self.children().iter().map(Self::nodes).sum::<u64>()
     }
 
-    /// The deepest nesting of quantifiers.
+    /// The deepest nesting of quantifiers, aggregates included.
     pub(crate) fn quantifier_depth(&self) -> u32 {
-        u32::from(matches!(self, Self::Quantified { .. }))
-            + self
-                .children()
-                .iter()
-                .map(Self::quantifier_depth)
-                .max()
-                .unwrap_or(0)
+        u32::from(matches!(
+            self,
+            Self::Quantified { .. } | Self::Aggregate { .. }
+        )) + self
+            .children()
+            .iter()
+            .map(Self::quantifier_depth)
+            .max()
+            .unwrap_or(0)
     }
 }
 

@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! The Work Contract Language 1 conformance corpus.
+//! The Work Contract Language 1 and 2 conformance corpora.
 //!
 //! The corpus is not part of this repository until its publication is
 //! approved; see `conformance/README.md`. Point `VERIFIED_CONFORMANCE_DIR`
 //! at a directory holding `work-contract/v1` to run this test. With
 //! `VERIFIED_CONFORMANCE_REQUIRED=1` its absence is a failure.
+//!
+//! Language 2's vectors (`work-contract/v2`) are proposed by WVP RFC 0008
+//! and not yet published. They run when the directory also holds them, and
+//! are skipped otherwise.
 //!
 //! Expected outcomes are read from the corpus and never adjusted here.
 #![allow(clippy::print_stderr)] // progress notes for whoever runs the corpus
@@ -13,7 +17,7 @@
 use std::path::{Path, PathBuf};
 
 use verified_canonical::{Limits, Object, ParseError, Value, parse};
-use verified_contract::Contract;
+use verified_contract::{Contract, Language};
 
 fn corpus() -> Option<PathBuf> {
     let Some(dir) = std::env::var_os("VERIFIED_CONFORMANCE_DIR") else {
@@ -24,7 +28,7 @@ fn corpus() -> Option<PathBuf> {
         eprintln!("skipped: VERIFIED_CONFORMANCE_DIR is not set");
         return None;
     };
-    Some(PathBuf::from(dir).join("work-contract").join("v1"))
+    Some(PathBuf::from(dir).join("work-contract"))
 }
 
 fn files(dir: &Path) -> Vec<PathBuf> {
@@ -43,22 +47,24 @@ fn member<'a>(object: &'a Object, name: &str, label: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("{label}: no {name}"))
 }
 
-/// What the implementation says, in the corpus's own result form.
-fn run(contract: &Value, environment: &Value) -> Value {
+/// What the implementation says, reading the contract as `language`, in the
+/// corpus's own result form.
+fn run(language: Language, contract: &Value, environment: &Value) -> Value {
     let refused = |refusal: verified_contract::Refusal| {
         let mut o = Object::new();
         o.insert("refused", Value::String(refusal.as_str().to_owned()));
         Value::Object(o)
     };
-    match Contract::read(contract).and_then(|c| c.evaluate(environment)) {
+    match Contract::read_as(contract, language).and_then(|c| c.evaluate(environment)) {
         Ok(outcome) => outcome.to_value(),
         Err(refusal) => refused(refusal),
     }
 }
 
-#[test]
-fn every_case_in_the_corpus_is_reproduced() {
-    let Some(root) = corpus() else { return };
+/// Runs every case under `root` (its `cases` and `differential`), reading
+/// contracts as `language`. Returns how many were reproduced and the files
+/// that `verified-json-v1` cannot represent.
+fn reproduce(root: &Path, language: Language) -> (usize, Vec<String>) {
     let mut cases = 0usize;
     let mut unreadable = Vec::new();
     for dir in ["cases", "differential"] {
@@ -86,23 +92,51 @@ fn every_case_in_the_corpus_is_reproduced() {
                     let case = case
                         .as_object()
                         .unwrap_or_else(|| panic!("{label}: not an object"));
-                    let got = run(contract, member(case, "environment", &label));
+                    let got = run(language, contract, member(case, "environment", &label));
                     assert_eq!(&got, member(case, "expected", &label), "{label}");
                     cases += 1;
                 }
             } else {
-                let got = run(contract, member(file, "environment", &label));
+                let got = run(language, contract, member(file, "environment", &label));
                 assert_eq!(&got, member(file, "expected", &label), "{label}");
                 cases += 1;
             }
         }
     }
+    (cases, unreadable)
+}
+
+#[test]
+fn every_case_in_the_corpus_is_reproduced() {
+    let Some(root) = corpus() else { return };
+    let (cases, unreadable) = reproduce(&root.join("v1"), Language::One);
     eprintln!(
         "work-contract-1: {cases} cases reproduced; {} not representable in verified-json-v1: {unreadable:?}",
         unreadable.len()
     );
     assert!(cases > 0, "the corpus holds no cases");
     // Exactly one published case turns on a fractional JSON number.
+    assert!(
+        unreadable.len() <= 1,
+        "unexpected unreadable cases: {unreadable:?}"
+    );
+}
+
+#[test]
+fn every_proposed_language_2_case_is_reproduced() {
+    let Some(root) = corpus() else { return };
+    let root = root.join("v2");
+    if !root.is_dir() {
+        eprintln!("skipped: no work-contract/v2 in VERIFIED_CONFORMANCE_DIR");
+        return;
+    }
+    let (cases, unreadable) = reproduce(&root, Language::Two);
+    eprintln!(
+        "work-contract-2: {cases} cases reproduced; {} not representable in verified-json-v1: {unreadable:?}",
+        unreadable.len()
+    );
+    assert!(cases > 0, "the corpus holds no cases");
+    // Language 1's case on a fractional scale, restated.
     assert!(
         unreadable.len() <= 1,
         "unexpected unreadable cases: {unreadable:?}"

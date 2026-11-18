@@ -6,7 +6,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use verified_canonical::{Object, Value};
 
-use crate::model::{ConflictPolicy, Contract, Op, Pred, Quantifier, Term, Val, is_name, number};
+use crate::model::{
+    Aggregation, ConflictPolicy, Contract, Function, Op, Pred, Quantifier, Term, Val, is_name,
+    number,
+};
 use crate::{Decision, Refusal, Truth};
 
 const MAX_FACTS: usize = 10_000;
@@ -219,40 +222,94 @@ struct Settled<'a> {
     closed: BTreeSet<&'a str>,
 }
 
+/// A value arithmetic computed, if it lies in the range of numbers:
+/// strictly between −2⁶³ and 2⁶³ (Language 2, `ARITHMETIC_RANGE`).
+fn in_range(value: i128) -> Result<i64, Refusal> {
+    i64::try_from(value)
+        .ok()
+        .filter(|n| *n != i64::MIN)
+        .ok_or(Refusal::ArithmeticRange)
+}
+
+/// A number's value. The static rules make every arithmetic operand one.
+fn wide(value: &Val) -> Option<i128> {
+    match value {
+        Val::Number(n) => Some(i128::from(*n)),
+        Val::Text(_) | Val::Bool(_) => None,
+    }
+}
+
+type Scope<'s, 'a> = Vec<(&'a str, &'s Record<'a>)>;
+
+/// Language 2: an aggregate's value over the records whose body is `TRUE`,
+/// for a closed kind with every body settled. A count is an `int`; a
+/// distinct count counts the distinct values of its field, two values being
+/// the same when `eq` holds; a sum is exact, and only the sum is checked
+/// against the range, never a partial total.
+fn aggregate(aggregation: &Aggregation, values: &[(Truth, &Record<'_>)]) -> Result<Val, Refusal> {
+    let selected = values
+        .iter()
+        .filter(|(value, _)| *value == Truth::True)
+        .map(|(_, record)| *record);
+    let named = |record: &Record<'_>, field: &Option<String>| {
+        field
+            .as_deref()
+            .and_then(|name| record.fields.get(name))
+            .cloned()
+    };
+    let total: i128 = match aggregation.function {
+        Function::Count => match &aggregation.distinct {
+            None => selected.count(),
+            Some(_) => selected
+                .filter_map(|r| named(r, &aggregation.distinct))
+                .collect::<BTreeSet<_>>()
+                .len(),
+        }
+        .try_into()
+        .map_err(|_| Refusal::ArithmeticRange)?,
+        Function::Sum => selected
+            .filter_map(|r| named(r, &aggregation.field))
+            .filter_map(|v| wide(&v))
+            .sum(),
+    };
+    in_range(total).map(Val::Number)
+}
+
 impl<'a> Settled<'a> {
-    fn pred(&self, predicate: &'a Pred, scope: &mut Vec<(&'a str, &'a Record<'a>)>) -> Truth {
-        match predicate {
+    /// The predicate's value. Every term below it is evaluated, under every
+    /// binding of every quantifier and aggregate, whatever the value of the
+    /// predicates around it, so that whether an evaluation refuses
+    /// (`ARITHMETIC_RANGE`) never depends on a short-circuit (Language 2,
+    /// "What is evaluated"). Language 1 terms never refuse, so this changes
+    /// nothing for Language 1.
+    fn pred<'s>(&'s self, predicate: &'a Pred, scope: &mut Scope<'s, 'a>) -> Result<Truth, Refusal>
+    where
+        'a: 's,
+    {
+        Ok(match predicate {
             Pred::Compare { op, left, right } => {
-                match (self.value(left, scope), self.value(right, scope)) {
-                    (Some(a), Some(b)) => compare(*op, a, b),
+                match (self.value(left, scope)?, self.value(right, scope)?) {
+                    (Some(a), Some(b)) => compare(*op, &a, &b),
                     _ => Truth::Unknown,
                 }
             }
-            Pred::And(args) => all(args.iter().map(|arg| self.pred(arg, scope))),
-            Pred::Or(args) => any(args.iter().map(|arg| self.pred(arg, scope))),
-            Pred::Not(inner) => not(self.pred(inner, scope)),
+            Pred::And(args) => all(self.preds(args, scope)?.into_iter()),
+            Pred::Or(args) => any(self.preds(args, scope)?.into_iter()),
+            Pred::Not(inner) => not(self.pred(inner, scope)?),
             Pred::Quantified {
                 quantifier,
                 variable,
                 kind,
                 body,
             } => {
-                let records = self
-                    .records
-                    .get(kind.as_str())
-                    .map_or(&[][..], Vec::as_slice);
-                let mut values = Vec::with_capacity(records.len());
-                for record in records {
-                    scope.push((variable, record));
-                    values.push(self.pred(body, scope));
-                    scope.pop();
-                }
+                let values = self.bodies(variable, kind, body, scope)?;
                 // One record can prove an `exists` or disprove a `forall`.
                 // The opposite answers are claims about every record, so
                 // they hold only for a kind that is closed.
+                let values = values.into_iter().map(|(value, _)| value);
                 let (seen, needs_closure) = match quantifier {
-                    Quantifier::Exists => (any(values.into_iter()), Truth::False),
-                    Quantifier::Forall => (all(values.into_iter()), Truth::True),
+                    Quantifier::Exists => (any(values), Truth::False),
+                    Quantifier::Forall => (all(values), Truth::True),
                 };
                 if seen == needs_closure && !self.closed.contains(kind.as_str()) {
                     Truth::Unknown
@@ -260,19 +317,97 @@ impl<'a> Settled<'a> {
                     seen
                 }
             }
-        }
+            Pred::Aggregate {
+                aggregation,
+                variable,
+                kind,
+                body,
+                op,
+                than,
+            } => {
+                let values = self.bodies(variable, kind, body, scope)?;
+                let than = self.value(than, scope)?;
+                // A value only over a closed kind with every body settled.
+                let settled = self.closed.contains(kind.as_str())
+                    && values.iter().all(|(value, _)| *value != Truth::Unknown);
+                let computed = if settled {
+                    Some(aggregate(aggregation, &values)?)
+                } else {
+                    None
+                };
+                match (computed, than) {
+                    (Some(a), Some(b)) => compare(*op, &a, &b),
+                    _ => Truth::Unknown,
+                }
+            }
+        })
     }
 
-    /// The term's value, or `None` for an absent optional field.
-    fn value<'s>(&'s self, term: &'s Term, scope: &[(&str, &'s Record<'_>)]) -> Option<&'s Val> {
+    /// Every predicate's value, all of them evaluated.
+    fn preds<'s>(
+        &'s self,
+        args: &'a [Pred],
+        scope: &mut Scope<'s, 'a>,
+    ) -> Result<Vec<Truth>, Refusal>
+    where
+        'a: 's,
+    {
+        args.iter().map(|arg| self.pred(arg, scope)).collect()
+    }
+
+    /// The body's value for each record of `kind` in use, bound to
+    /// `variable`, with the record.
+    fn bodies<'s>(
+        &'s self,
+        variable: &'a str,
+        kind: &str,
+        body: &'a Pred,
+        scope: &mut Scope<'s, 'a>,
+    ) -> Result<Vec<(Truth, &'s Record<'a>)>, Refusal>
+    where
+        'a: 's,
+    {
+        let records = self.records.get(kind).map_or(&[][..], Vec::as_slice);
+        let mut values = Vec::with_capacity(records.len());
+        for record in records {
+            scope.push((variable, record));
+            let value = self.pred(body, scope);
+            scope.pop();
+            values.push((value?, *record));
+        }
+        Ok(values)
+    }
+
+    /// The term's value, or `None` when it has none: an absent optional
+    /// field, or arithmetic over one. Each arithmetic node that has a value
+    /// is checked against the range, whatever its parent; one without a
+    /// value computes nothing, but its operands are still evaluated.
+    fn value(&self, term: &Term, scope: &[(&str, &Record<'_>)]) -> Result<Option<Val>, Refusal> {
+        let number = |value: Option<Val>| value.as_ref().and_then(wide);
+        let checked =
+            |value: Option<i128>| value.map(in_range).transpose().map(|n| n.map(Val::Number));
         match term {
-            Term::Literal { value, .. } => Some(value),
-            Term::Input(name) => self.inputs.get(name.as_str()),
-            Term::Parameter(name) => self.contract.policy.get(name).map(|p| &p.value),
-            Term::Field { variable, field } => scope
+            Term::Literal { value, .. } => Ok(Some(value.clone())),
+            Term::Input(name) => Ok(self.inputs.get(name.as_str()).cloned()),
+            Term::Parameter(name) => Ok(self.contract.policy.get(name).map(|p| p.value.clone())),
+            Term::Field { variable, field } => Ok(scope
                 .iter()
                 .find(|(bound, _)| bound == variable)
-                .and_then(|(_, record)| record.fields.get(field.as_str())),
+                .and_then(|(_, record)| record.fields.get(field.as_str()))
+                .cloned()),
+            Term::Add(a, b) => {
+                let (a, b) = (number(self.value(a, scope)?), number(self.value(b, scope)?));
+                checked(a.zip(b).map(|(a, b)| a + b))
+            }
+            Term::Sub(a, b) => {
+                let (a, b) = (number(self.value(a, scope)?), number(self.value(b, scope)?));
+                checked(a.zip(b).map(|(a, b)| a - b))
+            }
+            Term::Scale { factor, of } => {
+                let of = number(self.value(of, scope)?);
+                checked(of.zip(*factor).map(|(v, f)| v * i128::from(f)))
+            }
+            Term::Abs(of) => checked(number(self.value(of, scope)?).map(i128::abs)),
         }
     }
 }
@@ -346,14 +481,16 @@ impl Contract {
             records: settled,
             closed,
         };
-        let requirements: Vec<_> = self
+        let requirements = self
             .requires
             .iter()
-            .map(|r| RequirementValue {
-                id: r.id.clone(),
-                value: state.pred(&r.predicate, &mut Vec::new()),
+            .map(|r| {
+                Ok(RequirementValue {
+                    id: r.id.clone(),
+                    value: state.pred(&r.predicate, &mut Vec::new())?,
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>, Refusal>>()?;
         let has = |truth| requirements.iter().any(|r| r.value == truth);
         let decision = if has(Truth::False) {
             Decision::Contradicted
