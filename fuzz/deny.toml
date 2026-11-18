@@ -17,6 +17,10 @@ ignore = [
     # As in ../deny.toml: `rsa` only verifies RS256 passkey signatures with
     # public keys (decision 0017); no RSA private key is used.
     { id = "RUSTSEC-2023-0071", reason = "verification with public keys only; no RSA private key is used (docs/decisions/0017)" },
+    # chrono is unmaintained, not vulnerable, with no replacement release. It is
+    # not a direct dependency: cedar-policy-core brings it in (verified-derivation).
+    # Revisit when cedar drops it.
+    { id = "RUSTSEC-2026-0543", reason = "unmaintained, not a vulnerability; only via cedar-policy-core, no alternative yet" },
 ]
 
 [licenses]
