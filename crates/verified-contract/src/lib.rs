@@ -124,6 +124,9 @@ pub enum Decision {
     Contradicted,
     /// The accepted evidence does not settle at least one requirement.
     Undetermined,
+    /// Draft RFC 0012: none of the contract's requirements applies.
+    #[cfg(feature = "draft-wvp-0011-0012")]
+    NotApplicable,
 }
 
 impl Decision {
@@ -134,6 +137,8 @@ impl Decision {
             Self::Supported => "SUPPORTED",
             Self::Contradicted => "CONTRADICTED",
             Self::Undetermined => "UNDETERMINED",
+            #[cfg(feature = "draft-wvp-0011-0012")]
+            Self::NotApplicable => "NOT_APPLICABLE",
         }
     }
 }

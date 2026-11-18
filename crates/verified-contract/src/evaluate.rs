@@ -22,6 +22,22 @@ pub struct RequirementValue {
     pub id: String,
     /// What its predicate evaluated to.
     pub value: Truth,
+    /// Draft RFC 0012: `false` when the requirement's condition is `FALSE`,
+    /// so it doesn't apply; its value is then reported as `NOT_APPLICABLE`.
+    #[cfg(feature = "draft-wvp-0011-0012")]
+    pub applies: bool,
+}
+
+impl RequirementValue {
+    /// The language's name for the requirement's value.
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        #[cfg(feature = "draft-wvp-0011-0012")]
+        if !self.applies {
+            return "NOT_APPLICABLE";
+        }
+        self.value.as_str()
+    }
 }
 
 /// Accepted facts of one kind with equal key fields and differing contents.
@@ -65,7 +81,7 @@ impl Outcome {
         let requirements = self.requirements.iter().map(|r| {
             let mut o = Object::new();
             o.insert("id", text(&r.id));
-            o.insert("value", text(r.value.as_str()));
+            o.insert("value", text(r.as_str()));
             Value::Object(o)
         });
         let conflicts = self.conflicts.iter().map(|c| {
@@ -382,7 +398,14 @@ impl<'a> Settled<'a> {
     /// field, or arithmetic over one. Each arithmetic node that has a value
     /// is checked against the range, whatever its parent; one without a
     /// value computes nothing, but its operands are still evaluated.
-    fn value(&self, term: &Term, scope: &[(&str, &Record<'_>)]) -> Result<Option<Val>, Refusal> {
+    fn value<'s>(
+        &'s self,
+        term: &'a Term,
+        scope: &mut Scope<'s, 'a>,
+    ) -> Result<Option<Val>, Refusal>
+    where
+        'a: 's,
+    {
         let number = |value: Option<Val>| value.as_ref().and_then(wide);
         let checked =
             |value: Option<i128>| value.map(in_range).transpose().map(|n| n.map(Val::Number));
@@ -408,8 +431,45 @@ impl<'a> Settled<'a> {
                 checked(of.zip(*factor).map(|(v, f)| v * i128::from(f)))
             }
             Term::Abs(of) => checked(number(self.value(of, scope)?).map(i128::abs)),
+            // Draft RFC 0011. Both operands lie in the range of numbers, so
+            // the product needs at most 126 bits.
+            Term::Mul(a, b) => {
+                let (a, b) = (number(self.value(a, scope)?), number(self.value(b, scope)?));
+                checked(a.zip(b).map(|(a, b)| a * b))
+            }
+            // Draft RFC 0011: every body is evaluated; the value is the
+            // aggregate predicate's, only over a closed kind with every body
+            // settled.
+            Term::Aggregate {
+                aggregation,
+                variable,
+                kind,
+                body,
+            } => {
+                let values = self.bodies(variable, kind, body, scope)?;
+                let settled = self.closed.contains(kind.as_str())
+                    && values.iter().all(|(value, _)| *value != Truth::Unknown);
+                if settled {
+                    aggregate(aggregation, &values).map(Some)
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
+}
+
+/// Draft RFC 0012's decision for a contract none of whose requirements
+/// applies. Without the draft, every requirement applies, so this is never
+/// reached.
+#[cfg(feature = "draft-wvp-0011-0012")]
+const fn not_applicable() -> Decision {
+    Decision::NotApplicable
+}
+
+#[cfg(not(feature = "draft-wvp-0011-0012"))]
+const fn not_applicable() -> Decision {
+    Decision::Supported
 }
 
 impl Contract {
@@ -485,17 +545,40 @@ impl Contract {
             .requires
             .iter()
             .map(|r| {
+                // Draft RFC 0012: the condition and the predicate are both
+                // evaluated, whatever the condition's value.
+                let condition = r
+                    .applies_when
+                    .as_ref()
+                    .map(|c| state.pred(c, &mut Vec::new()))
+                    .transpose()?;
+                let value = state.pred(&r.predicate, &mut Vec::new())?;
+                let value = match condition {
+                    None | Some(Truth::True | Truth::False) => value,
+                    Some(Truth::Unknown) => Truth::Unknown,
+                };
                 Ok(RequirementValue {
                     id: r.id.clone(),
-                    value: state.pred(&r.predicate, &mut Vec::new())?,
+                    value,
+                    #[cfg(feature = "draft-wvp-0011-0012")]
+                    applies: condition != Some(Truth::False),
                 })
             })
             .collect::<Result<Vec<_>, Refusal>>()?;
-        let has = |truth| requirements.iter().any(|r| r.value == truth);
+        let applying = || {
+            requirements
+                .iter()
+                .filter(|r| r.as_str() != "NOT_APPLICABLE")
+        };
+        let has = |truth| applying().any(|r| r.value == truth);
         let decision = if has(Truth::False) {
             Decision::Contradicted
         } else if has(Truth::Unknown) {
             Decision::Undetermined
+        } else if applying().next().is_none() {
+            // Draft RFC 0012: a contract none of whose requirements applies.
+            // (A contract always has a requirement.)
+            not_applicable()
         } else {
             Decision::Supported
         };

@@ -80,13 +80,20 @@ impl Contract {
 
     fn requirements_are_well_formed(&self) -> bool {
         let predicates = || self.requires.iter().map(|r| &r.predicate);
+        // Draft RFC 0012: a condition follows a predicate's static rules,
+        // and counts toward the node limit and the depth limit.
+        let conditions = || self.requires.iter().filter_map(|r| r.applies_when.as_ref());
         !self.requires.is_empty()
             && self.requires.len() <= MAX_REQUIREMENTS
             && self.requires.iter().all(|r| is_name(&r.id))
             && self.requires.windows(2).all(|w| w[0].id < w[1].id)
-            && predicates().map(Pred::nodes).sum::<u64>() <= MAX_PREDICATE_NODES
-            && predicates().all(|p| p.quantifier_depth() <= MAX_QUANTIFIER_DEPTH)
-            && predicates().all(|p| self.is_typed(&mut Vec::new(), p))
+            && predicates().chain(conditions()).map(Pred::nodes).sum::<u64>() <= MAX_PREDICATE_NODES
+            && predicates()
+                .chain(conditions())
+                .all(|p| p.quantifier_depth() <= MAX_QUANTIFIER_DEPTH)
+            && predicates()
+                .chain(conditions())
+                .all(|p| self.is_typed(&mut Vec::new(), p))
             && !predicates().any(is_contradictory)
             // No requirement is the negation of another.
             && !predicates().any(|p| match p {
@@ -97,7 +104,11 @@ impl Contract {
 
     /// The term's type, if it is well typed. `scope` holds the bound
     /// variables with their kinds.
-    fn term_type(&self, scope: &[(&str, &str)], term: &Term) -> Option<Type> {
+    fn term_type<'a>(
+        &'a self,
+        scope: &mut Vec<(&'a str, &'a str)>,
+        term: &'a Term,
+    ) -> Option<Type> {
         let numeric = |ty: Type| ty.is_numeric().then_some(ty);
         match term {
             Term::Literal { of, .. } => of.is_valid().then(|| of.clone()),
@@ -133,6 +144,35 @@ impl Contract {
                 .and_then(|_| self.term_type(scope, of))
                 .and_then(numeric),
             Term::Abs(of) => self.term_type(scope, of).and_then(numeric),
+            // Draft RFC 0011: at least one operand an `int`; the result has
+            // the other operand's type, so units stay meaningful.
+            Term::Mul(a, b) => {
+                let (a, b) = (self.term_type(scope, a)?, self.term_type(scope, b)?);
+                match (a, b) {
+                    (Type::Int, other) | (other, Type::Int) => numeric(other),
+                    _ => None,
+                }
+            }
+            // Draft RFC 0011: an aggregate term, typed as the aggregate
+            // predicate is, its variable bound in its body only.
+            Term::Aggregate {
+                aggregation,
+                variable,
+                kind,
+                body,
+            } => {
+                if !is_name(variable)
+                    || scope.iter().any(|(bound, _)| bound == variable)
+                    || !self.kinds.contains_key(kind)
+                {
+                    return None;
+                }
+                let ty = self.aggregate_type(kind, aggregation)?;
+                scope.push((variable, kind));
+                let typed = self.is_typed(scope, body);
+                scope.pop();
+                typed.then_some(ty)
+            }
         }
     }
 

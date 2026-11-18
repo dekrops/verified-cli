@@ -10,6 +10,12 @@ repository.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# Draft forms of WVP RFC 0011 (aggregates as terms, `mul`) and RFC 0012 (`appliesWhen`,
+# `NOT_APPLICABLE`), read as part of `work-contract-2`. Neither RFC is decided (dekrops/wvp#54,
+# #55): off by default, so RFC 0008's language is unchanged.
+draft-wvp-0011-0012 = []
+
 [dependencies]
 verified-canonical.workspace = true
 

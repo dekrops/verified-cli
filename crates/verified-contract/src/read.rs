@@ -170,13 +170,36 @@ fn read_term(value: &Value, depth: usize, language: Language) -> Read<Term> {
     if let Some(o) = exactly(value, &["abs"]) {
         return Ok(Term::Abs(next(need(o, "abs")?)?));
     }
+    if cfg!(feature = "draft-wvp-0011-0012") {
+        if let Some(o) = exactly(value, &["mul"]) {
+            let (a, b) = pair(need(o, "mul")?)?;
+            return Ok(Term::Mul(a, b));
+        }
+        // An aggregate without `cmp` and `than` is a term.
+        if let Some(o) = value.as_object().filter(|o| o.get("aggregate").is_some()) {
+            const MEMBERS: [&str; 4] = ["aggregate", "of", "in", "where"];
+            only(value, &[&MEMBERS[..], &["field", "distinct"]].concat())?;
+            if MEMBERS.iter().all(|key| o.get(key).is_some()) {
+                let (aggregation, variable, kind, body) = read_aggregation(o, depth, language)?;
+                return Ok(Term::Aggregate {
+                    aggregation,
+                    variable,
+                    kind,
+                    body: Box::new(body),
+                });
+            }
+        }
+    }
     Err(MALFORMED)
 }
 
-/// Language 2's aggregate: `{ aggregate, of, in, where, cmp, than }`, with
-/// `field` (for `sum`) and `distinct` (for `count`) where present. Which of
-/// them an aggregation may carry is a static rule, not a reading one.
-fn read_aggregate(o: &Object, depth: usize, language: Language) -> Read<Pred> {
+/// An aggregate's function, variable, kind and body, shared by the
+/// aggregate predicate and, in draft RFC 0011, the aggregate term.
+fn read_aggregation(
+    o: &Object,
+    depth: usize,
+    language: Language,
+) -> Read<(Aggregation, String, String, Pred)> {
     let optional = |key: &str| o.get(key).map(string).transpose();
     let (field, distinct) = (optional("field")?, optional("distinct")?);
     let function = match need(o, "aggregate")?.as_str() {
@@ -184,16 +207,28 @@ fn read_aggregate(o: &Object, depth: usize, language: Language) -> Read<Pred> {
         Some("sum") => Function::Sum,
         _ => return Err(MALFORMED),
     };
-    let aggregation = Aggregation {
-        function,
-        field,
-        distinct,
-    };
+    Ok((
+        Aggregation {
+            function,
+            field,
+            distinct,
+        },
+        string(need(o, "of")?)?,
+        string(need(o, "in")?)?,
+        read_pred(need(o, "where")?, depth + 1, language)?,
+    ))
+}
+
+/// Language 2's aggregate: `{ aggregate, of, in, where, cmp, than }`, with
+/// `field` (for `sum`) and `distinct` (for `count`) where present. Which of
+/// them an aggregation may carry is a static rule, not a reading one.
+fn read_aggregate(o: &Object, depth: usize, language: Language) -> Read<Pred> {
+    let (aggregation, variable, kind, body) = read_aggregation(o, depth, language)?;
     Ok(Pred::Aggregate {
         aggregation,
-        variable: string(need(o, "of")?)?,
-        kind: string(need(o, "in")?)?,
-        body: Box::new(read_pred(need(o, "where")?, depth + 1, language)?),
+        variable,
+        kind,
+        body: Box::new(body),
         op: read_op(need(o, "cmp")?)?,
         than: read_term(need(o, "than")?, depth + 1, language)?,
     })
@@ -285,10 +320,20 @@ fn read_parameter(value: &Value) -> Read<Parameter> {
 }
 
 fn read_requirement(value: &Value, language: Language) -> Read<Requirement> {
-    let requirement = only(value, &["id", "predicate"])?;
+    let draft = cfg!(feature = "draft-wvp-0011-0012") && language == Language::Two;
+    let members: &[&str] = if draft {
+        &["id", "predicate", "appliesWhen"]
+    } else {
+        &["id", "predicate"]
+    };
+    let requirement = only(value, members)?;
     Ok(Requirement {
         id: string(need(requirement, "id")?)?,
         predicate: read_pred(need(requirement, "predicate")?, 0, language)?,
+        applies_when: requirement
+            .get("appliesWhen")
+            .map(|condition| read_pred(condition, 0, language))
+            .transpose()?,
     })
 }
 
