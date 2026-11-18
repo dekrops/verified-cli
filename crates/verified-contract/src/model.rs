@@ -156,6 +156,9 @@ pub(crate) struct Parameter {
 pub(crate) struct Requirement {
     pub(crate) id: String,
     pub(crate) predicate: Pred,
+    /// Draft RFC 0012: when the requirement applies. `None` without the
+    /// draft feature, and when the requirement has no condition.
+    pub(crate) applies_when: Option<Pred>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -193,6 +196,17 @@ pub(crate) enum Term {
     },
     /// Language 2: the absolute value of a term.
     Abs(Box<Term>),
+    /// Draft RFC 0011: the product of two terms, one of them an `int`.
+    Mul(Box<Term>, Box<Term>),
+    /// Draft RFC 0011: an aggregate's value, as a term. It has one only over
+    /// a closed kind with every body settled. Its variable is bound in
+    /// `body` only.
+    Aggregate {
+        aggregation: Aggregation,
+        variable: String,
+        kind: String,
+        body: Box<Pred>,
+    },
 }
 
 impl Term {
@@ -202,8 +216,25 @@ impl Term {
     pub(crate) fn arithmetic_nodes(&self) -> u64 {
         match self {
             Self::Literal { .. } | Self::Input(_) | Self::Parameter(_) | Self::Field { .. } => 0,
-            Self::Add(a, b) | Self::Sub(a, b) => 1 + a.arithmetic_nodes() + b.arithmetic_nodes(),
+            Self::Add(a, b) | Self::Sub(a, b) | Self::Mul(a, b) => {
+                1 + a.arithmetic_nodes() + b.arithmetic_nodes()
+            }
             Self::Scale { of, .. } | Self::Abs(of) => 1 + of.arithmetic_nodes(),
+            // An aggregate term is a node, and so is every node of its body.
+            Self::Aggregate { body, .. } => 1 + body.nodes(),
+        }
+    }
+
+    /// Draft RFC 0011: the deepest nesting of aggregate terms, and of the
+    /// quantifiers and aggregates in their bodies.
+    pub(crate) fn quantifier_depth(&self) -> u32 {
+        match self {
+            Self::Literal { .. } | Self::Input(_) | Self::Parameter(_) | Self::Field { .. } => 0,
+            Self::Add(a, b) | Self::Sub(a, b) | Self::Mul(a, b) => {
+                a.quantifier_depth().max(b.quantifier_depth())
+            }
+            Self::Scale { of, .. } | Self::Abs(of) => of.quantifier_depth(),
+            Self::Aggregate { body, .. } => 1 + body.quantifier_depth(),
         }
     }
 }
@@ -284,17 +315,29 @@ impl Pred {
         1 + terms + self.children().iter().map(Self::nodes).sum::<u64>()
     }
 
-    /// The deepest nesting of quantifiers, aggregates included.
+    /// The deepest nesting of quantifiers, aggregates included (and with
+    /// draft RFC 0011, aggregate terms).
     pub(crate) fn quantifier_depth(&self) -> u32 {
-        u32::from(matches!(
+        let terms = match self {
+            Self::Compare { left, right, .. } => {
+                left.quantifier_depth().max(right.quantifier_depth())
+            }
+            Self::Aggregate { than, .. } => than.quantifier_depth(),
+            _ => 0,
+        };
+        let here = u32::from(matches!(
             self,
             Self::Quantified { .. } | Self::Aggregate { .. }
-        )) + self
+        ));
+        let below = self
             .children()
             .iter()
             .map(Self::quantifier_depth)
             .max()
-            .unwrap_or(0)
+            .unwrap_or(0);
+        // `than` is outside the aggregate's scope, so its depth isn't added
+        // to the aggregate's own.
+        terms.max(here + below)
     }
 }
 

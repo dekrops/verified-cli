@@ -265,11 +265,7 @@ pub(crate) fn verify(checked: &Checked<'_>, trust: Option<&Trust>) -> Result<Par
     parts.issuer_signature = issuer_signatures(checked, PROTOCOL, recorded.value, inputs, trust)?;
     parts.authenticated();
     parts.decision = DecisionFinding::Reproduced(Reproduced {
-        decision: match outcome.decision {
-            verified_contract::Decision::Supported => Decision::Supported,
-            verified_contract::Decision::Contradicted => Decision::Contradicted,
-            verified_contract::Decision::Undetermined => Decision::Undetermined,
-        },
+        decision: protocol_decision(outcome.decision),
         evaluation: Evaluation::WorkContract {
             requirements: outcome.requirements,
             ignored: outcome.ignored,
@@ -277,4 +273,20 @@ pub(crate) fn verify(checked: &Checked<'_>, trust: Option<&Trust>) -> Result<Par
         },
     });
     Ok(parts)
+}
+
+/// The protocol's decision for a Language 1 contract's.
+///
+/// Only `verified-contract`'s draft feature (WVP RFC 0012) adds a decision,
+/// `NOT_APPLICABLE`, and only for Language 2 contracts. This crate reads
+/// Language 1 (`Contract::read`), so it never sees one; without the feature
+/// the last arm matches nothing.
+#[allow(unreachable_patterns, clippy::match_wildcard_for_single_variants)]
+fn protocol_decision(decision: verified_contract::Decision) -> Decision {
+    match decision {
+        verified_contract::Decision::Supported => Decision::Supported,
+        verified_contract::Decision::Contradicted => Decision::Contradicted,
+        verified_contract::Decision::Undetermined => Decision::Undetermined,
+        _ => unreachable!("Language 1 has no NOT_APPLICABLE decision"),
+    }
 }
