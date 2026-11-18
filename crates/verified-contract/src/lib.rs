@@ -68,7 +68,12 @@ pub const SEMANTICS: &str = "kleene-1";
 
 /// Why a contract or an environment was refused. A refusal is not a
 /// decision: it says nothing about the work.
+///
+/// Non-exhaustive: a later language version may add a refusal (as Language
+/// 2 added `ArithmeticRange`) without a major version. Match on
+/// [`Refusal::as_str`] or keep a wildcard arm.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Refusal {
     /// Not a contract of the language's forms.
     ContractMalformed,
