@@ -7,8 +7,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use verified_canonical::{Object, Value};
 
 use crate::model::{
-    Aggregation, ConflictPolicy, Contract, Function, Op, Pred, Quantifier, Term, Val, is_name,
-    number,
+    Aggregation, ConflictPolicy, Contract, Function, Group, Op, Pred, Quantifier, Term, Val,
+    is_name, number,
 };
 use crate::{Decision, Refusal, Truth};
 
@@ -113,6 +113,32 @@ struct Completeness<'a> {
     kind: &'a str,
     source: &'a str,
     as_of: i64,
+    /// Draft RFC 0013: the groups the statement covers, if it covers groups
+    /// rather than the kind.
+    per: Option<Per<'a>>,
+}
+
+/// Draft RFC 0013: a statement's groups, by one field of the kind: the
+/// values it lists (`only`), or every value but those (`except`).
+struct Per<'a> {
+    field: &'a str,
+    except: bool,
+    values: &'a [Value],
+}
+
+/// Draft RFC 0013: a group statement, accepted, as of the cutoff, over a
+/// kind with no unsettled conflict, its values read as the field's type.
+struct GroupStatement<'a> {
+    kind: &'a str,
+    field: &'a str,
+    except: bool,
+    values: BTreeSet<Val>,
+}
+
+impl GroupStatement<'_> {
+    fn covers(&self, kind: &str, field: &str, value: &Val) -> bool {
+        self.kind == kind && self.field == field && self.values.contains(value) != self.except
+    }
 }
 
 struct Environment<'a> {
@@ -152,12 +178,39 @@ fn read_fact(json: &Value) -> Option<Fact<'_>> {
 }
 
 fn read_completeness(json: &Value) -> Option<Completeness<'_>> {
-    let o = exactly(json, &["kind", "source", "asOf"])?;
+    const KIND: [&str; 3] = ["kind", "source", "asOf"];
+    let (o, per) = match exactly(json, &KIND) {
+        Some(o) => (o, None),
+        None if cfg!(feature = "draft-wvp-0013") => {
+            let (o, except) = match exactly(json, &[&KIND[..], &["per", "only"]].concat()) {
+                Some(o) => (o, false),
+                None => (
+                    exactly(json, &[&KIND[..], &["per", "except"]].concat())?,
+                    true,
+                ),
+            };
+            let values = o.get(if except { "except" } else { "only" })?.as_array()?;
+            let per = Per {
+                field: name(o, "per")?,
+                except,
+                values,
+            };
+            (o, Some(per))
+        }
+        None => return None,
+    };
     Some(Completeness {
         kind: name(o, "kind")?,
         source: name(o, "source")?,
         as_of: number(o.get("asOf")?).filter(|n| *n >= 0)?,
+        per,
     })
+}
+
+/// The order of completeness statements: by kind and source, and with draft
+/// RFC 0013 by `per`, a statement for the whole kind first.
+fn order<'c>(c: &Completeness<'c>) -> (&'c str, &'c str, Option<&'c str>) {
+    (c.kind, c.source, c.per.as_ref().map(|p| p.field))
 }
 
 fn read_environment(json: &Value) -> Option<Environment<'_>> {
@@ -173,9 +226,7 @@ fn read_environment(json: &Value) -> Option<Environment<'_>> {
     let ordered = facts.len() <= MAX_FACTS
         && inputs.keys().all(is_name)
         && facts.windows(2).all(|w| w[0].id < w[1].id)
-        && complete
-            .windows(2)
-            .all(|w| (w[0].kind, w[0].source) < (w[1].kind, w[1].source));
+        && complete.windows(2).all(|w| order(&w[0]) < order(&w[1]));
     ordered.then_some(Environment {
         inputs,
         facts,
@@ -236,6 +287,8 @@ struct Settled<'a> {
     records: BTreeMap<&'a str, Vec<&'a Record<'a>>>,
     /// The kinds a source the contract accepts declared complete.
     closed: BTreeSet<&'a str>,
+    /// Draft RFC 0013: the group statements in force.
+    groups: Vec<GroupStatement<'a>>,
 }
 
 /// A value arithmetic computed, if it lies in the range of numbers:
@@ -316,9 +369,11 @@ impl<'a> Settled<'a> {
                 quantifier,
                 variable,
                 kind,
+                group,
                 body,
             } => {
-                let values = self.bodies(variable, kind, body, scope)?;
+                let (closed, records) = self.listing(kind, group.as_ref(), scope)?;
+                let values = self.bodies(variable, &records, body, scope)?;
                 // One record can prove an `exists` or disprove a `forall`.
                 // The opposite answers are claims about every record, so
                 // they hold only for a kind that is closed.
@@ -327,7 +382,7 @@ impl<'a> Settled<'a> {
                     Quantifier::Exists => (any(values), Truth::False),
                     Quantifier::Forall => (all(values), Truth::True),
                 };
-                if seen == needs_closure && !self.closed.contains(kind.as_str()) {
+                if seen == needs_closure && !closed {
                     Truth::Unknown
                 } else {
                     seen
@@ -337,15 +392,16 @@ impl<'a> Settled<'a> {
                 aggregation,
                 variable,
                 kind,
+                group,
                 body,
                 op,
                 than,
             } => {
-                let values = self.bodies(variable, kind, body, scope)?;
+                let (closed, records) = self.listing(kind, group.as_ref(), scope)?;
+                let values = self.bodies(variable, &records, body, scope)?;
                 let than = self.value(than, scope)?;
-                // A value only over a closed kind with every body settled.
-                let settled = self.closed.contains(kind.as_str())
-                    && values.iter().all(|(value, _)| *value != Truth::Unknown);
+                // A value only over a closed listing with every body settled.
+                let settled = closed && values.iter().all(|(value, _)| *value != Truth::Unknown);
                 let computed = if settled {
                     Some(aggregate(aggregation, &values)?)
                 } else {
@@ -371,19 +427,51 @@ impl<'a> Settled<'a> {
         args.iter().map(|arg| self.pred(arg, scope)).collect()
     }
 
-    /// The body's value for each record of `kind` in use, bound to
-    /// `variable`, with the record.
+    /// The records a quantifier or aggregate over `kind` ranges over, and
+    /// whether that listing is closed. Without a group, every record of the
+    /// kind in use, closed when the kind is. With one (draft RFC 0013), the
+    /// records whose field equals the group's term, closed when the kind is
+    /// or a statement covers that group; with no value for the term, no
+    /// record, and not closed.
+    fn listing<'s>(
+        &'s self,
+        kind: &str,
+        group: Option<&'a Group>,
+        scope: &mut Scope<'s, 'a>,
+    ) -> Result<(bool, Vec<&'s Record<'a>>), Refusal>
+    where
+        'a: 's,
+    {
+        let records = self.records.get(kind).map_or(&[][..], Vec::as_slice);
+        let kind_closed = self.closed.contains(kind);
+        let Some(group) = group else {
+            return Ok((kind_closed, records.iter().map(|r| &**r).collect()));
+        };
+        let Some(value) = self.value(&group.is, scope)? else {
+            return Ok((false, Vec::new()));
+        };
+        let field = group.field.as_str();
+        let closed = kind_closed || self.groups.iter().any(|g| g.covers(kind, field, &value));
+        let members = records
+            .iter()
+            .filter(|r| r.fields.get(field) == Some(&value))
+            .map(|r| &**r)
+            .collect();
+        Ok((closed, members))
+    }
+
+    /// The body's value for each record, bound to `variable`, with the
+    /// record.
     fn bodies<'s>(
         &'s self,
         variable: &'a str,
-        kind: &str,
+        records: &[&'s Record<'a>],
         body: &'a Pred,
         scope: &mut Scope<'s, 'a>,
     ) -> Result<Vec<(Truth, &'s Record<'a>)>, Refusal>
     where
         'a: 's,
     {
-        let records = self.records.get(kind).map_or(&[][..], Vec::as_slice);
         let mut values = Vec::with_capacity(records.len());
         for record in records {
             scope.push((variable, record));
@@ -444,11 +532,12 @@ impl<'a> Settled<'a> {
                 aggregation,
                 variable,
                 kind,
+                group,
                 body,
             } => {
-                let values = self.bodies(variable, kind, body, scope)?;
-                let settled = self.closed.contains(kind.as_str())
-                    && values.iter().all(|(value, _)| *value != Truth::Unknown);
+                let (closed, records) = self.listing(kind, group.as_ref(), scope)?;
+                let values = self.bodies(variable, &records, body, scope)?;
+                let settled = closed && values.iter().all(|(value, _)| *value != Truth::Unknown);
                 if settled {
                     aggregate(aggregation, &values).map(Some)
                 } else {
@@ -526,13 +615,7 @@ impl Contract {
             },
             None => None,
         };
-        let closed = environment
-            .complete
-            .iter()
-            .filter(|c| self.accepts(c.kind, c.source) && cutoff.is_none_or(|at| c.as_of >= at))
-            .map(|c| c.kind)
-            .filter(|kind| !open.contains(kind))
-            .collect();
+        let (closed, groups) = self.in_force(&environment.complete, cutoff, &open)?;
 
         // Steps 7 and 8.
         let state = Settled {
@@ -540,6 +623,7 @@ impl Contract {
             inputs,
             records: settled,
             closed,
+            groups,
         };
         let requirements = self
             .requires
@@ -588,6 +672,55 @@ impl Contract {
             ignored,
             conflicts,
         })
+    }
+
+    /// Step 6: the kinds closed, and with draft RFC 0013 the group
+    /// statements in force. Only statements from a source accepted for the
+    /// kind count, as of the cutoff, over a kind with no unsettled conflict.
+    #[allow(clippy::type_complexity)] // one private call site
+    fn in_force<'a>(
+        &'a self,
+        complete: &[Completeness<'a>],
+        cutoff: Option<i64>,
+        open: &BTreeSet<&'a str>,
+    ) -> Result<(BTreeSet<&'a str>, Vec<GroupStatement<'a>>), Refusal> {
+        const NONCONFORMING: Refusal = Refusal::EnvironmentNonconforming;
+        let in_force = || {
+            complete.iter().filter(|c| {
+                self.accepts(c.kind, c.source)
+                    && cutoff.is_none_or(|at| c.as_of >= at)
+                    && !open.contains(c.kind)
+            })
+        };
+        let closed: BTreeSet<_> = in_force()
+            .filter(|c| c.per.is_none())
+            .map(|c| c.kind)
+            .collect();
+        // Draft RFC 0013: a group statement names a non-optional field of
+        // its kind, and lists values of the field's type.
+        let groups = in_force()
+            .filter_map(|c| c.per.as_ref().map(|per| (c.kind, per)))
+            .map(|(kind, per)| {
+                let field = self
+                    .kinds
+                    .get(kind)
+                    .and_then(|k| k.fields.get(per.field))
+                    .filter(|f| !f.optional)
+                    .ok_or(NONCONFORMING)?;
+                let values = per
+                    .values
+                    .iter()
+                    .map(|v| field.ty.value(v).ok_or(NONCONFORMING))
+                    .collect::<Result<_, _>>()?;
+                Ok(GroupStatement {
+                    kind,
+                    field: per.field,
+                    except: per.except,
+                    values,
+                })
+            })
+            .collect::<Result<Vec<_>, Refusal>>()?;
+        Ok((closed, groups))
     }
 
     /// The fact as a record of its kind: every field declared and fitting,

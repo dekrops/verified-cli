@@ -7,7 +7,7 @@
 use verified_canonical::Value;
 
 use crate::model::{
-    Aggregation, Contract, Function, Kind, Op, Pred, Term, Type, is_name, is_version,
+    Aggregation, Contract, Function, Group, Kind, Op, Pred, Term, Type, is_name, is_version,
 };
 use crate::read::read_contract;
 use crate::{Language, Refusal, SEMANTICS};
@@ -159,11 +159,13 @@ impl Contract {
                 aggregation,
                 variable,
                 kind,
+                group,
                 body,
             } => {
                 if !is_name(variable)
                     || scope.iter().any(|(bound, _)| bound == variable)
                     || !self.kinds.contains_key(kind)
+                    || !self.group_is_typed(scope, kind, group.as_ref())
                 {
                     return None;
                 }
@@ -202,6 +204,29 @@ impl Contract {
         }
     }
 
+    /// Draft RFC 0013: a group names a non-optional field of the kind, and
+    /// its term, typed in the enclosing scope (the quantifier's variable is
+    /// not yet bound), has the field's type.
+    fn group_is_typed<'a>(
+        &'a self,
+        scope: &mut Vec<(&'a str, &'a str)>,
+        kind: &str,
+        group: Option<&'a Group>,
+    ) -> bool {
+        let Some(group) = group else {
+            return true;
+        };
+        let field = self
+            .kinds
+            .get(kind)
+            .and_then(|k| k.fields.get(&group.field))
+            .filter(|f| !f.optional);
+        match (field, self.term_type(scope, &group.is)) {
+            (Some(field), Some(ty)) => field.ty == ty,
+            _ => false,
+        }
+    }
+
     /// Whether every name in `predicate` is declared and every comparison is
     /// between identical types. `scope` holds the bound variables with their
     /// kinds.
@@ -220,12 +245,14 @@ impl Contract {
             Pred::Quantified {
                 variable,
                 kind,
+                group,
                 body,
                 ..
             } => {
                 if !is_name(variable)
                     || scope.iter().any(|(bound, _)| bound == variable)
                     || !self.kinds.contains_key(kind)
+                    || !self.group_is_typed(scope, kind, group.as_ref())
                 {
                     return false;
                 }
@@ -240,6 +267,7 @@ impl Contract {
                 aggregation,
                 variable,
                 kind,
+                group,
                 body,
                 op,
                 than,
@@ -247,6 +275,7 @@ impl Contract {
                 if !is_name(variable)
                     || scope.iter().any(|(bound, _)| bound == variable)
                     || !self.kinds.contains_key(kind)
+                    || !self.group_is_typed(scope, kind, group.as_ref())
                 {
                     return false;
                 }
