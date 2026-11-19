@@ -205,8 +205,28 @@ pub(crate) enum Term {
         aggregation: Aggregation,
         variable: String,
         kind: String,
+        group: Option<Group>,
         body: Box<Pred>,
     },
+}
+
+/// Draft RFC 0013: the one group of a kind a quantifier or aggregate reads,
+/// the records whose `field` equals the value of `is`. `is` is evaluated
+/// where the quantifier is, before its variable is bound.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Group {
+    pub(crate) field: String,
+    pub(crate) is: Box<Term>,
+}
+
+impl Group {
+    fn arithmetic_nodes(group: Option<&Self>) -> u64 {
+        group.map_or(0, |g| g.is.arithmetic_nodes())
+    }
+
+    fn quantifier_depth(group: Option<&Self>) -> u32 {
+        group.map_or(0, |g| g.is.quantifier_depth())
+    }
 }
 
 impl Term {
@@ -220,8 +240,11 @@ impl Term {
                 1 + a.arithmetic_nodes() + b.arithmetic_nodes()
             }
             Self::Scale { of, .. } | Self::Abs(of) => 1 + of.arithmetic_nodes(),
-            // An aggregate term is a node, and so is every node of its body.
-            Self::Aggregate { body, .. } => 1 + body.nodes(),
+            // An aggregate term is a node, and so is every node of its body
+            // and of its group's term.
+            Self::Aggregate { body, group, .. } => {
+                1 + body.nodes() + Group::arithmetic_nodes(group.as_ref())
+            }
         }
     }
 
@@ -234,7 +257,9 @@ impl Term {
                 a.quantifier_depth().max(b.quantifier_depth())
             }
             Self::Scale { of, .. } | Self::Abs(of) => of.quantifier_depth(),
-            Self::Aggregate { body, .. } => 1 + body.quantifier_depth(),
+            Self::Aggregate { body, group, .. } => {
+                (1 + body.quantifier_depth()).max(Group::quantifier_depth(group.as_ref()))
+            }
         }
     }
 }
@@ -278,6 +303,7 @@ pub(crate) enum Pred {
         quantifier: Quantifier,
         variable: String,
         kind: String,
+        group: Option<Group>,
         body: Box<Pred>,
     },
     /// Language 2: an aggregate over the records of `kind`, compared with
@@ -286,6 +312,7 @@ pub(crate) enum Pred {
         aggregation: Aggregation,
         variable: String,
         kind: String,
+        group: Option<Group>,
         body: Box<Pred>,
         op: Op,
         than: Term,
@@ -309,7 +336,10 @@ impl Pred {
     pub(crate) fn nodes(&self) -> u64 {
         let terms = match self {
             Self::Compare { left, right, .. } => left.arithmetic_nodes() + right.arithmetic_nodes(),
-            Self::Aggregate { than, .. } => than.arithmetic_nodes(),
+            Self::Aggregate { than, group, .. } => {
+                than.arithmetic_nodes() + Group::arithmetic_nodes(group.as_ref())
+            }
+            Self::Quantified { group, .. } => Group::arithmetic_nodes(group.as_ref()),
             _ => 0,
         };
         1 + terms + self.children().iter().map(Self::nodes).sum::<u64>()
@@ -322,7 +352,10 @@ impl Pred {
             Self::Compare { left, right, .. } => {
                 left.quantifier_depth().max(right.quantifier_depth())
             }
-            Self::Aggregate { than, .. } => than.quantifier_depth(),
+            Self::Aggregate { than, group, .. } => than
+                .quantifier_depth()
+                .max(Group::quantifier_depth(group.as_ref())),
+            Self::Quantified { group, .. } => Group::quantifier_depth(group.as_ref()),
             _ => 0,
         };
         let here = u32::from(matches!(
@@ -335,8 +368,8 @@ impl Pred {
             .map(Self::quantifier_depth)
             .max()
             .unwrap_or(0);
-        // `than` is outside the aggregate's scope, so its depth isn't added
-        // to the aggregate's own.
+        // `than` and a group's term are outside the quantifier's scope, so
+        // their depth isn't added to the quantifier's own.
         terms.max(here + below)
     }
 }

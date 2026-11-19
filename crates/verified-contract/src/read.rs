@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 use verified_canonical::{Object, Value};
 
 use crate::model::{
-    Aggregation, ConflictPolicy, Contract, Field, Function, Kind, Op, Parameter, Pred, Quantifier,
-    Requirement, Term, Type,
+    Aggregation, ConflictPolicy, Contract, Field, Function, Group, Kind, Op, Parameter, Pred,
+    Quantifier, Requirement, Term, Type,
 };
 use crate::{Language, Refusal};
 
@@ -21,6 +21,29 @@ const MALFORMED: Refusal = Refusal::ContractMalformed;
 /// read at all, so that a reader's recursion is bounded before any rule is
 /// checked.
 const MAX_PREDICATE_DEPTH: usize = 64;
+
+/// Draft RFC 0013: whether `per` may be read, on quantifiers and aggregates.
+fn groups(language: Language) -> bool {
+    cfg!(feature = "draft-wvp-0013") && language == Language::Two
+}
+
+/// The members a quantifier or aggregate may carry besides its own:
+/// `per`, with draft RFC 0013.
+fn group_member(language: Language) -> &'static [&'static str] {
+    if groups(language) { &["per"] } else { &[] }
+}
+
+/// Draft RFC 0013: `per: { field, is }`, where present.
+fn read_group(o: &Object, depth: usize, language: Language) -> Read<Option<Group>> {
+    let Some(per) = o.get("per") else {
+        return Ok(None);
+    };
+    let per = exactly(per, &["field", "is"]).ok_or(MALFORMED)?;
+    Ok(Some(Group {
+        field: string(need(per, "field")?)?,
+        is: Box::new(read_term(need(per, "is")?, depth + 1, language)?),
+    }))
+}
 
 /// An object whose members are all among `allowed`.
 fn only<'a>(value: &'a Value, allowed: &[&str]) -> Read<&'a Object> {
@@ -178,13 +201,17 @@ fn read_term(value: &Value, depth: usize, language: Language) -> Read<Term> {
         // An aggregate without `cmp` and `than` is a term.
         if let Some(o) = value.as_object().filter(|o| o.get("aggregate").is_some()) {
             const MEMBERS: [&str; 4] = ["aggregate", "of", "in", "where"];
-            only(value, &[&MEMBERS[..], &["field", "distinct"]].concat())?;
+            only(
+                value,
+                &[&MEMBERS[..], &["field", "distinct"], group_member(language)].concat(),
+            )?;
             if MEMBERS.iter().all(|key| o.get(key).is_some()) {
                 let (aggregation, variable, kind, body) = read_aggregation(o, depth, language)?;
                 return Ok(Term::Aggregate {
                     aggregation,
                     variable,
                     kind,
+                    group: read_group(o, depth, language)?,
                     body: Box::new(body),
                 });
             }
@@ -228,6 +255,7 @@ fn read_aggregate(o: &Object, depth: usize, language: Language) -> Read<Pred> {
         aggregation,
         variable,
         kind,
+        group: read_group(o, depth, language)?,
         body: Box::new(body),
         op: read_op(need(o, "cmp")?)?,
         than: read_term(need(o, "than")?, depth + 1, language)?,
@@ -258,7 +286,16 @@ fn read_pred(value: &Value, depth: usize, language: Language) -> Read<Pred> {
             quantifier,
             variable: string(need(o, variable)?)?,
             kind: string(need(o, "in")?)?,
+            group: read_group(o, depth, language)?,
             body: Box::new(next(need(o, body)?)?),
+        })
+    };
+    // A quantifier's members, and with draft RFC 0013, the same with `per`.
+    let members = |keys: [&str; 3]| {
+        exactly(value, &keys).or_else(|| {
+            groups(language)
+                .then(|| exactly(value, &[&keys[..], &["per"]].concat()))
+                .flatten()
         })
     };
     if let Some(o) = exactly(value, &["cmp", "left", "right"]) {
@@ -277,17 +314,20 @@ fn read_pred(value: &Value, depth: usize, language: Language) -> Read<Pred> {
     if let Some(o) = exactly(value, &["not"]) {
         return Ok(Pred::Not(Box::new(next(need(o, "not")?)?)));
     }
-    if let Some(o) = exactly(value, &["exists", "in", "where"]) {
+    if let Some(o) = members(["exists", "in", "where"]) {
         return quantified(Quantifier::Exists, o, "exists", "where");
     }
-    if let Some(o) = exactly(value, &["forall", "in", "holds"]) {
+    if let Some(o) = members(["forall", "in", "holds"]) {
         return quantified(Quantifier::Forall, o, "forall", "holds");
     }
     if language == Language::Two
         && let Some(o) = value.as_object().filter(|o| o.get("aggregate").is_some())
     {
         const MEMBERS: [&str; 6] = ["aggregate", "of", "in", "where", "cmp", "than"];
-        only(value, &[&MEMBERS[..], &["field", "distinct"]].concat())?;
+        only(
+            value,
+            &[&MEMBERS[..], &["field", "distinct"], group_member(language)].concat(),
+        )?;
         if MEMBERS.iter().all(|key| o.get(key).is_some()) {
             return read_aggregate(o, depth, language);
         }

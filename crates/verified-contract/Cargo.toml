@@ -15,6 +15,9 @@ publish.workspace = true
 # `NOT_APPLICABLE`), read as part of `work-contract-2`. Neither RFC is decided (dekrops/wvp#54,
 # #55): off by default, so RFC 0008's language is unchanged.
 draft-wvp-0011-0012 = []
+# Draft form of WVP RFC 0013 (completeness per group: `per` on quantifiers, aggregates and
+# completeness statements). Undecided (dekrops/wvp, stacked on #54); it builds on RFC 0011.
+draft-wvp-0013 = ["draft-wvp-0011-0012"]
 
 [dependencies]
 verified-canonical.workspace = true
